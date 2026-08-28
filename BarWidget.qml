@@ -162,9 +162,15 @@ Panel {
     bar: root.bar
     text: "󰌾"
     tooltipText: pass.ready
-      ? (pass.entries.length + (pass.entries.length === 1 ? " password" : " passwords"))
+      ? (pass.entries.length + (pass.entries.length === 1 ? " password" : " passwords")
+         + "  ·  right-click to manage")
       : "omapass needs setting up"
-    onPressed: root.toggle()
+    // Right-click goes straight to the full manager, so the editor is one
+    // gesture away from the bar rather than a pulldown and then a link. (#7)
+    onPressed: function (b) {
+      if (b === Qt.RightButton) root.openManager()
+      else root.toggle()
+    }
   }
 
   // --- pulldown -------------------------------------------------------------

@@ -6,6 +6,12 @@ the CLI surface, or the entry format bump the major.
 
 ## [Unreleased]
 
+### Added
+
+- Right-clicking the bar icon opens the full manager directly, rather than
+  going through the pulldown and its "Manage…" link. The tooltip says so.
+  ([#7])
+
 ## [0.1.6] — 2026-08-28
 
 ### Fixed
@@ -105,3 +111,4 @@ top of the README.
 [0.1.5]: https://github.com/cschaba/omapass/releases/tag/v0.1.5
 [#8]: https://github.com/cschaba/omapass/issues/8
 [0.1.6]: https://github.com/cschaba/omapass/releases/tag/v0.1.6
+[#7]: https://github.com/cschaba/omapass/issues/7

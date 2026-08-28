@@ -6,6 +6,17 @@ the CLI surface, or the entry format bump the major.
 
 ## [Unreleased]
 
+### Fixed
+
+- Falling back from the fingerprint reader to the password took about ten
+  touches instead of three. The failure counter counts whole fprintd
+  conversations, and fprintd retries roughly three times inside each one, so
+  allowing three conversations meant nine or ten touches — long enough to read
+  as the app being stuck rather than falling back. One conversation is now
+  enough, which lands on the usual three-tries convention, and
+  `fingerprint-retries` makes it tunable without a release. Found on real
+  hardware. ([#10])
+
 ## [0.1.8] — 2026-08-28
 
 ### Fixed
@@ -128,3 +139,4 @@ top of the README.
 [0.1.7]: https://github.com/cschaba/omapass/releases/tag/v0.1.7
 [#9]: https://github.com/cschaba/omapass/issues/9
 [0.1.8]: https://github.com/cschaba/omapass/releases/tag/v0.1.8
+[#10]: https://github.com/cschaba/omapass/issues/10

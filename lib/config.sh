@@ -42,6 +42,7 @@ declare -A CONFIG=(
   [reveal-timeout]="15"
   [fingerprint]="auto"
   [fingerprint-grace]="120"
+  [fingerprint-retries]="1"
   [pulldown-rows]="7"
   [keybind]="SUPER SHIFT, K"
   [backup-dir]=""

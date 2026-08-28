@@ -469,6 +469,7 @@ Item {
         visible: root.vaultLocked
         armed: root.opened && root.vaultLocked
         passwordAvailable: pass.passwordAuthAvailable
+        maxScanFailures: Math.max(1, pass.setting("fingerprintRetries", 1))
         foreground: root.foreground
         accent: root.selectedText
         fontFamily: root.fontFamily

@@ -79,10 +79,11 @@ config_json() {
     "$(json_escape "$STORE")" \
     "$CLIP_TIME" "$TYPE_DELAY" \
     "${OMAPASS_TYPE_FOCUS_DELAY:-$(config_number type-focus-delay 0.2)}"
-  printf '"revealTimeout":%s,"fingerprint":"%s","fingerprintGrace":%s,"pulldownRows":%s,' \
+  printf '"revealTimeout":%s,"fingerprint":"%s","fingerprintGrace":%s,"fingerprintRetries":%s,"pulldownRows":%s,' \
     "$(config_number reveal-timeout 15)" \
     "$(json_escape "${CONFIG[fingerprint]}")" \
     "$(config_number fingerprint-grace 120)" \
+    "$(config_number fingerprint-retries 1)" \
     "$(config_number pulldown-rows 7)"
   printf '"backupDir":"%s","keybind":"%s"}' \
     "$(json_escape "$BACKUP_DIR")" \
@@ -137,6 +138,13 @@ write_config_template() {
 
 # Seconds a successful fingerprint scan stays valid before it is asked for again.
 # fingerprint-grace = 120
+
+# How many failed fingerprint *attempts* to allow before falling back to the
+# password prompt. One attempt is a whole fprintd conversation, and fprintd
+# retries roughly three times inside each one — so the default of 1 is about
+# three touches, which is the usual convention. Raise it if your reader is
+# fussy; each extra costs another three touches.
+# fingerprint-retries = 1
 
 # Rows shown in the bar pulldown. A per-widget setting in shell.json,
 # if you have one, wins over this.

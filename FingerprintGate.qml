@@ -22,7 +22,6 @@ Item {
   property string fontFamily: Style.font.menuFamily
   property bool compact: false
 
-  property int attempts: 0
   property bool scanning: false
   property string statusText: ""
 
@@ -39,8 +38,16 @@ Item {
   // A reader that errors is not the same as a finger that does not match: the
   // first means the device is unreachable, and no amount of touching it will
   // help. Both give up eventually rather than looping forever. (#8)
+  //
+  // Counting is per PAM *conversation*, not per touch, and fprintd retries
+  // about three times inside one before reporting failure. So one failed
+  // conversation is already ~3 touches, and the default of 1 lands on the
+  // three-tries-then-password convention. Counting 3 conversations meant
+  // standing there for ten touches, which reads as the app being stuck. (#10)
+  property int scanFailures: 0
   property int readerErrors: 0
-  readonly property int maxScanFailures: 3
+  property int passwordFailures: 0
+  property int maxScanFailures: 1
   readonly property int maxReaderErrors: 2
   property bool fellBack: false
 
@@ -59,8 +66,9 @@ Item {
   }
 
   function start() {
-    root.attempts = 0
+    root.scanFailures = 0
     root.readerErrors = 0
+    root.passwordFailures = 0
     root.fellBack = false
     root.statusText = ""
     root.mode = "fingerprint"
@@ -97,7 +105,7 @@ Item {
     root.statusText = ""
     // An explicit switch back is a request to try the reader again, so the
     // counters that gave up on it start over.
-    root.attempts = 0
+    root.scanFailures = 0
     root.readerErrors = 0
     root.fellBack = false
     passwordField.text = ""
@@ -150,13 +158,13 @@ Item {
 
       if (result === PamResult.Success) {
         root.statusText = ""
-        root.attempts = 0
+        root.scanFailures = 0
         root.authenticated()
         return
       }
 
-      root.attempts += 1
-      if (root.attempts >= root.maxScanFailures) {
+      root.scanFailures += 1
+      if (root.scanFailures >= root.maxScanFailures) {
         root.fallBackToPassword("Fingerprint not recognised")
         return
       }
@@ -198,7 +206,7 @@ Item {
         return
       }
       passwordField.text = ""
-      root.attempts += 1
+      root.passwordFailures += 1
       root.statusText = "Wrong password"
     }
 
@@ -312,7 +320,7 @@ Item {
     // After a few bad reads, say how to get past a reader that is not working.
     Text {
       width: parent.width
-      visible: root.fellBack || (root.attempts >= 3 && root.mode === "fingerprint")
+      visible: root.fellBack || root.scanFailures > 0 || root.passwordFailures >= 3
       text: "Reader not cooperating? Create " + root.optOutPath + " to turn this off.\nYour passwords stay reachable with the pass command either way."
       color: root.foreground
       opacity: 0.5

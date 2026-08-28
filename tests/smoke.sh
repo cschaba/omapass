@@ -117,6 +117,8 @@ check "falls back on a bad number" \
   "$("$OMAPASS" config 2>/dev/null | python3 -c 'import sys,json;print(json.load(sys.stdin)["pulldownRows"])')" "7"
 check "warns about an unknown key" \
   "$("$OMAPASS" config 2>&1 >/dev/null | grep -c "unknown setting")" "1"
+check "fingerprint-retries has a default" \
+  "$("$OMAPASS" config 2>/dev/null | python3 -c 'import sys,json;print(json.load(sys.stdin)["fingerprintRetries"])')" "1"
 check "environment beats the file" \
   "$(OMAPASS_CLIP_TIME=99 "$OMAPASS" config 2>/dev/null | python3 -c 'import sys,json;print(json.load(sys.stdin)["clipTime"])')" "99"
 echo

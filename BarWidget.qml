@@ -366,6 +366,7 @@ Panel {
           visible: root.vaultLocked
           armed: root.opened && root.vaultLocked
           passwordAvailable: pass.passwordAuthAvailable
+          maxScanFailures: Math.max(1, pass.setting("fingerprintRetries", 1))
           compact: true
           foreground: root.foreground
           accent: Color.accent

@@ -6,6 +6,12 @@ the CLI surface, or the entry format bump the major.
 
 ## [Unreleased]
 
+### Added
+
+- The key hints along the bottom of the overlay and the pulldown are clickable.
+  Reading "^L fill login" and not being able to click it is a small papercut
+  that repeats every time. ([#3])
+
 ## [0.1.3] — 2026-08-28
 
 ### Added
@@ -71,3 +77,4 @@ top of the README.
 [0.1.2]: https://github.com/cschaba/omapass/releases/tag/v0.1.2
 [#6]: https://github.com/cschaba/omapass/issues/6
 [0.1.3]: https://github.com/cschaba/omapass/releases/tag/v0.1.3
+[#3]: https://github.com/cschaba/omapass/issues/3

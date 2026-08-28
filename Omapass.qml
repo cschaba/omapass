@@ -775,17 +775,38 @@ Item {
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
+            visible: root.errorText.length > 0
             text: root.errorText
-              ? root.errorText
-              : "⏎ copy   ⇧⏎ type   ⌥⏎ user   ^L fill login"
-                + (root.hasOtpSupport ? "   ^O otp   ^Q scan qr" : "")
-                + "   ^R reveal   ^N new   ^E edit   ⌦ delete"
-                + (root.hasGit ? "   ^S sync" : "")
-            color: root.errorText ? Color.urgent : root.foreground
-            opacity: root.errorText ? 1 : 0.45
+            color: Color.urgent
             font.family: root.fontFamily
             font.pixelSize: Style.font.caption
             elide: Text.ElideRight
+          }
+
+          ActionHints {
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.verticalCenter: parent.verticalCenter
+            visible: root.errorText.length === 0
+            foreground: root.foreground
+            accent: root.selectedText
+            fontFamily: root.fontFamily
+            actions: [
+              { key: "⏎",  label: "copy",       action: function () { root.copyPassword() } },
+              { key: "⇧⏎", label: "type",       action: function () { root.typePassword() } },
+              { key: "⌥⏎", label: "user",       action: function () { root.copyUser() } },
+              { key: "^L", label: "fill login", action: function () { root.typeLogin() } },
+              { key: "^O", label: "otp",        action: function () { root.copyOtp() },
+                visible: root.hasOtpSupport },
+              { key: "^Q", label: "scan qr",    action: function () { root.scanOtp() },
+                visible: root.hasOtpSupport },
+              { key: "^R", label: "reveal",     action: function () { root.toggleReveal() } },
+              { key: "^N", label: "new",        action: function () { root.newEntry() } },
+              { key: "^E", label: "edit",       action: function () { root.editEntry() } },
+              { key: "⌦",  label: "delete",     action: function () { root.requestDelete() } },
+              { key: "^S", label: "sync",       action: function () { root.sync() },
+                visible: root.hasGit }
+            ]
           }
         }
       }

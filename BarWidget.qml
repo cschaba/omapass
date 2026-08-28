@@ -343,15 +343,19 @@ Panel {
           width: parent.width
           height: Style.font.caption + Style.space(4)
 
-          Text {
+          ActionHints {
             id: hintLabel
             anchors.left: parent.left
             anchors.verticalCenter: parent.verticalCenter
             visible: pass.ready && !root.vaultLocked
-            text: "⏎ copy   ⇧⏎ type"
-            color: root.dim
-            font.family: root.fontFamily
-            font.pixelSize: Style.font.caption
+            foreground: root.foreground
+            accent: Color.accent
+            fontFamily: root.fontFamily
+            spacing: Style.space(10)
+            actions: [
+              { key: "⏎",  label: "copy", action: function () { root.activate("copy") } },
+              { key: "⇧⏎", label: "type", action: function () { root.activate("type") } }
+            ]
           }
 
           // A way out that does not depend on knowing about Esc. Without this

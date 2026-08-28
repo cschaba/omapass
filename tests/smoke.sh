@@ -219,6 +219,10 @@ import json
 m = json.load(open('$ROOT/manifest.json'))
 need = ['schemaVersion','id','name','version','author','description','kinds','entryPoints']
 print(all(m.get(k) for k in need))")" "True"
+check "doctor reports the running copy" \
+  "$("$OMAPASS" doctor | grep -c 'running from')" "1"
+check "doctor reports whether logging is on" \
+  "$("$OMAPASS" doctor | grep -c '^  log ')" "1"
 check "quit is a real subcommand" \
   "$(grep -cE '^\s+quit\) cmd_quit' "$ROOT/bin/omapass")" "1"
 check "quit tells you how to come back" \

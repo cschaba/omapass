@@ -6,6 +6,16 @@ the CLI surface, or the entry format bump the major.
 
 ## [Unreleased]
 
+### Added
+
+- `omapass doctor`: which copy of omapass is running, its version, where the
+  config, store and log are, and whether logging is on. It warns when more than
+  one installed directory claims the plugin id — installing twice (`install.sh`
+  and later `omarchy plugin add`) leaves omarchy loading one of them with
+  nothing on screen to say which. ([#21])
+- The About screen says when the debug log is off, and how to turn it on,
+  rather than only showing a link when it is already on. ([#21])
+
 ## [0.1.22] — 2026-08-28
 
 ### Added

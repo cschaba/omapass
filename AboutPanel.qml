@@ -139,6 +139,20 @@ Item {
       horizontalAlignment: Text.AlignHCenter
     }
 
+    // Says so either way. "I turned logging on and got nothing" is answered
+    // fastest by the app admitting whether it thinks logging is on at all.
+    Text {
+      width: parent.width
+      visible: !root.logging
+      text: "Debug log off — set  log = on  in ~/.config/omapass/config"
+      color: root.foreground
+      opacity: 0.4
+      font.family: root.fontFamily
+      font.pixelSize: Style.font.caption
+      horizontalAlignment: Text.AlignHCenter
+      wrapMode: Text.WordWrap
+    }
+
     // Debug log, when the user has turned it on.
     Column {
       width: parent.width

@@ -66,6 +66,48 @@ log_line() {
 # shell unloads it. Everything stays installed — this is "quit", not "uninstall"
 # — so a single command brings it all back, and that command is printed because
 # a quit you cannot undo without reading the manual is a trap.
+# Answers "which copy of omapass is actually running, and is logging on?" —
+# the questions that cost a round trip every time something behaves unexpectedly.
+cmd_doctor() {
+  local id plugins_dir found=0 dir
+  id=$(manifest_field id)
+  id="${id:-cschaba.omapass}"
+  plugins_dir="$HOME/.config/omarchy/plugins"
+
+  echo "omapass $(omapass_version)"
+  echo "  running from   $OMAPASS_ROOT"
+  echo "  plugin id      $id"
+  echo "  config         $CONFIG_FILE$([[ -r $CONFIG_FILE ]] || echo '  (none — using defaults)')"
+  echo "  store          $STORE"
+  echo "  log            $($LOG_ENABLED && echo "on → $LOG_FILE" || echo 'off  (set log = on in the config)')"
+  echo
+
+  # Two directories declaring the same id is the trap: omarchy loads one of
+  # them and there is nothing on screen to say which.
+  echo "installed plugin directories:"
+  if [[ -d $plugins_dir ]]; then
+    for dir in "$plugins_dir"/*/; do
+      [[ -f "$dir/manifest.json" ]] || continue
+      local dir_id dir_version
+      dir_id=$(sed -n 's/.*"id"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$dir/manifest.json" | head -1)
+      dir_version=$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$dir/manifest.json" | head -1)
+      [[ $dir_id == "$id" ]] || continue
+      found=$((found + 1))
+      printf '  %s  (%s)%s\n' "${dir%/}" "$dir_version" \
+        "$([[ "$(readlink -f "${dir%/}")" == "$(readlink -f "$OMAPASS_ROOT")" ]] && echo '  ← this one')"
+    done
+  fi
+  [[ $found -gt 0 ]] || echo "  none found under $plugins_dir"
+
+  if [[ $found -gt 1 ]]; then
+    echo
+    echo "  ! $found directories declare the plugin id '$id'."
+    echo "  ! omarchy loads one of them and gives no sign which, so the version"
+    echo "  ! you see may not be the code that runs. Remove the ones you do not"
+    echo "  ! want and restart with: omarchy restart shell"
+  fi
+}
+
 cmd_quit() {
   local id
   id=$(manifest_field id)
@@ -810,6 +852,7 @@ omapass — pass(1) backend for the omapass Omarchy plugin
   log [--path|--clear|--event <text>]
                              debug log location, clear it, or append a line
   quit                       stop the plugin; it stays installed
+  doctor                     which copy is running, and is logging on
   welcomed [--mark|--reset]  whether the welcome screen has been shown
   status                     JSON: what is installed and set up
   unlocked                   JSON: whether gpg-agent has a key cached
@@ -883,6 +926,7 @@ dispatch() {
   config) cmd_config "${1:-}" ;;
   log) cmd_log "$@" ;;
   quit) cmd_quit ;;
+  doctor) cmd_doctor ;;
   fingerprint) fingerprint_available && echo '{"fingerprint":true}' || echo '{"fingerprint":false}' ;;
   unlocked) cmd_unlocked ;;
   list) cmd_list ;;

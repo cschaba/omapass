@@ -303,6 +303,19 @@ The bar pulldown's row count can also be set per-widget in Omarchy's own
 
 ## Debug log
 
+If something misbehaves, start here:
+
+```bash
+bin/omapass doctor
+```
+
+It prints which copy of omapass is actually running, its version, where the
+config and store are, and whether logging is on — and warns if more than one
+installed directory claims the plugin id, which happens if you install twice
+(say, `install.sh` once and `omarchy plugin add` later). omarchy loads one of
+them and gives no sign which, so the version you see may not be the code that
+runs.
+
 Off unless you turn it on:
 
 ```ini
@@ -405,6 +418,7 @@ entry on a timer for as long as the panel is open.
 bin/omapass status                  # JSON: what is installed and set up
 bin/omapass fingerprint             # JSON: whether fingerprint unlock applies
 bin/omapass quit                    # stop the plugin; it stays installed
+bin/omapass doctor                  # which copy is running, and is logging on
 bin/omapass list                    # JSON: every entry
 bin/omapass fields github.com/cs    # JSON: everything except the password
 bin/omapass copy github.com/cs

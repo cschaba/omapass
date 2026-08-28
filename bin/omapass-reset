@@ -243,7 +243,7 @@ cmd_restore() {
 
 usage() {
   cat <<'USAGE'
-omapass-reset — return omapass to a pre-setup state for testing
+omapass-reset — empty the slate so setup runs again from scratch
 
   --store          remove the password store
   --key            remove the GPG key the store is encrypted to
@@ -259,7 +259,11 @@ omapass-reset — return omapass to a pre-setup state for testing
 Everything removable is written to a tarball under
 ~/.local/state/omapass/backups first, including an export of the secret key
 whenever --key is used. With no options, --store --key is assumed: enough to
-test the setup flow again, without touching your packages.
+run setup again, without touching your packages.
+
+This removes your passwords, not the app: omapass stays installed, on the bar,
+and bound to its key. To remove the app, use uninstall.sh instead. Running both
+removes everything.
 USAGE
 }
 
@@ -321,6 +325,7 @@ main() {
 
   echo
   say "done — open omapass and it will offer the setup again"
+  say "omapass itself is still installed; uninstall.sh removes the app"
   [[ -n $BACKUP_PATH ]] && say "undo with: omapass-reset --restore $BACKUP_PATH"
   exit 0
 }

@@ -26,7 +26,8 @@ if [[ ${1:-} == "-h" || ${1:-} == "--help" ]]; then
   Removes the plugin, its bar widget and its keybinding.
   --purge also removes omapass's own config and state.
 
-  Your password store and GPG key are never touched.
+  Your password store and GPG key are never touched — omapass-reset is the
+  one that removes those.
 USAGE
   exit 0
 fi

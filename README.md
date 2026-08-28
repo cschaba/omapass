@@ -134,6 +134,17 @@ Your password store and GPG key are never touched. The store is a plain `pass`
 store — the `pass` command carries on reading it whether omapass is installed or
 not.
 
+There are two ways to undo things, and they do opposite halves of the job:
+
+| | Removes the app | Removes your passwords |
+|---|---|---|
+| `./uninstall.sh` | yes | no |
+| [`omapass-reset`](#starting-over) | no | yes, after backing them up |
+
+So `uninstall.sh` if you are done with omapass, and `omapass-reset` if you want
+to keep it but start again with a new key or an empty store. Running both, in
+either order, removes everything.
+
 ### First run
 
 omapass needs `pass`, a GPG key, and an initialised password store. If any of
@@ -398,9 +409,12 @@ else is fine, including spaces and folders.
 
 ## Starting over
 
-`bin/omapass-reset` puts omapass back to a pre-setup state — useful if you want
-to start again with a different key or a fresh store, and how the first-run flow
-gets exercised more than once.
+`bin/omapass-reset` empties the slate so setup runs again from scratch — for
+starting over with a different GPG key or a fresh store.
+
+**It does not uninstall omapass.** The plugin stays on your bar and the keybinding
+keeps working; only your store and its key go. To remove the app itself, use
+[`./uninstall.sh`](#removing-it).
 
 ```bash
 bin/omapass-reset --status         # what is set up, and which backups exist

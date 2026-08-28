@@ -6,6 +6,14 @@ the CLI surface, or the entry format bump the major.
 
 ## [Unreleased]
 
+### Changed
+
+- The README now says how `omapass-reset` and `uninstall.sh` differ: one removes
+  your passwords, the other removes the app. They were documented 270 lines
+  apart with neither mentioning the other, so "reset" read as though it should
+  have uninstalled everything. Both scripts say it in their own help and output
+  too, which is where the question actually gets asked. ([#15])
+
 ## [0.1.12] — 2026-08-28
 
 ### Changed
@@ -181,3 +189,4 @@ top of the README.
 [0.1.11]: https://github.com/cschaba/omapass/releases/tag/v0.1.11
 [#12]: https://github.com/cschaba/omapass/issues/12
 [0.1.12]: https://github.com/cschaba/omapass/releases/tag/v0.1.12
+[#15]: https://github.com/cschaba/omapass/issues/15

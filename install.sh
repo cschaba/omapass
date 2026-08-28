@@ -32,7 +32,41 @@ else
   say "! omarchy-shell is not running — it will pick omapass up on next start"
 fi
 
-# 3. keybinding
+# 3. bar widget
+# A dual-kind plugin (overlay + bar-widget) is already "enabled" via plugins[],
+# so `omarchy bar put` reports success and adds nothing. Write the layout entry
+# ourselves when it is missing.
+if command -v python3 >/dev/null 2>&1; then
+  python3 - "$HOME/.config/omarchy/shell.json" <<'PYEOF'
+import json, os, sys, tempfile
+
+path = sys.argv[1]
+if not os.path.exists(path):
+    print("  ! no shell.json yet — add the widget with: omarchy bar put omapass")
+    raise SystemExit(0)
+
+with open(path) as f:
+    config = json.load(f)
+
+layout = config.setdefault("bar", {}).setdefault("layout", {})
+if any(e.get("id") == "omapass" for sec in layout.values() for e in sec):
+    print("  ✓ bar widget already placed")
+    raise SystemExit(0)
+
+right = layout.setdefault("right", [])
+index = next((i for i, e in enumerate(right) if e.get("id") == "omarchy.power"), len(right))
+right.insert(index, {"id": "omapass"})
+
+fd, tmp = tempfile.mkstemp(dir=os.path.dirname(path))
+with os.fdopen(fd, "w") as f:
+    json.dump(config, f, indent=2)
+    f.write("\n")
+os.replace(tmp, path)
+print("  ✓ added the bar widget")
+PYEOF
+fi
+
+# 4. keybinding
 if [[ -f $BINDINGS ]] && grep -q "shell toggle omapass" "$BINDINGS"; then
   say "✓ keybinding already present in $BINDINGS"
 else

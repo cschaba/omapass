@@ -91,14 +91,24 @@ function parseStatus(raw) {
   }
 }
 
-// Which setup steps are still outstanding, in the order they must happen.
+// Every requirement the backend checked, in the order a person would fix them.
+// Each row carries the exact command that fixes it, so the overlay can show
+// instructions rather than just a red cross.
 function setupSteps(status) {
-  if (!status) return []
-  return [
-    { key: "pass", label: "pass CLI installed", done: status.pass === true },
-    { key: "gpg", label: "GPG key available", done: status.gpg === true && (status.keys || []).length > 0 },
-    { key: "store", label: "Password store initialised", done: status.store === true }
-  ]
+  if (!status || !Array.isArray(status.requirements)) return []
+  return status.requirements
+}
+
+// What is actually blocking startup — optional extras do not count.
+function missingRequirements(status) {
+  return setupSteps(status).filter(function (r) { return !r.ok && !r.optional })
+}
+
+// The guided script can install packages, make a key and init the store. It
+// cannot do anything about a requirement it does not know how to fix, so the
+// overlay only offers the button when it would help.
+function guidedSetupHelps(status) {
+  return missingRequirements(status).length > 0
 }
 
 // A name is valid if pass can store it: relative, no traversal, no newline.

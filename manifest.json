@@ -7,10 +7,33 @@
   "license": "MIT",
   "description": "Password manager overlay for Omarchy, backed by the pass CLI",
   "kinds": [
-    "overlay"
+    "overlay",
+    "bar-widget"
   ],
   "keepLoaded": true,
   "entryPoints": {
-    "overlay": "Omapass.qml"
+    "overlay": "Omapass.qml",
+    "barWidget": "BarWidget.qml"
+  },
+  "barWidget": {
+    "displayName": "Passwords",
+    "description": "Search your pass store from the bar and copy a password without leaving the keyboard.",
+    "category": "Utilities",
+    "allowMultiple": false,
+    "defaultSection": "right",
+    "defaults": {
+      "rows": 7
+    },
+    "schema": [
+      {
+        "key": "rows",
+        "type": "integer",
+        "label": "Visible results",
+        "min": 3,
+        "max": 20,
+        "step": 1,
+        "defaultValue": 7
+      }
+    ]
   }
 }

@@ -2,9 +2,12 @@ import QtQuick
 import qs.Commons
 import qs.Ui
 
-// First-run gate. omapass needs three things it cannot conjure from inside the
-// shell process — a package install, a GPG key, and an initialised store — so
-// this shows what is missing and hands off to bin/omapass-setup in a terminal.
+// First-run gate. omapass checks its requirements every time it opens, and
+// when something is missing this replaces the picker.
+//
+// Each unmet requirement shows the command that fixes it: the guided script
+// covers the common path, but someone who would rather run three commands
+// themselves should not have to go and find out what they are.
 Item {
   id: root
 
@@ -14,18 +17,23 @@ Item {
   property string fontFamily: Style.font.menuFamily
 
   signal startSetup()
+  signal copyHint(string command)
+
+  implicitHeight: layout.implicitHeight
 
   Column {
-    anchors.centerIn: parent
-    width: Math.min(parent.width, Style.space(420))
-    spacing: Style.space(14)
+    id: layout
+    anchors.horizontalCenter: parent.horizontalCenter
+    anchors.verticalCenter: parent.verticalCenter
+    width: Math.min(parent.width, Style.space(460))
+    spacing: Style.space(12)
 
     Text {
       width: parent.width
       text: "󰌾"
       color: root.accent
       font.family: root.fontFamily
-      font.pixelSize: Style.font.displayLarge
+      font.pixelSize: Style.font.display
       horizontalAlignment: Text.AlignHCenter
     }
 
@@ -40,30 +48,84 @@ Item {
 
     Column {
       width: parent.width
-      spacing: Style.space(6)
+      spacing: Style.space(4)
 
       Repeater {
         model: root.steps
 
-        Row {
+        Column {
+          id: stepRow
           required property var modelData
-          width: parent.width
-          spacing: Style.space(10)
 
-          Text {
-            text: modelData.done ? "✓" : "✗"
-            color: modelData.done ? root.accent : root.foreground
-            opacity: modelData.done ? 1 : 0.55
-            font.family: root.fontFamily
-            font.pixelSize: Style.font.body
+          readonly property bool met: modelData.ok === true
+          readonly property bool optional: modelData.optional === true
+
+          width: parent.width
+          spacing: Style.space(1)
+
+          Row {
+            width: parent.width
+            spacing: Style.space(10)
+
+            Text {
+              width: Style.space(12)
+              text: stepRow.met ? "✓" : (stepRow.optional ? "–" : "✗")
+              color: stepRow.met ? root.accent : root.foreground
+              opacity: stepRow.met ? 1 : 0.6
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.body
+              horizontalAlignment: Text.AlignHCenter
+            }
+
+            Text {
+              text: modelData.label
+              color: root.foreground
+              opacity: stepRow.met ? 0.6 : 1
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.body
+            }
+
+            Text {
+              anchors.verticalCenter: parent.verticalCenter
+              visible: stepRow.optional
+              text: "optional"
+              color: root.foreground
+              opacity: 0.35
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.caption
+            }
           }
 
-          Text {
-            text: modelData.label
-            color: root.foreground
-            opacity: modelData.done ? 0.75 : 1
-            font.family: root.fontFamily
-            font.pixelSize: Style.font.body
+          // the fix, verbatim — click to copy
+          Rectangle {
+            visible: !stepRow.met && modelData.hint
+            width: parent.width
+            height: hintText.implicitHeight + Style.spacing.controlPaddingY
+            x: Style.space(22)
+            radius: Style.cornerRadius
+            color: hintArea.containsMouse ? Util.alpha(root.foreground, 0.08) : "transparent"
+
+            Text {
+              id: hintText
+              anchors.verticalCenter: parent.verticalCenter
+              anchors.left: parent.left
+              anchors.leftMargin: Style.space(4)
+              anchors.right: parent.right
+              text: modelData.hint
+              color: root.accent
+              opacity: 0.85
+              font.family: Style.font.family
+              font.pixelSize: Style.font.caption
+              elide: Text.ElideRight
+            }
+
+            MouseArea {
+              id: hintArea
+              anchors.fill: parent
+              hoverEnabled: true
+              cursorShape: Qt.PointingHandCursor
+              onClicked: root.copyHint(modelData.hint)
+            }
           }
         }
       }
@@ -73,7 +135,7 @@ Item {
       width: parent.width
       height: Math.max(Style.space(34), Style.font.title + Style.spacing.controlPaddingY * 2)
       radius: Style.cornerRadius
-      color: Util.alpha(root.accent, 0.16)
+      color: Util.alpha(root.accent, setupArea.containsMouse ? 0.24 : 0.16)
 
       Text {
         anchors.centerIn: parent
@@ -84,7 +146,9 @@ Item {
       }
 
       MouseArea {
+        id: setupArea
         anchors.fill: parent
+        hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
         onClicked: root.startSetup()
       }
@@ -92,7 +156,7 @@ Item {
 
     Text {
       width: parent.width
-      text: "Opens a terminal and walks through installing pass, creating a GPG key, and initialising your store."
+      text: "Opens a terminal and walks through the steps above — or run the commands yourself; click one to copy it."
       color: root.foreground
       opacity: 0.5
       font.family: root.fontFamily

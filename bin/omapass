@@ -46,58 +46,100 @@ entry_exists() {
 }
 
 # --- JSON helpers -----------------------------------------------------------
-# jq is a hard dependency of the Omarchy shell already (capture.sh uses it).
 
-json_str() { jq -Rn --arg s "$1" '$s'; }
+# `status` is the one command that has to work when the dependencies do not,
+# since reporting a missing jq through jq would be a poor joke. Everything it
+# emits is hand-rolled; the commands that genuinely need jq say so.
+json_escape() {
+  local s="$1"
+  s=${s//\\/\\\\}
+  s=${s//\"/\\\"}
+  s=${s//$'\n'/\\n}
+  s=${s//$'\r'/\\r}
+  s=${s//$'\t'/\\t}
+  printf '%s' "$s"
+}
 
-# --- status -----------------------------------------------------------------
+json_bool() { [[ $1 == "true" || $1 == "yes" || $1 == 0 ]] && printf 'true' || printf 'false'; }
+
+# --- requirements -----------------------------------------------------------
+
+# Everything omapass needs at runtime, in the order a person would fix them.
+# `hint` is the exact command to run, so the overlay can show instructions
+# rather than just a red cross.
+req_row() {
+  local key="$1" label="$2" hint="$3" optional="$4" ok="$5"
+  printf '{"key":"%s","label":"%s","hint":"%s","optional":%s,"ok":%s}' \
+    "$(json_escape "$key")" "$(json_escape "$label")" "$(json_escape "$hint")" \
+    "$optional" "$ok"
+}
+
+have() { command -v "$1" >/dev/null 2>&1 && printf 'true' || printf 'false'; }
+
+secret_key_lines() {
+  gpg --list-secret-keys --with-colons 2>/dev/null | awk -F: '
+    $1 == "sec" { fpr = ""; uid = "" }
+    $1 == "fpr" && fpr == "" { fpr = $10 }
+    $1 == "uid" && uid == "" && fpr != "" { uid = $10; print fpr "\t" uid; fpr = "" }
+  '
+}
 
 cmd_status() {
-  local has_pass=false has_otp=false has_gpg=false has_store=false has_git=false
-  local entries=0 keys='[]'
+  local has_pass has_gpg has_wlcopy has_wtype has_jq has_otp=false
+  has_pass=$(have pass)
+  has_gpg=$(have gpg)
+  has_wlcopy=$(have wl-copy)
+  has_wtype=$(have wtype)
+  has_jq=$(have jq)
+  [[ $has_pass == "true" ]] && pass otp --help >/dev/null 2>&1 && has_otp=true
 
-  command -v pass >/dev/null 2>&1 && has_pass=true
-  command -v gpg >/dev/null 2>&1 && has_gpg=true
+  local keys_raw has_key=false
+  keys_raw=$(secret_key_lines)
+  [[ -n $keys_raw ]] && has_key=true
+
+  local has_store=false has_git=false entries=0
   [[ -f $STORE/.gpg-id ]] && has_store=true
   [[ -d $STORE/.git ]] && has_git=true
-  $has_pass && pass otp --help >/dev/null 2>&1 && has_otp=true
-
-  if $has_store; then
+  if [[ $has_store == "true" ]]; then
     entries=$(find "$STORE" -name '*.gpg' -type f -not -path '*/.git/*' 2>/dev/null | wc -l)
   fi
 
-  if $has_gpg; then
-    keys=$(gpg --list-secret-keys --with-colons 2>/dev/null | awk -F: '
-      $1 == "sec" { fpr = ""; uid = "" }
-      $1 == "fpr" && fpr == "" { fpr = $10 }
-      $1 == "uid" && uid == "" && fpr != "" { uid = $10; print fpr "\t" uid; fpr = "" }
-    ' | jq -Rn '[inputs | split("\t") | {id: .[0], uid: .[1]}]')
-    [[ -n $keys ]] || keys='[]'
+  # The key id makes the store hint copy-pasteable instead of a placeholder.
+  local key_hint="pass init <your-key-id>"
+  if [[ $has_key == "true" ]]; then
+    key_hint="pass init $(head -n1 <<<"$keys_raw" | cut -f1)"
   fi
 
-  jq -n \
-    --argjson pass "$has_pass" \
-    --argjson otp "$has_otp" \
-    --argjson gpg "$has_gpg" \
-    --argjson store "$has_store" \
-    --argjson git "$has_git" \
-    --argjson entries "$entries" \
-    --argjson keys "$keys" \
-    --arg storePath "$STORE" \
-    '{pass: $pass, otp: $otp, gpg: $gpg, store: $store, git: $git,
-      entries: $entries, keys: $keys, storePath: $storePath,
-      ready: ($pass and $gpg and $store)}'
-}
+  local rows=()
+  rows+=("$(req_row pass       "pass CLI"                   "sudo pacman -S --needed pass"          false "$has_pass")")
+  rows+=("$(req_row gpg        "GnuPG"                      "sudo pacman -S --needed gnupg"         false "$has_gpg")")
+  rows+=("$(req_row wl-copy    "wl-clipboard (copying)"     "sudo pacman -S --needed wl-clipboard"  false "$has_wlcopy")")
+  rows+=("$(req_row wtype      "wtype (typing into windows)" "sudo pacman -S --needed wtype"        false "$has_wtype")")
+  rows+=("$(req_row jq         "jq"                         "sudo pacman -S --needed jq"            false "$has_jq")")
+  rows+=("$(req_row key        "GPG key"                    "gpg --full-generate-key"               false "$has_key")")
+  rows+=("$(req_row store      "Password store"             "$key_hint"                             false "$has_store")")
+  rows+=("$(req_row pass-otp   "pass-otp (one-time codes)"  "sudo pacman -S --needed pass-otp"      true  "$has_otp")")
 
-# Whether gpg-agent still has a key cached, i.e. whether decrypting right now
-# would pop a pinentry prompt. Best-effort: false is always the safe answer.
-cmd_unlocked() {
-  local cached=false out
-  out=$(gpg-connect-agent 'keyinfo --list' /bye 2>/dev/null) || true
-  if awk '$1 == "S" && $2 == "KEYINFO" && $7 == "1" { found = 1 } END { exit !found }' <<<"$out"; then
-    cached=true
-  fi
-  jq -n --argjson unlocked "$cached" '{unlocked: $unlocked}'
+  local ready=true
+  [[ $has_pass == "true" && $has_gpg == "true" && $has_wlcopy == "true" \
+     && $has_wtype == "true" && $has_jq == "true" && $has_key == "true" \
+     && $has_store == "true" ]] || ready=false
+
+  local requirements
+  requirements=$(IFS=,; printf '%s' "${rows[*]}")
+
+  local keys="" sep=""
+  while IFS=$'\t' read -r fpr uid; do
+    [[ -n $fpr ]] || continue
+    keys+="$sep{\"id\":\"$(json_escape "$fpr")\",\"uid\":\"$(json_escape "$uid")\"}"
+    sep=","
+  done <<<"$keys_raw"
+
+  printf '{"pass":%s,"otp":%s,"gpg":%s,"key":%s,"store":%s,"git":%s,' \
+    "$has_pass" "$has_otp" "$has_gpg" "$has_key" "$has_store" "$has_git"
+  printf '"entries":%s,"storePath":"%s","keys":[%s],' \
+    "$entries" "$(json_escape "$STORE")" "$keys"
+  printf '"requirements":[%s],"ready":%s}\n' "$requirements" "$ready"
 }
 
 # --- list -------------------------------------------------------------------

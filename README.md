@@ -3,10 +3,27 @@
 A password manager for [Omarchy 4](https://omarchy.org), built as a shell
 plugin and backed by [`pass`](https://www.passwordstore.org/).
 
-It is a full-screen overlay in the same family as Omarchy's clipboard and emoji
-pickers: one keystroke opens it, you type to filter, and Enter puts the password
-on your clipboard. It also creates, edits, generates, renames and deletes
-entries, so `pass` on the command line stays optional.
+It gives you two ways in. A bar icon with a search pulldown for the common
+case — find a password, copy it, get on with your day. And a full-screen
+overlay, in the same family as Omarchy's clipboard and emoji pickers, that also
+creates, edits, generates, renames and deletes entries, so `pass` on the command
+line stays optional.
+
+The bar pulldown — click the lock, or search straight away:
+
+```
+ 󰌾  ← bar icon
+ ┌────────────────────────────────┐
+ │ git                            │
+ ├────────────────────────────────┤
+ │ carsten          github.com    │
+ │ deploy-bot       github.com    │
+ ├────────────────────────────────┤
+ │ ⏎ copy  ⇧⏎ type      Manage…   │
+ └────────────────────────────────┘
+```
+
+And the full manager:
 
 ```
 SUPER + CTRL + K
@@ -36,8 +53,9 @@ cd omapass
 ```
 
 `install.sh` links the plugin into `~/.config/omarchy/plugins/omapass`, enables
-it in the running shell, and adds a `SUPER + CTRL + K` binding to
-`~/.config/hypr/bindings.conf`. Set `OMAPASS_KEYBIND` to choose a different one:
+it in the running shell, puts the widget on your bar, and adds a
+`SUPER + CTRL + K` binding to `~/.config/hypr/bindings.conf`. Set
+`OMAPASS_KEYBIND` to choose a different one:
 
 ```bash
 OMAPASS_KEYBIND="SUPER, P" ./install.sh
@@ -49,7 +67,17 @@ If you would rather use Omarchy's own plugin installer:
 omarchy plugin add https://github.com/you/omapass.git --enable --yes
 ```
 
-Then add the binding yourself:
+Then place the bar widget and add the binding yourself. Note that
+`omarchy bar put omapass` reports success but does nothing here: omapass
+declares both `overlay` and `bar-widget`, so the shell already considers it
+enabled through `plugins[]` and never writes a layout entry. Add it to
+`~/.config/omarchy/shell.json` by hand instead:
+
+```jsonc
+"bar": { "layout": { "right": [ /* … */ { "id": "omapass" }, { "id": "omarchy.power" } ] } }
+```
+
+and the binding:
 
 ```
 bindd = SUPER CTRL, K, Passwords, exec, omarchy-shell shell toggle omapass
@@ -74,6 +102,23 @@ If you already use `pass`, there is nothing to do; omapass reads the store you
 have, including one you clone from another machine.
 
 ## Keys
+
+### Bar pulldown
+
+The search field is focused the moment it opens, so just type.
+
+| Key | Action |
+|-----|--------|
+| `↑` `↓` `PgUp` `PgDn` | move through results |
+| `Enter` | copy password |
+| `Shift+Enter` | type the password into the window underneath |
+| `Alt+Enter` | copy the username |
+| `Ctrl+L` | fill a login form |
+| `Ctrl+O` | copy the one-time code |
+| `Ctrl+N` / `Ctrl+E` | open the full manager |
+| `Esc` | clear the search, then close |
+
+### Full overlay
 
 | Key | Action |
 |-----|--------|
@@ -172,19 +217,53 @@ ship with Omarchy. `pass-otp` is optional and only needed for one-time codes.
 
 ## Development
 
-The plugin is a plain directory; the install script links it, so edits in your
-checkout are live:
+`install.sh` symlinks your checkout into `~/.config/omarchy/plugins/omapass`,
+so edits are picked up without reinstalling — but you have to ask for a reload:
 
 ```bash
-omarchy-shell shell rescanPlugins          # reload plugin code
-omarchy-shell shell toggle omapass         # open it
+omarchy restart shell                      # the reliable reload
+omarchy-shell shell toggle omapass         # open the overlay
+omarchy-shell omapass.widget toggle        # open the bar pulldown
 journalctl --user -f | grep omarchy-shell  # QML errors land here
-qmllint -I /usr/share/omarchy/shell *.qml  # check before reloading
 ```
 
-Hot reload on save only works for a real directory under
-`~/.config/omarchy/plugins/`; through the symlink `install.sh` creates you need
-the `rescanPlugins` call above.
+**`rescanPlugins` does not reload code through the symlink.** The shell watches
+`~/.config/omarchy/plugins` with `inotifywait -r`, which does not follow symlinked
+directories, so nothing ever fires; and `rescanPlugins` re-reads manifests without
+re-instantiating a `keepLoaded` plugin. Use `omarchy restart shell`, or work
+directly in a real directory under `~/.config/omarchy/plugins/`.
+
+### Two things that cost me an afternoon
+
+**A bar widget must publish its own implicit size.** The bar sizes each slot
+from `activeItem.implicitWidth/implicitHeight`, so a widget root that does not
+set them gets a 0×0 slot and renders nothing — no icon, no gap, no error, no log
+line. Built-ins do this explicitly (see `panels/power/Panel.qml`), and so does
+`BarWidget.qml`.
+
+**Errors in a plugin can surface silently.** Omarchy's panel Loader error path
+calls `errorString()` as a function, which throws, so the real message is lost.
+To see what a plugin file actually says, load it in a throwaway Quickshell config
+*outside* the shell's config root:
+
+```bash
+mkdir -p /tmp/probe && cd /tmp/probe
+ln -sfn /usr/share/omarchy/shell/Commons Commons
+ln -sfn /usr/share/omarchy/shell/Ui Ui
+cat > shell.qml <<'EOF'
+import Quickshell
+import QtQuick
+ShellRoot { FloatingWindow { Loader {
+  source: "file:///path/to/omapass/BarWidget.qml"
+  onStatusChanged: console.warn("status=" + status)   // 1 Ready, 3 Error
+} } }
+EOF
+quickshell -p /tmp/probe
+```
+
+Keep the plugin outside that config root — inside it, Quickshell treats the
+directory as a module and sibling types stop resolving, which produces
+misleading `X is not a type` errors.
 
 ## License
 

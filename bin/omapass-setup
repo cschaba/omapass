@@ -19,10 +19,37 @@ fail() { gum style --foreground 1 "  ✗ $*"; }
 
 confirm() { gum confirm "$1" && return 0 || return 1; }
 
-# --- 1. pass ----------------------------------------------------------------
+# --- 1. desktop tools -------------------------------------------------------
+
+# These normally ship with Omarchy; they are checked because omapass is
+# useless without them and a clear message beats a silent no-op later.
+install_base() {
+  heading "1/5  Desktop tools"
+
+  local -A pkg=( [wl-copy]=wl-clipboard [wtype]=wtype [jq]=jq [gpg]=gnupg )
+  local missing=() tool
+
+  for tool in "${!pkg[@]}"; do
+    if has "$tool"; then
+      ok "$tool"
+    else
+      warn "$tool is missing (${pkg[$tool]})"
+      missing+=("${pkg[$tool]}")
+    fi
+  done
+
+  if [[ ${#missing[@]} -gt 0 ]]; then
+    confirm "Install ${missing[*]}?" || return 1
+    sudo pacman -S --needed --noconfirm "${missing[@]}" || return 1
+    ok "installed ${missing[*]}"
+  fi
+  echo
+}
+
+# --- 2. pass ----------------------------------------------------------------
 
 install_pass() {
-  heading "1/4  The pass CLI"
+  heading "2/5  The pass CLI"
 
   if has pass; then
     ok "pass $(pass version 2>/dev/null | grep -oP 'v\K[0-9.]+' | head -1)"
@@ -56,7 +83,7 @@ secret_keys() {
 }
 
 setup_key() {
-  heading "2/4  GPG key"
+  heading "3/5  GPG key"
 
   local keys
   keys=$(secret_keys)
@@ -89,7 +116,7 @@ setup_key() {
 # --- 3. password store ------------------------------------------------------
 
 init_store() {
-  heading "3/4  Password store"
+  heading "4/5  Password store"
 
   if [[ -f $STORE/.gpg-id ]]; then
     ok "store already initialised at $STORE"
@@ -123,11 +150,16 @@ init_store() {
 # --- 4. sanity check --------------------------------------------------------
 
 verify() {
-  heading "4/4  Check"
+  heading "5/5  Check"
 
   local probe="omapass/setup-check"
+
+  # Clean up on every path out of here. Without this a cancelled passphrase
+  # prompt leaves a stray entry sitting in the user's store.
+  cleanup_probe() { pass rm -f "$probe" >/dev/null 2>&1 || true; }
+  trap cleanup_probe RETURN
+
   if pass generate -f "$probe" 12 >/dev/null 2>&1 && pass show "$probe" >/dev/null 2>&1; then
-    pass rm -f "$probe" >/dev/null 2>&1
     ok "encrypt and decrypt both work"
   else
     fail "could not round-trip a test entry"
@@ -150,6 +182,7 @@ main() {
     "Get pass, a GPG key, and your password store ready."
   echo
 
+  install_base || { fail "setup stopped at the desktop tools"; exit 1; }
   install_pass || { fail "setup stopped at the pass install"; exit 1; }
   setup_key || { fail "setup stopped at the GPG key"; exit 1; }
   init_store || { fail "setup stopped at the store"; exit 1; }

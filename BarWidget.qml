@@ -1,0 +1,338 @@
+import Quickshell
+import QtQuick
+import qs.Commons
+import qs.Ui
+import "PassStore.js" as PassStore
+
+// Bar icon with a search pulldown: a field on top, matching entries below.
+//
+// This is the quick path — find a password and copy it without leaving the
+// keyboard. Anything that manages the store (new, edit, delete) hands off to
+// the full overlay, so there is one editor rather than two.
+Panel {
+  id: root
+  moduleName: "omapass"
+  ipcTarget: "omapass.widget"
+
+  readonly property string pluginDir: String(Qt.resolvedUrl(".")).replace(/^file:\/\//, "")
+  readonly property string bin: pluginDir + "bin/omapass"
+
+  property string filterText: ""
+  property int selectedIndex: 0
+
+  readonly property color foreground: bar ? bar.foreground : Color.foreground
+  readonly property color dim: Qt.darker(foreground, 1.55)
+  readonly property string fontFamily: bar ? bar.fontFamily : Style.font.family
+  readonly property color selectedFill: bar ? Style.selectedFillFor(bar.foreground, Color.accent) : "transparent"
+
+  // The bar sizes a slot from its widget's implicit size — a root that does
+  // not publish one gets a 0x0 slot and renders nothing at all, silently.
+  implicitWidth: button.implicitWidth
+  implicitHeight: button.implicitHeight
+
+  readonly property int visibleRows: Math.max(1, setting("rows", 7))
+  readonly property int rowHeight: Math.max(Style.space(26), Style.font.body + Style.spacing.controlPaddingY)
+
+  readonly property var currentRow: resultModel.count > 0 && selectedIndex >= 0 && selectedIndex < resultModel.count
+    ? resultModel.get(selectedIndex) : null
+  readonly property string currentPath: currentRow ? currentRow.path : ""
+
+  // --- lifecycle ------------------------------------------------------------
+
+  onOpenedChanged: {
+    if (opened) {
+      root.filterText = ""
+      root.selectedIndex = 0
+      pass.refresh()
+      searchField.text = ""
+    }
+  }
+
+  function rebuild() {
+    var rows = PassStore.filterEntries(pass.entries, root.filterText, 60)
+
+    resultModel.clear()
+    for (var i = 0; i < rows.length; i++)
+      resultModel.append({ path: rows[i].path, name: rows[i].name, folder: rows[i].folder })
+
+    if (resultModel.count === 0) root.selectedIndex = 0
+    else if (root.selectedIndex >= resultModel.count) root.selectedIndex = resultModel.count - 1
+    else if (root.selectedIndex < 0) root.selectedIndex = 0
+
+    Qt.callLater(function () {
+      if (resultModel.count > 0) resultList.positionViewAtIndex(root.selectedIndex, ListView.Contain)
+    })
+  }
+
+  function setFilter(next) {
+    root.filterText = next
+    root.selectedIndex = 0
+    root.rebuild()
+  }
+
+  function move(delta) {
+    if (resultModel.count === 0) return
+    root.selectedIndex = (root.selectedIndex + delta + resultModel.count) % resultModel.count
+    resultList.positionViewAtIndex(root.selectedIndex, ListView.Contain)
+  }
+
+  // Managing entries belongs to the overlay; the pulldown just hands over.
+  function openManager() {
+    root.close()
+    Util.execArgv(["omarchy-shell", "shell", "summon", "omapass", "{}"])
+  }
+
+  function activate(action) {
+    if (!root.currentPath) return
+    var path = root.currentPath
+    root.close()
+    if (action === "type") pass.typePassword(path)
+    else if (action === "user") pass.copyUser(path)
+    else if (action === "login") pass.typeLogin(path)
+    else if (action === "otp") pass.copyOtp(path)
+    else pass.copyPassword(path)
+  }
+
+  ListModel { id: resultModel }
+
+  PassService {
+    id: pass
+    bin: root.bin
+    onListReloaded: root.rebuild()
+  }
+
+  Component.onCompleted: pass.refresh()
+
+  // --- bar button -----------------------------------------------------------
+
+  BarIconButton {
+    id: button
+    anchors.fill: parent
+    bar: root.bar
+    text: "󰌾"
+    tooltipText: pass.ready
+      ? (pass.entries.length + (pass.entries.length === 1 ? " password" : " passwords"))
+      : "omapass needs setting up"
+    onPressed: root.toggle()
+  }
+
+  // --- pulldown -------------------------------------------------------------
+
+  KeyboardPanel {
+    id: panel
+    anchorItem: button
+    owner: root
+    bar: root.bar
+    open: root.opened
+    focusTarget: searchField
+    contentWidth: panel.fittedContentWidth(Style.space(320))
+    contentHeight: panel.fittedContentHeight(column.implicitHeight)
+
+    PanelKeyCatcher {
+      id: keyCatcher
+      anchors.fill: parent
+      // The search field is always focused, so it owns the keyboard; this
+      // catcher would otherwise eat every letter as a navigation shortcut.
+      blocked: searchField.activeFocus
+      onCloseRequested: root.close()
+
+      Column {
+        id: column
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: parent.top
+        spacing: Style.space(8)
+
+        // --- search ---------------------------------------------------------
+
+        TextField {
+          id: searchField
+          width: parent.width
+          visible: pass.ready
+          placeholderText: "Search passwords…"
+          foreground: root.foreground
+          accent: Color.accent
+          verticalPadding: Style.spacing.controlPaddingY
+
+          onTextChanged: root.setFilter(text)
+
+          // Navigation has to be intercepted before the field consumes it:
+          // Up/Down would move the caret and Return would just be swallowed.
+          Keys.priority: Keys.BeforeItem
+          Keys.onPressed: function (event) {
+            var ctrl = (event.modifiers & Qt.ControlModifier) !== 0
+            var shift = (event.modifiers & Qt.ShiftModifier) !== 0
+            var alt = (event.modifiers & Qt.AltModifier) !== 0
+
+            if (event.key === Qt.Key_Escape) {
+              if (searchField.text) searchField.text = ""
+              else root.close()
+              event.accepted = true
+            } else if (event.key === Qt.Key_Down) {
+              root.move(1); event.accepted = true
+            } else if (event.key === Qt.Key_Up) {
+              root.move(-1); event.accepted = true
+            } else if (event.key === Qt.Key_PageDown) {
+              root.move(root.visibleRows); event.accepted = true
+            } else if (event.key === Qt.Key_PageUp) {
+              root.move(-root.visibleRows); event.accepted = true
+            } else if (ctrl && event.key === Qt.Key_O) {
+              root.activate("otp"); event.accepted = true
+            } else if (ctrl && event.key === Qt.Key_L) {
+              root.activate("login"); event.accepted = true
+            } else if (ctrl && (event.key === Qt.Key_N || event.key === Qt.Key_E)) {
+              root.openManager(); event.accepted = true
+            } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+              root.activate(alt ? "user" : (shift ? "type" : "copy"))
+              event.accepted = true
+            }
+          }
+        }
+
+        // --- results --------------------------------------------------------
+
+        ListView {
+          id: resultList
+          width: parent.width
+          visible: pass.ready && resultModel.count > 0
+          height: visible ? Math.min(resultModel.count, root.visibleRows) * root.rowHeight : 0
+          model: resultModel
+          clip: true
+          boundsBehavior: Flickable.StopAtBounds
+
+          delegate: Rectangle {
+            id: row
+            required property int index
+            required property string path
+            required property string name
+            required property string folder
+
+            readonly property bool hasCursor: index === root.selectedIndex
+
+            width: ListView.view.width
+            height: root.rowHeight
+            radius: Style.cornerRadius
+            color: hasCursor ? root.selectedFill : "transparent"
+
+            Row {
+              anchors.fill: parent
+              anchors.leftMargin: Style.space(8)
+              anchors.rightMargin: Style.space(8)
+              spacing: Style.space(6)
+
+              Text {
+                anchors.verticalCenter: parent.verticalCenter
+                width: Math.min(implicitWidth, row.width - Style.space(24))
+                text: row.name
+                color: root.foreground
+                font.family: root.fontFamily
+                font.pixelSize: Style.font.body
+                elide: Text.ElideRight
+              }
+
+              Text {
+                anchors.verticalCenter: parent.verticalCenter
+                width: Math.max(0, parent.width - x)
+                visible: row.folder.length > 0
+                text: row.folder
+                color: root.dim
+                font.family: root.fontFamily
+                font.pixelSize: Style.font.caption
+                elide: Text.ElideLeft
+                horizontalAlignment: Text.AlignRight
+              }
+            }
+
+            MouseArea {
+              anchors.fill: parent
+              hoverEnabled: true
+              cursorShape: Qt.PointingHandCursor
+              onContainsMouseChanged: if (containsMouse) root.selectedIndex = row.index
+              onClicked: {
+                root.selectedIndex = row.index
+                root.activate("copy")
+              }
+            }
+          }
+        }
+
+        // --- empty / unready states -----------------------------------------
+
+        Text {
+          width: parent.width
+          visible: pass.ready && resultModel.count === 0
+          text: pass.entries.length === 0 ? "No passwords in your store yet"
+                                          : "No matches"
+          color: root.dim
+          font.family: root.fontFamily
+          font.pixelSize: Style.font.caption
+          horizontalAlignment: Text.AlignHCenter
+          wrapMode: Text.WordWrap
+        }
+
+        Column {
+          width: parent.width
+          visible: !pass.ready
+          spacing: Style.space(6)
+
+          Text {
+            width: parent.width
+            text: "omapass isn’t set up yet"
+            color: root.foreground
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.body
+            horizontalAlignment: Text.AlignHCenter
+          }
+
+          Text {
+            width: parent.width
+            text: PassStore.missingRequirements(pass.status)
+                    .map(function (r) { return r.label }).join(", ")
+            color: root.dim
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.caption
+            horizontalAlignment: Text.AlignHCenter
+            wrapMode: Text.WordWrap
+          }
+        }
+
+        PanelSeparator { width: parent.width }
+
+        // --- footer ---------------------------------------------------------
+
+        Item {
+          width: parent.width
+          height: Style.font.caption + Style.space(4)
+
+          Text {
+            anchors.left: parent.left
+            anchors.verticalCenter: parent.verticalCenter
+            text: pass.ready ? "⏎ copy   ⇧⏎ type" : ""
+            color: root.dim
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.caption
+          }
+
+          Text {
+            id: manageLabel
+            anchors.right: parent.right
+            anchors.verticalCenter: parent.verticalCenter
+            text: pass.ready ? "Manage…" : "Set up…"
+            color: manageArea.containsMouse ? Color.accent : root.dim
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.caption
+
+            MouseArea {
+              id: manageArea
+              anchors.fill: parent
+              anchors.margins: -Style.space(4)
+              hoverEnabled: true
+              cursorShape: Qt.PointingHandCursor
+              onClicked: root.openManager()
+            }
+          }
+        }
+      }
+    }
+  }
+}

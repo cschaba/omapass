@@ -31,18 +31,17 @@ Item {
   property int selectedIndex: 0
   property bool cursorActive: false
 
-  property var status: null
-  readonly property bool ready: status !== null && status.ready === true
-  readonly property bool hasOtpSupport: status !== null && status.otp === true
-  readonly property bool hasGit: status !== null && status.git === true
-
-  property var entries: []
-  property bool loading: false
-  property string errorText: ""
+  readonly property var status: pass.status
+  readonly property bool ready: pass.ready
+  readonly property bool hasOtpSupport: pass.hasOtpSupport
+  readonly property bool hasGit: pass.hasGit
+  readonly property var entries: pass.entries
+  readonly property bool loading: pass.loading
+  readonly property string errorText: pass.errorText
 
   // gpg-agent has a key cached, so reading an entry will not pop a pinentry.
   // Until then we do not touch the store just to fill in a preview.
-  property bool unlocked: false
+  readonly property bool unlocked: pass.unlocked
 
   property var selectedFields: []
   property bool selectedHasOtp: false
@@ -81,7 +80,6 @@ Item {
     root.filterText = ""
     root.selectedIndex = 0
     root.cursorActive = true
-    root.errorText = ""
     root.refresh()
     Qt.callLater(function () { keyCatcher.forceActiveFocus() })
   }
@@ -115,28 +113,11 @@ Item {
   // IPC entry point: `omarchy-shell shell call omapass refresh ""`. The setup
   // script calls it so the overlay drops its setup screen once it is done.
   function refresh() {
-    statusProc.running = true
-    unlockedProc.running = true
-  }
-
-  // --- data ----------------------------------------------------------------
-
-  function applyStatus(raw) {
-    var parsed = PassStore.parseStatus(raw)
-    root.status = parsed
-    if (parsed && parsed.ready) reload()
+    pass.refresh()
   }
 
   function reload() {
-    root.loading = true
-    root.errorText = ""
-    listProc.running = true
-  }
-
-  function applyList(raw) {
-    root.loading = false
-    root.entries = PassStore.parseList(raw)
-    root.rebuildDisplay()
+    pass.reload()
   }
 
   function rebuildDisplay() {
@@ -164,20 +145,8 @@ Item {
   // would fire a pinentry prompt per row, which is nobody's idea of a picker.
   function loadFields() {
     if (!root.opened || !root.unlocked) return
-    var path = root.currentPath
-    if (!path || path === root.fieldsForPath) return
-    fieldsProc.entryPath = path
-    fieldsProc.command = [root.bin, "fields", path]
-    fieldsProc.running = true
-  }
-
-  function applyFields(raw, path) {
-    if (path !== root.currentPath) return
-    var parsed = null
-    try { parsed = JSON.parse(raw) } catch (e) { parsed = null }
-    root.selectedFields = parsed && parsed.fields ? parsed.fields : []
-    root.selectedHasOtp = parsed ? parsed.otp === true : false
-    root.fieldsForPath = path
+    if (!root.currentPath || root.currentPath === root.fieldsForPath) return
+    pass.loadFields(root.currentPath)
   }
 
   // --- navigation ----------------------------------------------------------
@@ -209,51 +178,13 @@ Item {
 
   // --- actions -------------------------------------------------------------
 
-  // Detached on purpose: the secret goes gpg → clipboard/wtype inside the
-  // helper and never crosses back into this process.
-  function run(args) {
-    Util.execArgv([root.bin].concat(args))
-  }
-
-  function copyPassword() {
-    if (!root.currentPath) return
-    root.run(["copy", root.currentPath])
-    root.markUnlockedSoon()
-    root.dismiss()
-  }
-
-  function copyUser() {
-    if (!root.currentPath) return
-    root.run(["copy-user", root.currentPath])
-    root.markUnlockedSoon()
-    root.dismiss()
-  }
-
-  function typePassword() {
-    if (!root.currentPath) return
-    root.run(["type", root.currentPath])
-    root.markUnlockedSoon()
-    root.dismiss()
-  }
-
-  function typeLogin() {
-    if (!root.currentPath) return
-    root.run(["login", root.currentPath])
-    root.markUnlockedSoon()
-    root.dismiss()
-  }
-
-  function copyOtp() {
-    if (!root.currentPath || !root.hasOtpSupport) return
-    root.run(["otp", root.currentPath, "copy"])
-    root.markUnlockedSoon()
-    root.dismiss()
-  }
-
-  function sync() {
-    if (!root.hasGit) return
-    root.run(["sync"])
-  }
+  function copyPassword() { if (root.currentPath) { pass.copyPassword(root.currentPath); root.dismiss() } }
+  function copyUser()     { if (root.currentPath) { pass.copyUser(root.currentPath); root.dismiss() } }
+  function typePassword() { if (root.currentPath) { pass.typePassword(root.currentPath); root.dismiss() } }
+  function typeLogin()    { if (root.currentPath) { pass.typeLogin(root.currentPath); root.dismiss() } }
+  function copyOtp()      { if (root.currentPath && root.hasOtpSupport) { pass.copyOtp(root.currentPath); root.dismiss() } }
+  function sync()         { pass.sync() }
+  function copyCommand(command) { pass.copyCommand(command) }
 
   function toggleReveal() {
     if (!root.currentPath) return
@@ -262,15 +193,7 @@ Item {
       revealTimer.stop()
       return
     }
-    revealProc.entryPath = root.currentPath
-    revealProc.command = [root.bin, "reveal", root.currentPath]
-    revealProc.running = true
-  }
-
-  // A decrypt we just triggered will have warmed the agent; re-probe shortly
-  // after so previews start filling in without the user doing anything.
-  function markUnlockedSoon() {
-    unlockRecheck.restart()
+    pass.reveal(root.currentPath)
   }
 
   // --- editor --------------------------------------------------------------
@@ -293,34 +216,8 @@ Item {
   }
 
   function saveEntry(payload) {
-    // payload: { path, originalPath, body, generate, length, symbols }
-    if (!PassStore.validName(payload.path)) {
-      root.errorText = "Invalid entry name"
-      return
-    }
     root.closeEditor()
-
-    if (payload.originalPath && payload.originalPath !== payload.path) {
-      renameProc.command = [root.bin, "rename", payload.originalPath, payload.path]
-      renameProc.pendingPayload = payload
-      renameProc.running = true
-      return
-    }
-    root.writeEntry(payload)
-  }
-
-  function writeEntry(payload) {
-    // Body over stdin, never argv, so the password stays out of /proc. The
-    // generated case goes through the same write so the username, url and otp
-    // lines survive a regenerate.
-    var args = [root.bin, "insert", payload.path]
-    if (payload.generate)
-      args = args.concat(["--generate", String(payload.length), payload.symbols ? "yes" : "no"])
-
-    insertProc.command = args
-    insertProc.pendingBody = payload.body
-    insertProc.generated = payload.generate === true
-    insertProc.running = true
+    pass.save(payload)
   }
 
   function requestDelete() {
@@ -340,9 +237,8 @@ Item {
     var target = root.pendingDelete
     root.pendingDelete = ""
     root.mode = "list"
-    if (!target) return
-    removeProc.command = [root.bin, "remove", target]
-    removeProc.running = true
+    root.fieldsForPath = ""
+    pass.remove(target)
     Qt.callLater(function () { keyCatcher.forceActiveFocus() })
   }
 
@@ -383,117 +279,25 @@ Item {
     onTriggered: root.revealedPassword = ""
   }
 
-  Timer {
-    id: unlockRecheck
-    interval: 1200
-    onTriggered: unlockedProc.running = true
-  }
+  // --- backend --------------------------------------------------------------
 
-  // --- processes -----------------------------------------------------------
+  PassService {
+    id: pass
+    bin: root.bin
 
-  Process {
-    id: statusProc
-    command: [root.bin, "status"]
-    stdout: StdioCollector {
-      waitForEnd: true
-      onStreamFinished: root.applyStatus(text)
-    }
-  }
+    onListReloaded: root.rebuildDisplay()
 
-  Process {
-    id: unlockedProc
-    command: [root.bin, "unlocked"]
-    stdout: StdioCollector {
-      waitForEnd: true
-      onStreamFinished: {
-        try { root.unlocked = JSON.parse(text).unlocked === true } catch (e) { root.unlocked = false }
-      }
+    onFieldsLoaded: function (path, fields, otp) {
+      if (path !== root.currentPath) return
+      root.selectedFields = fields
+      root.selectedHasOtp = otp
+      root.fieldsForPath = path
     }
-  }
 
-  Process {
-    id: listProc
-    command: [root.bin, "list"]
-    stdout: StdioCollector {
-      waitForEnd: true
-      onStreamFinished: root.applyList(text)
-    }
-    onExited: function (exitCode) {
-      root.loading = false
-      if (exitCode !== 0) root.errorText = "Could not read the password store"
-    }
-  }
-
-  Process {
-    id: fieldsProc
-    property string entryPath: ""
-    stdout: StdioCollector {
-      waitForEnd: true
-      onStreamFinished: root.applyFields(text, fieldsProc.entryPath)
-    }
-  }
-
-  Process {
-    id: revealProc
-    property string entryPath: ""
-    stdout: StdioCollector {
-      waitForEnd: true
-      onStreamFinished: {
-        if (revealProc.entryPath !== root.currentPath) return
-        root.revealedPassword = String(text).replace(/\n+$/, "")
-        if (root.revealedPassword) revealTimer.restart()
-      }
-    }
-    onExited: function (exitCode) {
-      if (exitCode !== 0) root.errorText = "Could not decrypt that entry"
-      else root.unlocked = true
-    }
-  }
-
-  Process {
-    id: insertProc
-    property string pendingBody: ""
-    property bool generated: false
-    stdinEnabled: true
-    // Write on `started`, not on running: the pipe does not exist until the
-    // child is up, and closing stdin is what tells `pass insert -m` to stop
-    // reading.
-    onStarted: {
-      insertProc.write(insertProc.pendingBody)
-      insertProc.pendingBody = ""
-      insertProc.stdinEnabled = false
-    }
-    onExited: function (exitCode) {
-      if (exitCode !== 0)
-        root.errorText = insertProc.generated ? "Could not generate a password"
-                                              : "Could not save that entry"
-      if (insertProc.generated) root.markUnlockedSoon()
-      root.reload()
-    }
-  }
-
-  Process {
-    id: renameProc
-    property var pendingPayload: null
-    onExited: function (exitCode) {
-      var payload = renameProc.pendingPayload
-      renameProc.pendingPayload = null
-      if (exitCode !== 0) {
-        root.errorText = "Could not rename that entry"
-        root.reload()
-        return
-      }
-      if (payload) root.writeEntry(payload)
-      else root.reload()
-    }
-  }
-
-  Process {
-    id: removeProc
-    onExited: function (exitCode) {
-      if (exitCode !== 0) root.errorText = "Could not delete that entry"
-      root.fieldsForPath = ""
-      root.reload()
+    onRevealed: function (path, password) {
+      if (path !== root.currentPath) return
+      root.revealedPassword = password
+      if (password) revealTimer.restart()
     }
   }
 
@@ -522,7 +326,9 @@ Item {
     BorderSurface {
       id: card
       width: root.cardWidth
-      height: root.ready ? root.cardHeight : Math.min(root.cardHeight, Style.space(380))
+      height: root.ready
+        ? root.cardHeight
+        : Math.min(root.cardHeight, setupNotice.implicitHeight + root.contentMargin * 2)
       radius: root.cornerRadius
       anchors.centerIn: parent
       color: root.background
@@ -610,6 +416,7 @@ Item {
       // --- setup gate --------------------------------------------------------
 
       SetupNotice {
+        id: setupNotice
         anchors.fill: parent
         anchors.topMargin: card.contentTopInset
         anchors.rightMargin: card.contentRightInset
@@ -621,6 +428,7 @@ Item {
         accent: root.selectedText
         fontFamily: root.fontFamily
         onStartSetup: root.launchSetup()
+        onCopyHint: function (command) { root.copyCommand(command) }
       }
 
       // --- main list ---------------------------------------------------------

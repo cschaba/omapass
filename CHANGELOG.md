@@ -6,6 +6,8 @@ the CLI surface, or the entry format bump the major.
 
 ## [Unreleased]
 
+## [0.1.8] — 2026-08-28
+
 ### Fixed
 
 - The editor accepted input of unbounded length, and its "Other lines" box hid
@@ -108,7 +110,7 @@ top of the README.
 - The clipboard is marked sensitive, so Omarchy's clipboard manager will not
   record it, and the selection is dropped after a timeout.
 
-[Unreleased]: https://github.com/cschaba/omapass/compare/v0.1.7...HEAD
+[Unreleased]: https://github.com/cschaba/omapass/compare/v0.1.8...HEAD
 [0.1.0]: https://github.com/cschaba/omapass/releases/tag/v0.1.0
 [#2]: https://github.com/cschaba/omapass/issues/2
 [0.1.1]: https://github.com/cschaba/omapass/releases/tag/v0.1.1
@@ -125,3 +127,4 @@ top of the README.
 [#7]: https://github.com/cschaba/omapass/issues/7
 [0.1.7]: https://github.com/cschaba/omapass/releases/tag/v0.1.7
 [#9]: https://github.com/cschaba/omapass/issues/9
+[0.1.8]: https://github.com/cschaba/omapass/releases/tag/v0.1.8

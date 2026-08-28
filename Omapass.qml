@@ -245,7 +245,12 @@ Item {
   }
 
   function launchSetup() {
-    Util.execArgv(["omarchy-launch-floating-terminal-with-presentation", root.setupBin])
+    // The launcher builds a shell string out of "$*" and runs it through
+    // `bash -c`, so the path is re-parsed by a shell. Quote it here: without
+    // this a home directory with a space in it silently breaks setup, and a
+    // path with shell metacharacters would execute them.
+    Util.execArgv(["omarchy-launch-floating-terminal-with-presentation",
+                   Util.shellQuote(root.setupBin)])
     root.dismiss()
   }
 

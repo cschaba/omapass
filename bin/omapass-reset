@@ -111,6 +111,7 @@ make_backup() {
 
   mkdir -p "$BACKUP_DIR"
   staging=$(mktemp -d)
+  chmod 700 "$staging"
   trap 'rm -rf "$staging"' RETURN
 
   if [[ -d $STORE ]]; then
@@ -140,7 +141,9 @@ make_backup() {
     return 0
   fi
 
-  tar -czf "$archive" -C "$staging" .
+  # umask, not a chmod afterwards: this archive can hold an exported secret key,
+  # and creating it 0644 first leaves a window where anyone can read it.
+  ( umask 077; tar -czf "$archive" -C "$staging" . )
   chmod 600 "$archive"
   say "backup  $archive"
   BACKUP_PATH="$archive"

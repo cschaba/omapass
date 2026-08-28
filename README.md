@@ -175,6 +175,43 @@ None of this defends against someone who is already running code as you. It
 defends against the ordinary ways a password leaks sideways: clipboard history,
 process listings, and a long-lived GUI process holding your vault in memory.
 
+### Checking the argv claim yourself
+
+"Secrets are never passed as arguments" is the kind of claim that rots quietly,
+so it is worth being able to re-check. Put logging shims ahead of the real
+binaries on `PATH` and read back every argv the helper execs:
+
+```bash
+mkdir -p /tmp/shim && export ARGV_LOG=/tmp/argv.log && : > "$ARGV_LOG"
+for t in pass gpg gpg2 wl-copy wtype setsid timeout; do
+  real=$(command -v "$t") || continue
+  printf '#!/bin/bash
+{ printf "%%s|" "%s"; printf "%%s " "$@"; echo; } >> "$ARGV_LOG"
+exec "%s" "$@"
+'     "$t" "$real" > "/tmp/shim/$t"
+  chmod +x "/tmp/shim/$t"
+done
+
+PATH=/tmp/shim:$PATH bin/omapass copy some/entry
+grep -F "$(bin/omapass reveal some/entry)" "$ARGV_LOG" && echo LEAK || echo clean
+```
+
+The copy path should exec exactly this — an entry name, a file path, and a
+`wl-copy` with no payload, the secret arriving only down the pipe:
+
+```
+pass|show -- some/entry
+gpg2|-d --quiet ... /home/you/.password-store/some/entry.gpg
+setsid|timeout 45 wl-copy --type text/plain --sensitive --foreground
+```
+
+### Entry names
+
+`pass` takes the entry name as a positional argument, so a name beginning with
+`-` would be read as an option — `insert`, `generate` and `mv` have no
+file-existence check to catch it first. Names starting with `-` are rejected,
+and every call site passes `--` before the name.
+
 ## The CLI
 
 `bin/omapass` is a normal script and works on its own:

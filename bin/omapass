@@ -39,6 +39,10 @@ validate_entry() {
   [[ $entry != /* ]] || die "entry must be relative: $entry"
   [[ $entry != *..* ]] || die "entry may not contain '..': $entry"
   [[ $entry != *$'\n'* ]] || die "entry may not contain newlines"
+  # A leading dash makes pass read the name as an option. The read paths happen
+  # to be covered by the file-existence check, but insert/generate/mv have no
+  # such guard, so reject it here and terminate options at every call site too.
+  [[ $entry != -* ]] || die "entry may not start with '-': $entry"
 }
 
 entry_exists() {
@@ -57,6 +61,9 @@ json_escape() {
   s=${s//$'\n'/\\n}
   s=${s//$'\r'/\\r}
   s=${s//$'\t'/\\t}
+  # Anything else in C0 produces JSON the reader cannot parse. A control
+  # character in a GPG uid should not take the whole status payload down.
+  s=$(printf '%s' "$s" | tr -d '\000-\010\013\014\016-\037')
   printf '%s' "$s"
 }
 
@@ -163,7 +170,7 @@ decrypt() {
   local entry="$1"
   validate_entry "$entry"
   entry_exists "$entry" || die "no such entry: $entry"
-  pass show "$entry" 2>/dev/null || die "could not decrypt $entry"
+  pass show -- "$entry" 2>/dev/null || die "could not decrypt $entry"
 }
 
 # Everything after the first line, as key: value pairs. The password line is
@@ -320,7 +327,7 @@ cmd_otp() {
   local entry="$1" action="${2:-copy}" code
   validate_entry "$entry"
   pass otp --help >/dev/null 2>&1 || die "pass-otp is not installed"
-  code=$(pass otp "$entry" 2>/dev/null) || die "no OTP in $entry"
+  code=$(pass otp -- "$entry" 2>/dev/null) || die "no OTP in $entry"
   case "$action" in
   copy) copy_secret "$code" "One-time code" ;;
   type) type_secret "$code" ;;
@@ -369,8 +376,13 @@ cmd_otp_scan() {
   body=$(decrypt "$entry")
   # Replace any existing otpauth line rather than stacking a second one.
   rest=$(printf '%s\n' "$body" | tail -n +2 | grep -v -i '^otpauth://' || true)
-  printf '%s\n%s\n%s\n' "${body%%$'\n'*}" "$rest" "$uri" |
-    grep -v '^$' | pass insert -m -f "$entry" >/dev/null
+  {
+    # The password keeps line 1 even when empty: dropping blank lines here
+    # would promote the URI into the password position.
+    printf '%s\n' "${body%%$'\n'*}"
+    [[ -n $rest ]] && printf '%s\n' "$rest"
+    printf '%s\n' "$uri"
+  } | pass insert -m -f -- "$entry" >/dev/null
 
   notify "One-time code added" "$entry" "󰯄"
 }
@@ -427,7 +439,7 @@ cmd_insert() {
     body=$(printf '%s\n%s' "$password" "$rest")
   fi
 
-  printf '%s\n' "$body" | pass insert -m -f "$entry" >/dev/null
+  printf '%s\n' "$body" | pass insert -m -f -- "$entry" >/dev/null
 
   if [[ $generate == "yes" ]]; then
     notify "Generated" "$entry" "󰌆"
@@ -446,7 +458,7 @@ cmd_generate() {
 
   # Keep whatever else the entry already held.
   if entry_exists "$entry"; then
-    rest=$(pass show "$entry" 2>/dev/null | tail -n +2) || rest=""
+    rest=$(pass show -- "$entry" 2>/dev/null | tail -n +2) || rest=""
   fi
 
   printf 'placeholder\n%s\n' "$rest" | cmd_insert "$entry" --generate "$length" "$symbols"
@@ -457,7 +469,7 @@ cmd_rename() {
   validate_entry "$1"
   validate_entry "$2"
   entry_exists "$1" || die "no such entry: $1"
-  pass mv -f "$1" "$2" >/dev/null 2>&1 || die "could not rename $1"
+  pass mv -f -- "$1" "$2" >/dev/null 2>&1 || die "could not rename $1"
   notify "Renamed" "$1 → $2" "󰑕"
 }
 
@@ -465,7 +477,7 @@ cmd_remove() {
   require_pass
   validate_entry "$1"
   entry_exists "$1" || die "no such entry: $1"
-  pass rm -r -f "$1" >/dev/null 2>&1 || die "could not remove $1"
+  pass rm -r -f -- "$1" >/dev/null 2>&1 || die "could not remove $1"
   notify "Deleted" "$1" "󰩹"
 }
 

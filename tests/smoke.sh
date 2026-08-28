@@ -101,6 +101,10 @@ check "rejects path traversal" \
   "$("$OMAPASS" reveal ../escape 2>&1 | grep -c "may not contain")" "1"
 check "rejects an absolute path" \
   "$("$OMAPASS" reveal /etc/passwd 2>&1 | grep -c "must be relative")" "1"
+check "rejects an over-long name segment" \
+  "$("$OMAPASS" reveal "$(printf 'a%.0s' $(seq 1 300))" 2>&1 | grep -c "too long")" "1"
+check "accepts a 255-byte segment" \
+  "$("$OMAPASS" reveal "$(printf 'b%.0s' $(seq 1 255))" 2>&1 | grep -c "too long")" "0"
 check "reports a missing entry" \
   "$("$OMAPASS" reveal nope/nothing 2>&1 | grep -c "no such entry")" "1"
 echo

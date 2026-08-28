@@ -23,6 +23,16 @@ Item {
   property string fontFamily: Style.font.menuFamily
   property int cornerRadius: Style.cornerRadius
 
+  // Useful limits rather than arbitrary ones. A pass entry is a file path, so
+  // the name is bounded by what a filesystem will hold; the rest are generous
+  // enough never to be met in normal use but small enough to stop a paste from
+  // a wrong buffer becoming an unopenable entry. (#9)
+  readonly property int nameLimit: 255
+  readonly property int userLimit: 255
+  readonly property int urlLimit: 1024
+  readonly property int otpLimit: 1024
+  readonly property int notesLimit: 4096
+
   property string originalPath: ""
   property bool isNew: true
   property bool generate: false
@@ -36,6 +46,38 @@ Item {
   signal saved(var payload)
 
   visible: opened
+
+  // Shows "1234/4096" only as the limit comes into view: a counter on every
+  // field all the time is noise, but hitting a silent cap is worse.
+  component FieldLabel: Item {
+    id: fieldLabel
+    property string label: ""
+    property var field: null
+    property int limit: 0
+    readonly property int used: field ? field.text.length : 0
+
+    implicitHeight: labelText.implicitHeight
+
+    Text {
+      id: labelText
+      anchors.left: parent.left
+      text: fieldLabel.label
+      color: root.foreground
+      opacity: 0.5
+      font.family: root.fontFamily
+      font.pixelSize: Style.font.caption
+    }
+
+    Text {
+      anchors.right: parent.right
+      visible: fieldLabel.limit > 0 && fieldLabel.used > fieldLabel.limit * 0.8
+      text: fieldLabel.used + "/" + fieldLabel.limit
+      color: fieldLabel.used >= fieldLabel.limit ? Color.urgent : root.foreground
+      opacity: fieldLabel.used >= fieldLabel.limit ? 1 : 0.5
+      font.family: root.fontFamily
+      font.pixelSize: Style.font.caption
+    }
+  }
 
   // --- lifecycle ------------------------------------------------------------
 
@@ -208,17 +250,17 @@ Item {
       width: parent.width
       spacing: Style.space(3)
 
-      Text {
-        text: "Name"
-        color: root.foreground
-        opacity: 0.5
-        font.family: root.fontFamily
-        font.pixelSize: Style.font.caption
+      FieldLabel {
+        width: parent.width
+        label: "Name"
+        field: nameField
+        limit: root.nameLimit
       }
 
       TextField {
         id: nameField
         width: parent.width
+        maximumLength: root.nameLimit
         placeholderText: "github.com/you"
         foreground: root.foreground
         accent: root.accent
@@ -345,17 +387,17 @@ Item {
         width: (parent.width - Style.space(10)) / 2
         spacing: Style.space(3)
 
-        Text {
-          text: "Username"
-          color: root.foreground
-          opacity: 0.5
-          font.family: root.fontFamily
-          font.pixelSize: Style.font.caption
+        FieldLabel {
+          width: parent.width
+          label: "Username"
+          field: userField
+          limit: root.userLimit
         }
 
         TextField {
           id: userField
           width: parent.width
+          maximumLength: root.userLimit
           placeholderText: "you@example.com"
           foreground: root.foreground
           accent: root.accent
@@ -367,17 +409,17 @@ Item {
         width: (parent.width - Style.space(10)) / 2
         spacing: Style.space(3)
 
-        Text {
-          text: "URL"
-          color: root.foreground
-          opacity: 0.5
-          font.family: root.fontFamily
-          font.pixelSize: Style.font.caption
+        FieldLabel {
+          width: parent.width
+          label: "URL"
+          field: urlField
+          limit: root.urlLimit
         }
 
         TextField {
           id: urlField
           width: parent.width
+          maximumLength: root.urlLimit
           placeholderText: "https://…"
           foreground: root.foreground
           accent: root.accent
@@ -390,17 +432,17 @@ Item {
       width: parent.width
       spacing: Style.space(3)
 
-      Text {
-        text: "OTP secret (otpauth:// URI — or save, then Ctrl+Q to scan a QR code)"
-        color: root.foreground
-        opacity: 0.5
-        font.family: root.fontFamily
-        font.pixelSize: Style.font.caption
+      FieldLabel {
+        width: parent.width
+        label: "OTP secret (otpauth:// URI — or save, then Ctrl+Q to scan a QR code)"
+        field: otpField
+        limit: root.otpLimit
       }
 
       TextField {
         id: otpField
         width: parent.width
+        maximumLength: root.otpLimit
         password: true
         placeholderText: "otpauth://totp/…"
         foreground: root.foreground
@@ -413,35 +455,55 @@ Item {
       width: parent.width
       spacing: Style.space(3)
 
-      Text {
-        text: "Other lines"
-        color: root.foreground
-        opacity: 0.5
-        font.family: root.fontFamily
-        font.pixelSize: Style.font.caption
+      FieldLabel {
+        width: parent.width
+        label: "Other lines"
+        field: notesArea
+        limit: root.notesLimit
       }
 
       Rectangle {
         width: parent.width
-        height: Style.space(70)
+        height: Style.space(78)
         radius: root.cornerRadius
         color: Util.alpha(root.foreground, 0.05)
         border.width: Style.normalBorderWidth
         border.color: Util.alpha(root.foreground, notesArea.activeFocus ? 0.4 : 0.15)
+        clip: true
 
-        QQC.TextArea {
-          id: notesArea
+        // A plain TextArea in a fixed-height Rectangle just runs off the
+        // bottom: past three lines the rest was invisible and unreachable.
+        // ScrollView gives it somewhere to go. (#9)
+        QQC.ScrollView {
           anchors.fill: parent
           anchors.margins: Style.spacing.controlPaddingX
-          placeholderText: "recovery-code: …"
-          color: root.foreground
-          placeholderTextColor: Qt.darker(root.foreground, 1.6)
-          selectionColor: Util.alpha(root.accent, 0.35)
-          selectedTextColor: root.foreground
-          font.family: Style.font.family
-          font.pixelSize: Style.font.body
-          wrapMode: TextEdit.Wrap
-          background: null
+          clip: true
+          QQC.ScrollBar.vertical.policy: QQC.ScrollBar.AsNeeded
+          QQC.ScrollBar.horizontal.policy: QQC.ScrollBar.AlwaysOff
+
+          QQC.TextArea {
+            id: notesArea
+            placeholderText: "recovery-code: …"
+            color: root.foreground
+            placeholderTextColor: Qt.darker(root.foreground, 1.6)
+            selectionColor: Util.alpha(root.accent, 0.35)
+            selectedTextColor: root.foreground
+            font.family: Style.font.family
+            font.pixelSize: Style.font.body
+            wrapMode: TextEdit.Wrap
+            background: null
+            padding: 0
+
+            // TextArea has no maximumLength, so hold the line by hand rather
+            // than letting a stray paste through.
+            onTextChanged: {
+              if (text.length > root.notesLimit) {
+                var at = cursorPosition
+                text = text.slice(0, root.notesLimit)
+                cursorPosition = Math.min(at, text.length)
+              }
+            }
+          }
         }
       }
     }

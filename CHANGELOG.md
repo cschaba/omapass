@@ -6,6 +6,15 @@ the CLI surface, or the entry format bump the major.
 
 ## [Unreleased]
 
+### Fixed
+
+- The editor accepted input of unbounded length, and its "Other lines" box hid
+  everything past the third line with no way to scroll to it. Each field now has
+  a limit, a counter appears as that limit comes into view, and the notes box
+  scrolls. The name is validated against what a filesystem will actually take —
+  255 bytes per path segment — so an over-long name is refused by name rather
+  than failing later as a write error. ([#9])
+
 ## [0.1.7] — 2026-08-28
 
 ### Added
@@ -115,3 +124,4 @@ top of the README.
 [0.1.6]: https://github.com/cschaba/omapass/releases/tag/v0.1.6
 [#7]: https://github.com/cschaba/omapass/issues/7
 [0.1.7]: https://github.com/cschaba/omapass/releases/tag/v0.1.7
+[#9]: https://github.com/cschaba/omapass/issues/9

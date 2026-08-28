@@ -44,6 +44,19 @@ validate_entry() {
   # to be covered by the file-existence check, but insert/generate/mv have no
   # such guard, so reject it here and terminate options at every call site too.
   [[ $entry != -* ]] || die "entry may not start with '-': $entry"
+
+  # Every path component becomes a directory or a filename, and the kernel caps
+  # those at 255 bytes. Saying so beats letting the write fail with a filesystem
+  # error nobody can connect back to the name they typed. (#9)
+  local component
+  while IFS= read -r component; do
+    [[ -n $component ]] || continue
+    if [[ $(printf '%s' "$component" | wc -c) -gt 255 ]]; then
+      die "entry name segment is too long (255 bytes max): ${component:0:40}…"
+    fi
+  done < <(tr '/' '\n' <<<"$entry")
+
+  [[ $(printf '%s' "$entry" | wc -c) -le 4096 ]] || die "entry name is too long"
 }
 
 entry_exists() {

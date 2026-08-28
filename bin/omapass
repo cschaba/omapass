@@ -88,6 +88,13 @@ cmd_log() {
     rm -f "$LOG_FILE" "$LOG_FILE.1"
     echo "omapass: log cleared"
     ;;
+  --event)
+    shift
+    # The UI half of the app has no other way into this file, and a failure
+    # that happens in QML is invisible to a log written only by the CLI —
+    # which is how #21 cost two rounds of guessing.
+    log_line "ui: $*"
+    ;;
   --status | "")
     printf '{"enabled":%s,"path":"%s","exists":%s,"bytes":%s,"maxKb":%s}\n' \
       "$($LOG_ENABLED && echo true || echo false)" \
@@ -800,7 +807,8 @@ usage() {
 omapass — pass(1) backend for the omapass Omarchy plugin
 
   version                    print the omapass version
-  log [--path|--clear]       debug log location, or clear it
+  log [--path|--clear|--event <text>]
+                             debug log location, clear it, or append a line
   quit                       stop the plugin; it stays installed
   welcomed [--mark|--reset]  whether the welcome screen has been shown
   status                     JSON: what is installed and set up
@@ -847,6 +855,8 @@ now_ms() { date +%s%3N 2>/dev/null || echo 0; }
 log_finish() {
   local status=$?
   [[ $BASHPID == "$MAIN_PID" ]] || return 0
+  # `log` writes the file; a line about having written it is pure noise.
+  [[ $LOG_CMD != "log" ]] || return 0
   log_line "$(printf '%-10s exit=%s entry=%s dur=%sms' \
     "$LOG_CMD" "$status" "$(log_digest "${LOG_ARGS[0]:-}")" "$(($(now_ms) - LOG_START))")"
 }
@@ -871,7 +881,7 @@ dispatch() {
   welcomed) cmd_welcomed "${1:-}" ;;
   status) cmd_status ;;
   config) cmd_config "${1:-}" ;;
-  log) cmd_log "${1:-}" ;;
+  log) cmd_log "$@" ;;
   quit) cmd_quit ;;
   fingerprint) fingerprint_available && echo '{"fingerprint":true}' || echo '{"fingerprint":false}' ;;
   unlocked) cmd_unlocked ;;

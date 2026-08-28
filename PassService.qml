@@ -36,6 +36,14 @@ Item {
   // so nothing here can wait for the result.
   function quit() { run(["quit"]) }
 
+  // The UI's own breadcrumbs, so a failure that never reaches a process is
+  // still visible in the log. Never pass a name or a value — only which step
+  // was reached and, where it helps, why it stopped.
+  function logEvent(message) {
+    // setting() looks in config first — "log" lives there, not at the top level.
+    if (root.setting("log", false) === true) run(["log", "--event", String(message)])
+  }
+
   // The effective configuration, already resolved by bin/omapass — file,
   // environment and defaults folded together. The UI never parses the file.
   readonly property var config: status !== null && status.config ? status.config : ({})
@@ -131,13 +139,19 @@ Item {
 
   // payload: { path, originalPath, body, generate, length, symbols }
   function save(payload) {
+    root.logEvent("save: requested"
+      + " generate=" + (payload.generate === true)
+      + " editing=" + (payload.originalPath ? "yes" : "no"))
+
     var problem = PassStore.nameProblem(payload.path)
     if (problem) {
+      root.logEvent("save: refused by name check")
       root.errorText = problem
       root.writeFinished(false)
       return
     }
     if (payload.originalPath && payload.originalPath !== payload.path) {
+      root.logEvent("save: renaming first")
       renameProc.pendingPayload = payload
       renameProc.command = [root.bin, "rename", payload.originalPath, payload.path]
       renameProc.running = true
@@ -164,6 +178,7 @@ Item {
     // nothing. Set here, next to the command, so the two cannot drift apart.
     insertProc.stdinEnabled = true
     insertProc.running = true
+    root.logEvent("save: insert started running=" + insertProc.running)
   }
 
   function remove(path) {

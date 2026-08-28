@@ -6,6 +6,14 @@ the CLI surface, or the entry format bump the major.
 
 ## [Unreleased]
 
+### Added
+
+- The debug log now records the UI's own steps, not just the commands it runs.
+  A save that fails before reaching the helper — the editor refusing it, or a
+  check stopping it — previously left no trace at all, which made it
+  undiagnosable from a log. Each step names itself and nothing else: no entry
+  names, no values. ([#21])
+
 ## [0.1.21] — 2026-08-28
 
 ### Fixed

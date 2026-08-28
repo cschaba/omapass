@@ -155,16 +155,19 @@ Item {
   }
 
   function submit() {
+    if (root.service) root.service.logEvent("editor: submit pressed")
     var name = PassStore.normalizeName(nameField.text)
     // Show the tidied name, so what is saved is what is on screen.
     if (name !== nameField.text) nameField.text = name
     var problem = PassStore.nameProblem(name)
     if (problem) {
+      if (root.service) root.service.logEvent("editor: refused (name)")
       root.loadError = problem
       nameField.forceActiveFocus()
       return
     }
     if (!root.generate && !passwordField.text) {
+      if (root.service) root.service.logEvent("editor: refused (password)")
       root.loadError = "Enter a password, or switch on Generate"
       passwordField.forceActiveFocus()
       return
@@ -173,6 +176,7 @@ Item {
     // editor stays open with the name selected instead of closing on a save
     // that the store is going to refuse anyway.
     if (root.isNew && root.service && PassStore.entryExists(root.service.entries, name)) {
+      if (root.service) root.service.logEvent("editor: refused (duplicate)")
       root.loadError = "“" + name + "” already exists — edit it, or pick another name"
       nameField.forceActiveFocus()
       nameField.selectAll()
@@ -181,6 +185,7 @@ Item {
     // Rejected here rather than dropped on the way to the store, so a mistyped
     // secret is not silently discarded.
     if (!PassStore.validOtpUri(otpField.text)) {
+      if (root.service) root.service.logEvent("editor: refused (otp)")
       root.loadError = "OTP must be an otpauth:// URI, or empty"
       otpField.forceActiveFocus()
       return
@@ -203,6 +208,7 @@ Item {
       symbols: root.generateSymbols
     }
 
+    if (root.service) root.service.logEvent("editor: handing over to save")
     root.clearForm()
     root.saved(payload)
   }

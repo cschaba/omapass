@@ -6,6 +6,13 @@ the CLI surface, or the entry format bump the major.
 
 ## [Unreleased]
 
+### Changed
+
+- The README is written for someone meeting omapass for the first time, rather
+  than describing how it came to be the way it is. Wording that only made sense
+  if you had followed the development is gone, along with a warning that
+  described the state of testing on one particular afternoon. ([#13])
+
 ## [0.1.9] — 2026-08-28
 
 ### Fixed
@@ -143,3 +150,4 @@ top of the README.
 [0.1.8]: https://github.com/cschaba/omapass/releases/tag/v0.1.8
 [#10]: https://github.com/cschaba/omapass/issues/10
 [0.1.9]: https://github.com/cschaba/omapass/releases/tag/v0.1.9
+[#13]: https://github.com/cschaba/omapass/issues/13

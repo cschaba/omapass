@@ -1,19 +1,20 @@
 # omapass
 
 > [!WARNING]
-> **Under development. Not tested. Do not trust it with passwords you cannot
-> afford to lose.**
+> **Early software. Back up your password store before you use it.**
 >
-> This is early work on an alpha version of Omarchy 4. It has not been used in
-> anger by anyone, on any machine, for any length of time. In particular the
-> paths that decrypt — copy, type, reveal, edit, and QR enrolment — have never
-> been driven through the GUI by a human; they have only been exercised from the
-> command line against a throwaway store.
+> omapass is new, targets an alpha release of Omarchy 4, and has very few users.
+> Expect rough edges.
 >
-> Everything is written to your real `pass` store, and delete and edit are real
-> deletes and real overwrites. If you try it, back the store up first
-> (`tar -czf pass-backup.tar.gz ~/.password-store`) or point it somewhere
-> disposable with `PASSWORD_STORE_DIR`.
+> It works on your real `pass` store, and editing and deleting entries really
+> does edit and delete them. Back the store up before you start:
+>
+> ```bash
+> tar -czf pass-backup.tar.gz ~/.password-store
+> ```
+>
+> Or point omapass at a throwaway store while you try it, with
+> `store = ~/test-store` in its config.
 
 A password manager for [Omarchy 4](https://omarchy.org), built as a shell
 plugin and backed by [`pass`](https://www.passwordstore.org/).
@@ -77,8 +78,7 @@ cd omapass
 it in the running shell, puts the widget on your bar, and adds a
 `SUPER + SHIFT + K` binding to `~/.config/hypr/bindings.conf`.
 
-The hotkey is a config setting, so changing it is an edit plus a re-run — the
-old binding is moved, not duplicated:
+To use a different hotkey, set it in the config and run the installer again:
 
 ```ini
 # ~/.config/omapass/config
@@ -89,7 +89,7 @@ keybind = SUPER ALT, P
 ./install.sh
 ```
 
-`SUPER + CTRL + K` is deliberately not the default: Omarchy already binds it.
+Avoid `SUPER + CTRL + K` — Omarchy already uses it for something else.
 
 If you would rather use Omarchy's own plugin installer:
 
@@ -202,7 +202,7 @@ hyphens are interchangeable, so `clip_time` and `clip-time` both work.
 | `fingerprint-retries` | `1` | Failed fingerprint attempts before falling back to the password prompt. One attempt is a whole `fprintd` conversation, and it retries about three times inside each — so `1` is roughly three touches. |
 | `pulldown-rows` | `7` | Rows shown in the bar pulldown. |
 | `backup-dir` | `~/.local/state/omapass/backups` | Where `omapass-reset` writes its backups. |
-| `keybind` | `SUPER SHIFT, K` | The hotkey `install.sh` binds, in Hyprland's syntax. Re-run `./install.sh` after changing it — the old binding is moved, not duplicated. |
+| `keybind` | `SUPER SHIFT, K` | The hotkey that opens omapass, in Hyprland's syntax. Run `./install.sh` again after changing it. |
 
 ### An example
 
@@ -278,18 +278,17 @@ a way past:
 - `Esc` closes the surface at any time.
 - `pass` on the command line is untouched, and so is `bin/omapass`. The gate is
   in the GUI, not in the store.
-- Creating `~/.config/omapass/no-fingerprint` turns it off. After three failed
-  reads the prompt says so on screen.
-- A failed scan re-arms rather than giving up, because fprintd ends the
-  conversation on a bad read.
+- Creating `~/.config/omapass/no-fingerprint` turns it off, and the prompt
+  tells you so on screen once the reader has failed you.
+- A failed scan does not end the attempt — put your finger down again.
 
 This is a second local factor in front of a GUI, not a cryptographic one. Your
 entries are still encrypted to your GPG key and still need its passphrase; the
 fingerprint does not protect anything on disk.
 
-> **Untested.** This machine has no fingerprint reader and no
-> `omarchy-lock-fingerprint` PAM service, so the detection logic was verified in
-> both directions but the scan itself has never run. Treat it as unproven.
+> Fingerprint unlock has had far less use than the rest of omapass. If it
+> misbehaves, `Esc` and the `pass` command always still work, and
+> `fingerprint = off` turns it off entirely.
 
 ## One-time codes (TOTP)
 
@@ -369,10 +368,10 @@ doesn't.
   of 200 entries should not fire 200 pinentry prompts, so omapass only reads an
   entry for preview once `gpg-agent` already has your key cached. Until then the
   pane says `Locked`, and `Tab` is the deliberate unlock.
-- **Two paths do bring a password into QML, both by request:** `Ctrl+R`, which
-  clears itself after 15 seconds, and opening the editor on an existing entry —
-  `pass` stores an entry as a single blob, so rewriting one means having all of
-  it. Both are cleared when the overlay closes.
+- **Two things do hold a password in memory, and only when you ask.** `Ctrl+R`
+  reveal, which hides itself again after 15 seconds, and the editor, which needs
+  the whole entry in order to save it back. Both are cleared when you close the
+  window.
 
 None of this defends against someone who is already running code as you. It
 defends against the ordinary ways a password leaks sideways: clipboard history,
@@ -380,10 +379,9 @@ process listings, and a long-lived GUI process holding your vault in memory.
 
 ### Entry names
 
-`pass` takes the entry name as a positional argument, so a name beginning with
-`-` would be read as an option — `insert`, `generate` and `mv` have no
-file-existence check to catch it first. Names starting with `-` are rejected,
-and every call site passes `--` before the name.
+Names may not start with `-`, contain `..`, or begin with `/`. Each part of the
+path is limited to 255 characters, because it becomes a file on disk. Anything
+else is fine, including spaces and folders.
 
 ## Starting over
 

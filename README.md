@@ -59,6 +59,12 @@ SUPER + SHIFT + K
  └────────────────────────────────────────────────┘
 ```
 
+## Requirements
+
+Omarchy 4, `pass`, `gpg`, `wl-clipboard`, `wtype`, and `jq` — all but `pass`
+ship with Omarchy. `pass-otp` is optional and only needed for one-time codes;
+QR enrolment additionally wants `zbar` (`slurp` and `grim` already ship).
+
 ## Install
 
 ```bash
@@ -168,105 +174,82 @@ The search field is focused the moment it opens, so just type.
 In the editor: `Ctrl+Enter` saves, `Esc` cancels, `Tab` moves between fields.
 Renaming is just editing the name — omapass runs `pass mv` for you.
 
-## How it handles secrets
+## Configuration
 
-The plugin runs inside `omarchy-shell`, a long-lived process that also draws
-your bar and handles notifications. Keeping decrypted passwords in there would
-mean keeping them in memory for the length of your session, so omapass mostly
-doesn't.
-
-- **Copy, type, login and OTP never enter the shell process.** They are detached
-  calls to `bin/omapass`, which pipes the secret from `gpg` straight into
-  `wl-copy` or `wtype` and exits.
-- **Secrets are never passed as arguments.** They travel in shell variables and
-  over stdin, so they never show up in `/proc/*/cmdline` or in `ps` output for
-  other users on the machine.
-- **The clipboard is marked sensitive.** `wl-copy --sensitive` sets the
-  `x-kde-passwordManagerHint` type, which is what Omarchy's own clipboard
-  manager checks before recording a copy — so a password you copy here does not
-  end up in your clipboard history. The copy is served by a `wl-copy` that
-  `timeout` kills after 45 seconds (`OMAPASS_CLIP_TIME`), dropping the selection
-  entirely.
-- **The detail pane does not decrypt on its own.** Moving the cursor down a list
-  of 200 entries should not fire 200 pinentry prompts, so omapass only reads an
-  entry for preview once `gpg-agent` already has your key cached. Until then the
-  pane says `Locked`, and `Tab` is the deliberate unlock.
-- **Two paths do bring a password into QML, both by request:** `Ctrl+R`, which
-  clears itself after 15 seconds, and opening the editor on an existing entry —
-  `pass` stores an entry as a single blob, so rewriting one means having all of
-  it. Both are cleared when the overlay closes.
-
-None of this defends against someone who is already running code as you. It
-defends against the ordinary ways a password leaks sideways: clipboard history,
-process listings, and a long-lived GUI process holding your vault in memory.
-
-### Checking the argv claim yourself
-
-"Secrets are never passed as arguments" is the kind of claim that rots quietly,
-so it is worth being able to re-check. Put logging shims ahead of the real
-binaries on `PATH` and read back every argv the helper execs:
+Everything omapass reads lives in one file: **`~/.config/omapass/config`**.
+There is none by default — omapass runs on its defaults until you write one.
 
 ```bash
-mkdir -p /tmp/shim && export ARGV_LOG=/tmp/argv.log && : > "$ARGV_LOG"
-for t in pass gpg gpg2 wl-copy wtype setsid timeout; do
-  real=$(command -v "$t") || continue
-  printf '#!/bin/bash
-{ printf "%%s|" "%s"; printf "%%s " "$@"; echo; } >> "$ARGV_LOG"
-exec "%s" "$@"
-'     "$t" "$real" > "/tmp/shim/$t"
-  chmod +x "/tmp/shim/$t"
-done
-
-PATH=/tmp/shim:$PATH bin/omapass copy some/entry
-grep -F "$(bin/omapass reveal some/entry)" "$ARGV_LOG" && echo LEAK || echo clean
+bin/omapass config --init    # write a template, every default commented out
+bin/omapass config           # the values actually in force, as JSON
+bin/omapass config --path    # where it is
 ```
 
-The copy path should exec exactly this — an entry name, a file path, and a
-`wl-copy` with no payload, the secret arriving only down the pipe:
+The format is `key = value`, one per line, with `#` comments. Underscores and
+hyphens are interchangeable, so `clip_time` and `clip-time` both work.
 
+### Settings
+
+| Setting | Default | What it does |
+|---------|---------|--------------|
+| `store` | `~/.password-store` | Where your password store lives. `~` is expanded. Point it elsewhere to keep more than one store. |
+| `clip-time` | `45` | Seconds a copied password stays on the clipboard. When it expires the selection is dropped entirely, not just blanked. |
+| `type-delay` | `12` | Milliseconds between simulated keystrokes when typing into a window. Raise it if a target application drops characters. |
+| `type-focus-delay` | `0.2` | Seconds to wait for focus to return before typing. Raise it if the first characters of a typed password go missing. |
+| `reveal-timeout` | `15` | Seconds a revealed password (`Ctrl+R`) stays on screen before it hides itself again. |
+| `fingerprint` | `auto` | `auto` requires a scan when a finger is enrolled; `always` requires one whenever the PAM service exists, even if enrolment cannot be confirmed; `off` never does. |
+| `fingerprint-grace` | `120` | Seconds a successful scan stays valid before you are asked again. Each surface keeps its own window. |
+| `fingerprint-retries` | `1` | Failed fingerprint attempts before falling back to the password prompt. One attempt is a whole `fprintd` conversation, and it retries about three times inside each — so `1` is roughly three touches. |
+| `pulldown-rows` | `7` | Rows shown in the bar pulldown. |
+| `backup-dir` | `~/.local/state/omapass/backups` | Where `omapass-reset` writes its backups. |
+| `keybind` | `SUPER SHIFT, K` | The hotkey `install.sh` binds, in Hyprland's syntax. Re-run `./install.sh` after changing it — the old binding is moved, not duplicated. |
+
+### An example
+
+```ini
+# ~/.config/omapass/config
+
+store             = ~/vaults/work
+clip-time         = 20
+fingerprint       = off
+pulldown-rows     = 12
+keybind           = SUPER ALT, P
 ```
-pass|show -- some/entry
-gpg2|-d --quiet ... /home/you/.password-store/some/entry.gpg
-setsid|timeout 45 wl-copy --type text/plain --sensitive --foreground
-```
 
-### Entry names
+### Precedence
 
-`pass` takes the entry name as a positional argument, so a name beginning with
-`-` would be read as an option — `insert`, `generate` and `mv` have no
-file-existence check to catch it first. Names starting with `-` are rejected,
-and every call site passes `--` before the name.
-
-## The CLI
-
-`bin/omapass` is a normal script and works on its own:
+**Environment > config file > default.** An environment variable always wins,
+which is how you try something once without editing anything:
 
 ```bash
-bin/omapass status                  # JSON: what is installed and set up
-bin/omapass fingerprint             # JSON: whether fingerprint unlock applies
-bin/omapass list                    # JSON: every entry
-bin/omapass fields github.com/cs    # JSON: everything except the password
-bin/omapass copy github.com/cs
-bin/omapass type github.com/cs
-bin/omapass login github.com/cs     # username, Tab, password, Enter
-bin/omapass otp github.com/cs copy
-bin/omapass otp-scan github.com/cs  # read a QR code off the screen
-bin/omapass body github.com/cs      # whole entry — the editor's read path
-bin/omapass insert new/entry --generate 32 yes < body
-bin/omapass rename old/name new/name
-bin/omapass remove old/entry
-bin/omapass sync
+OMAPASS_CLIP_TIME=5 bin/omapass copy some/entry
+PASSWORD_STORE_DIR=/tmp/scratch bin/omapass list
 ```
 
-Entries are plain `pass` entries — password on the first line, `key: value`
-after it, an `otpauth://` line for TOTP:
+The variables are `PASSWORD_STORE_DIR` for `store`, and `OMAPASS_` plus the
+setting name in capitals with underscores for the rest — `OMAPASS_CLIP_TIME`,
+`OMAPASS_TYPE_DELAY`, `OMAPASS_KEYBIND`, and so on.
+
+### When you get it wrong
+
+An unknown setting or an unparseable number produces a warning on stderr and
+falls back to the default. It will not stop omapass from starting:
 
 ```
-hunter2
-login: cs@example.com
-url: https://github.com
-otpauth://totp/GitHub:cs?secret=…
+omapass: ~/.config/omapass/config: line 4: unknown setting 'clip-timeout'
+omapass: clip-time: 'soon' is not a number, using 45
 ```
+
+Run `bin/omapass config` to see what actually took effect.
+
+### Two notes
+
+The file is **parsed, never sourced**. A config file that can run code is a
+config file that can be turned into a payload, so `key = value` is all it
+understands.
+
+The bar pulldown's row count can also be set per-widget in Omarchy's own
+`shell.json` (Setup → Plugins), and that wins over `pulldown-rows`.
 
 ## Fingerprint unlock
 
@@ -332,10 +315,81 @@ Not implemented: showing a live code with a countdown in the detail pane. Copy
 and type cover the actual use, and a live display would mean decrypting the
 entry on a timer for as long as the panel is open.
 
-## Testing the setup flow again
+## The CLI
 
-`bin/omapass-reset` puts things back to a pre-setup state so the first-run
-experience can be exercised more than once.
+`bin/omapass` is a normal script and works on its own:
+
+```bash
+bin/omapass status                  # JSON: what is installed and set up
+bin/omapass fingerprint             # JSON: whether fingerprint unlock applies
+bin/omapass list                    # JSON: every entry
+bin/omapass fields github.com/cs    # JSON: everything except the password
+bin/omapass copy github.com/cs
+bin/omapass type github.com/cs
+bin/omapass login github.com/cs     # username, Tab, password, Enter
+bin/omapass otp github.com/cs copy
+bin/omapass otp-scan github.com/cs  # read a QR code off the screen
+bin/omapass body github.com/cs      # whole entry — the editor's read path
+bin/omapass insert new/entry --generate 32 yes < body
+bin/omapass rename old/name new/name
+bin/omapass remove old/entry
+bin/omapass sync
+```
+
+Entries are plain `pass` entries — password on the first line, `key: value`
+after it, an `otpauth://` line for TOTP:
+
+```
+hunter2
+login: cs@example.com
+url: https://github.com
+otpauth://totp/GitHub:cs?secret=…
+```
+
+## How it handles secrets
+
+The plugin runs inside `omarchy-shell`, a long-lived process that also draws
+your bar and handles notifications. Keeping decrypted passwords in there would
+mean keeping them in memory for the length of your session, so omapass mostly
+doesn't.
+
+- **Copy, type, login and OTP never enter the shell process.** They are detached
+  calls to `bin/omapass`, which pipes the secret from `gpg` straight into
+  `wl-copy` or `wtype` and exits.
+- **Secrets are never passed as arguments.** They travel in shell variables and
+  over stdin, so they never show up in `/proc/*/cmdline` or in `ps` output for
+  other users on the machine.
+- **The clipboard is marked sensitive.** `wl-copy --sensitive` sets the
+  `x-kde-passwordManagerHint` type, which is what Omarchy's own clipboard
+  manager checks before recording a copy — so a password you copy here does not
+  end up in your clipboard history. The copy is served by a `wl-copy` that
+  `timeout` kills after 45 seconds (`OMAPASS_CLIP_TIME`), dropping the selection
+  entirely.
+- **The detail pane does not decrypt on its own.** Moving the cursor down a list
+  of 200 entries should not fire 200 pinentry prompts, so omapass only reads an
+  entry for preview once `gpg-agent` already has your key cached. Until then the
+  pane says `Locked`, and `Tab` is the deliberate unlock.
+- **Two paths do bring a password into QML, both by request:** `Ctrl+R`, which
+  clears itself after 15 seconds, and opening the editor on an existing entry —
+  `pass` stores an entry as a single blob, so rewriting one means having all of
+  it. Both are cleared when the overlay closes.
+
+None of this defends against someone who is already running code as you. It
+defends against the ordinary ways a password leaks sideways: clipboard history,
+process listings, and a long-lived GUI process holding your vault in memory.
+
+### Entry names
+
+`pass` takes the entry name as a positional argument, so a name beginning with
+`-` would be read as an option — `insert`, `generate` and `mv` have no
+file-existence check to catch it first. Names starting with `-` are rejected,
+and every call site passes `--` before the name.
+
+## Starting over
+
+`bin/omapass-reset` puts omapass back to a pre-setup state — useful if you want
+to start again with a different key or a fresh store, and how the first-run flow
+gets exercised more than once.
 
 ```bash
 bin/omapass-reset --status         # what is set up, and which backups exist
@@ -349,170 +403,14 @@ Nothing is deleted before it has been written to a tarball under
 tarball* first — along with its ownertrust, without which a restored key cannot
 encrypt. `--restore` puts the store, the key, and the trust back.
 
-gpg-agent is restarted at the end so the next run starts locked, which is the
-state the setup flow is meant to be tested from.
+gpg-agent is restarted at the end, so the next run starts locked rather than
+inheriting a warm agent from the session before it.
 
-## Configuration
+## Developing omapass
 
-One file: `~/.config/omapass/config`. Write a commented template with every
-default spelled out:
-
-```bash
-bin/omapass config --init
-bin/omapass config          # the values actually in force, as JSON
-bin/omapass config --path
-```
-
-```ini
-store             = ~/.password-store   # ~ is expanded
-clip-time         = 45                  # seconds before the clipboard is dropped
-type-delay        = 12                  # ms between simulated keystrokes
-type-focus-delay  = 0.2                 # seconds to wait for focus before typing
-reveal-timeout    = 15                  # seconds a revealed password stays up
-fingerprint       = auto                # auto | always | off
-fingerprint-grace = 120                 # seconds a successful scan stays valid
-pulldown-rows     = 7                   # rows in the bar pulldown
-backup-dir        = ~/.local/state/omapass/backups
-keybind           = SUPER SHIFT, K      # re-run ./install.sh after changing
-```
-
-`key = value`, `#` comments, and `key_name` works as well as `key-name`.
-Precedence is **environment > config file > default**, so a one-off run can
-override without editing anything:
-
-```bash
-OMAPASS_CLIP_TIME=5 bin/omapass copy some/entry
-PASSWORD_STORE_DIR=/tmp/scratch bin/omapass list
-```
-
-The file is parsed, never sourced — a config file that can run code is a config
-file that can be turned into a payload. Unknown keys and unparseable numbers
-produce a warning on stderr and fall back to the default rather than failing.
-
-The overlay and the pulldown do not read this file. `bin/omapass status` resolves
-everything and hands the result over as JSON, so there is only ever one parser.
-
-`fingerprint = always` requires a scan whenever the PAM service exists, even
-when enrolment cannot be confirmed — useful for a reader `fprintd-list` does not
-report cleanly. `Esc` and the `pass` CLI still get you past it either way.
-
-The bar pulldown's row count can also be set per-widget in `shell.json`
-(Setup → Plugins), which wins over `pulldown-rows`.
-
-## Releasing
-
-`manifest.json` holds the version — Omarchy requires it there, so a second copy
-anywhere else could only drift out of step. `bin/omapass version` and the
-`version` field of `omapass status` both read it.
-
-```bash
-scripts/release.sh patch --dry-run   # see what it would do
-scripts/release.sh minor             # or major, or an explicit 1.4.0
-```
-
-The script refuses before it writes anything: dirty tree, not on `main`, behind
-the remote, tag already present, failing tests, unparseable shell or QML, invalid
-`manifest.json`, or a `CHANGELOG.md` with no `[Unreleased]` section. Then it
-bumps the manifest, moves the `[Unreleased]` entries under the new version with
-today's date, commits, tags `vX.Y.Z`, and pushes.
-
-Pushing the tag is what starts the release workflow. It re-checks that the tag
-and the manifest agree, runs the tests again, and publishes:
-
-| Asset | |
-|-------|--|
-| `omapass-X.Y.Z.tar.gz` | the plugin directory, droppable into `~/.config/omarchy/plugins/omapass` |
-| `omapass-X.Y.Z.tar.gz.sha256` | its checksum |
-| `PKGBUILD` | Arch package, with the version and checksum already filled in |
-
-The tarball is unpacked and exercised in CI before publishing, so a release that
-cannot run `omapass version` from a clean extract never reaches the releases
-page.
-
-Most people will not use any of it — `omarchy plugin add` clones the repository,
-so a tag is only a marker. The tarball matters for offline installs and for
-packaging.
-
-### CI
-
-Every push and pull request runs four jobs: `shellcheck --severity=warning` over
-every script, `tests/smoke.sh` against a throwaway store, a `qmlformat` parse of
-every QML file, and a `manifest.json` check that its entry points exist and its
-version is semver.
-
-The QML job parses rather than lints. `qs.Commons` and `qs.Ui` only resolve
-inside the Omarchy shell, and older `qmllint` treats an unresolved import as an
-error, so it rejects every file regardless of syntax. `qmlformat` ignores imports
-and still catches real syntax errors. Run `qmllint -I /usr/share/omarchy/shell`
-locally for the type checking CI cannot do.
-
-## Tests
-
-```bash
-tests/smoke.sh
-```
-
-Builds a throwaway GPG home and password store, exercises the CLI against it,
-and cleans up after itself — it never touches a real store. It also checks that
-every subcommand the dispatcher can reach is actually defined, which is not
-paranoia: `unlocked` was dispatched to a function that had been deleted, and
-bash only complains when that branch is taken, so it shipped twice.
-
-## Requirements
-
-Omarchy 4, `pass`, `gpg`, `wl-clipboard`, `wtype`, and `jq` — all but `pass`
-ship with Omarchy. `pass-otp` is optional and only needed for one-time codes;
-QR enrolment additionally wants `zbar` (`slurp` and `grim` already ship).
-
-## Development
-
-`install.sh` symlinks your checkout into `~/.config/omarchy/plugins/omapass`,
-so edits are picked up without reinstalling — but you have to ask for a reload:
-
-```bash
-omarchy restart shell                      # the reliable reload
-omarchy-shell shell toggle omapass         # open the overlay
-omarchy-shell omapass.widget toggle        # open the bar pulldown
-journalctl --user -f | grep omarchy-shell  # QML errors land here
-```
-
-**`rescanPlugins` does not reload code through the symlink.** The shell watches
-`~/.config/omarchy/plugins` with `inotifywait -r`, which does not follow symlinked
-directories, so nothing ever fires; and `rescanPlugins` re-reads manifests without
-re-instantiating a `keepLoaded` plugin. Use `omarchy restart shell`, or work
-directly in a real directory under `~/.config/omarchy/plugins/`.
-
-### Two things that cost me an afternoon
-
-**A bar widget must publish its own implicit size.** The bar sizes each slot
-from `activeItem.implicitWidth/implicitHeight`, so a widget root that does not
-set them gets a 0×0 slot and renders nothing — no icon, no gap, no error, no log
-line. Built-ins do this explicitly (see `panels/power/Panel.qml`), and so does
-`BarWidget.qml`.
-
-**Errors in a plugin can surface silently.** Omarchy's panel Loader error path
-calls `errorString()` as a function, which throws, so the real message is lost.
-To see what a plugin file actually says, load it in a throwaway Quickshell config
-*outside* the shell's config root:
-
-```bash
-mkdir -p /tmp/probe && cd /tmp/probe
-ln -sfn /usr/share/omarchy/shell/Commons Commons
-ln -sfn /usr/share/omarchy/shell/Ui Ui
-cat > shell.qml <<'EOF'
-import Quickshell
-import QtQuick
-ShellRoot { FloatingWindow { Loader {
-  source: "file:///path/to/omapass/BarWidget.qml"
-  onStatusChanged: console.warn("status=" + status)   // 1 Ready, 3 Error
-} } }
-EOF
-quickshell -p /tmp/probe
-```
-
-Keep the plugin outside that config root — inside it, Quickshell treats the
-directory as a module and sibling types stop resolving, which produces
-misleading `X is not a type` errors.
+omapass is a plain directory of QML and shell scripts, and contributions are
+welcome. Everything about building, testing and releasing it is in
+[DEVELOPMENT.md](DEVELOPMENT.md).
 
 ## License
 

@@ -145,6 +145,11 @@ Item {
     insertProc.command = args
     insertProc.pendingBody = payload.body
     insertProc.generated = payload.generate === true
+    // Re-arm stdin for this run. onStarted closes it to signal EOF, and the
+    // property stays false afterwards — so every save after the first would
+    // otherwise hand `pass insert -m` no pipe at all and silently store
+    // nothing. Set here, next to the command, so the two cannot drift apart.
+    insertProc.stdinEnabled = true
     insertProc.running = true
   }
 
@@ -247,6 +252,7 @@ Item {
     id: insertProc
     property string pendingBody: ""
     property bool generated: false
+    // Re-armed by write() before every run; see the note there.
     stdinEnabled: true
     // Write on `started`: the pipe does not exist before the child is up, and
     // closing stdin is what tells `pass insert -m` to stop reading.

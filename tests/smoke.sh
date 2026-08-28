@@ -133,6 +133,16 @@ check "version command matches the manifest" \
   "$("$OMAPASS" version)" "omapass $MANIFEST_VERSION"
 check "status reports the same version" \
   "$("$OMAPASS" status | python3 -c 'import sys,json;print(json.load(sys.stdin)["version"])')" "$MANIFEST_VERSION"
+# insertProc closes stdin on started() to signal EOF, and the property stays
+# false. If write() stops re-arming it, every save after the first silently
+# stores nothing — which shipped once. A display is needed to test it for real,
+# so guard the line itself.
+check "write() re-arms stdin before each insert" \
+  "$(python3 -c "
+import re
+src = open('$ROOT/PassService.qml').read()
+body = re.search(r'function write\(payload\) \{.*?\n  \}', src, re.S).group(0)
+print('stdinEnabled = true' in body and 'running = true' in body)")" "True"
 check "plugin id is namespaced" \
   "$(python3 -c "import json;print('.' in json.load(open('$ROOT/manifest.json'))['id'])")" "True"
 check "manifest has the marketplace fields" \

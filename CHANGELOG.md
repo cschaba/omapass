@@ -6,6 +6,14 @@ the CLI surface, or the entry format bump the major.
 
 ## [Unreleased]
 
+### Fixed
+
+- Only the first password could be saved. Every save after it silently stored
+  nothing — no error, no log line, nothing in the store. The helper's stdin is
+  closed after writing, to tell `pass insert -m` the entry is complete, and the
+  flag controlling it was never turned back on, so later saves handed `pass` no
+  input at all. ([#16])
+
 ## [0.1.14] — 2026-08-28
 
 ### Changed
@@ -202,3 +210,4 @@ top of the README.
 [#15]: https://github.com/cschaba/omapass/issues/15
 [0.1.13]: https://github.com/cschaba/omapass/releases/tag/v0.1.13
 [0.1.14]: https://github.com/cschaba/omapass/releases/tag/v0.1.14
+[#16]: https://github.com/cschaba/omapass/issues/16

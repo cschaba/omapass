@@ -81,7 +81,7 @@ Item {
 
   // --- lifecycle ------------------------------------------------------------
 
-  function startNew(folder) {
+  function startNew() {
     root.isNew = true
     root.originalPath = ""
     root.loadError = ""
@@ -91,7 +91,10 @@ Item {
     root.generateSymbols = true
     root.revealPassword = false
 
-    nameField.text = folder ? folder + "/" : ""
+    // Empty, always. Pre-filling the selected entry's folder meant a typed
+    // name landed inside it — the save succeeded and the entry appeared
+    // somewhere the user was not looking. (#21)
+    nameField.text = ""
     passwordField.text = ""
     userField.text = ""
     urlField.text = ""

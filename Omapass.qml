@@ -240,7 +240,7 @@ Item {
 
   function newEntry() {
     if (!root.ready) return
-    editor.startNew(root.currentRow ? root.currentRow.folder : "")
+    editor.startNew()
     root.mode = "editor"
   }
 
@@ -255,9 +255,26 @@ Item {
     Qt.callLater(function () { keyCatcher.forceActiveFocus() })
   }
 
+  property string pendingSelect: ""
+
   function saveEntry(payload) {
     root.closeEditor()
+    // Remembered so the reload that follows can select it. "Did that save?" is
+    // a question the app should answer by showing you, not leave you to check.
+    root.pendingSelect = payload.path
     pass.save(payload)
+  }
+
+  function selectPath(path) {
+    for (var i = 0; i < displayModel.count; i++) {
+      if (displayModel.get(i).path === path) {
+        root.cursorActive = true
+        root.selectedIndex = i
+        resultList.positionViewAtIndex(i, ListView.Contain)
+        return true
+      }
+    }
+    return false
   }
 
   function requestDelete() {
@@ -336,7 +353,16 @@ Item {
     id: pass
     bin: root.bin
 
-    onListReloaded: root.rebuildDisplay()
+    onListReloaded: {
+      root.rebuildDisplay()
+      if (root.pendingSelect) {
+        var wanted = root.pendingSelect
+        root.pendingSelect = ""
+        // After rebuildDisplay's own deferred positioning, or it would scroll
+        // back to the old cursor.
+        Qt.callLater(function () { root.selectPath(wanted) })
+      }
+    }
 
     onFieldsLoaded: function (path, fields, otp) {
       if (path !== root.currentPath) return

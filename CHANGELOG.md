@@ -6,6 +6,19 @@ the CLI surface, or the entry format bump the major.
 
 ## [Unreleased]
 
+### Fixed
+
+- A new entry was filed under the folder of whichever entry happened to be
+  selected. `Ctrl+N` pre-filled that folder and left the cursor after it, so
+  typing `newsite.example` stored `github.com/newsite.example` — the save
+  worked, but the entry was not where anyone would look for it. The name now
+  starts empty. ([#21])
+
+### Changed
+
+- After saving, the list selects the entry that was written, so it is visibly
+  there rather than something to go looking for. ([#21])
+
 ## [0.1.17] — 2026-08-28
 
 ### Added
@@ -250,3 +263,4 @@ top of the README.
 [0.1.16]: https://github.com/cschaba/omapass/releases/tag/v0.1.16
 [#19]: https://github.com/cschaba/omapass/issues/19
 [0.1.17]: https://github.com/cschaba/omapass/releases/tag/v0.1.17
+[#21]: https://github.com/cschaba/omapass/issues/21

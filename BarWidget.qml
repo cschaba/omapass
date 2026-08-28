@@ -90,6 +90,7 @@ Panel {
     else if (action === "user") pass.copyUser(path)
     else if (action === "login") pass.typeLogin(path)
     else if (action === "otp") pass.copyOtp(path)
+    else if (action === "otp-type") pass.typeOtp(path)
     else pass.copyPassword(path)
   }
 
@@ -177,7 +178,7 @@ Panel {
             } else if (event.key === Qt.Key_PageUp) {
               root.move(-root.visibleRows); event.accepted = true
             } else if (ctrl && event.key === Qt.Key_O) {
-              root.activate("otp"); event.accepted = true
+              root.activate(shift ? "otp-type" : "otp"); event.accepted = true
             } else if (ctrl && event.key === Qt.Key_L) {
               root.activate("login"); event.accepted = true
             } else if (ctrl && (event.key === Qt.Key_N || event.key === Qt.Key_E)) {

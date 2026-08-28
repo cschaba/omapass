@@ -122,6 +122,42 @@ function validName(name) {
   return true
 }
 
+// Splits a decrypted entry into the parts the editor shows. Everything that is
+// not the password, a known field, or the otpauth line is kept verbatim in
+// `notes` — an editor that quietly drops what it does not understand is an
+// editor that eats your TOTP secret.
+function parseBody(raw) {
+  var lines = String(raw || "").replace(/\n+$/, "").split("\n")
+  var out = { password: lines.length ? lines[0] : "", login: "", url: "", otp: "", notes: [] }
+
+  for (var i = 1; i < lines.length; i++) {
+    var line = lines[i]
+
+    if (/^otpauth:\/\//i.test(line.trim())) {
+      if (!out.otp) out.otp = line.trim()
+      else out.notes.push(line)
+      continue
+    }
+
+    var match = line.match(/^\s*([^:=]+)[:=]\s*(.*)$/)
+    if (!match) {
+      out.notes.push(line)
+      continue
+    }
+
+    var key = match[1].trim().toLowerCase()
+    var value = match[2]
+    if (!out.login && (key === "login" || key === "username" || key === "user" || key === "email"))
+      out.login = value
+    else if (!out.url && (key === "url" || key === "site" || key === "host"))
+      out.url = value
+    else
+      out.notes.push(line)
+  }
+
+  return out
+}
+
 // Turns the editor's field rows back into the body pass stores: password on
 // line one, "key: value" after it.
 function composeBody(password, fields, otpUri) {

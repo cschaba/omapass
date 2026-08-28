@@ -31,6 +31,7 @@ Item {
   signal listReloaded()
   signal fieldsLoaded(string path, var fields, bool otp)
   signal revealed(string path, string password)
+  signal bodyLoaded(string path, string body)
   signal writeFinished(bool ok)
 
   // --- reads ----------------------------------------------------------------
@@ -52,6 +53,15 @@ Item {
     fieldsProc.entryPath = path
     fieldsProc.command = [root.bin, "fields", path]
     fieldsProc.running = true
+  }
+
+  // The editor's read path: the whole entry, so nothing it does not model gets
+  // dropped on save.
+  function loadBody(path) {
+    if (!path) return
+    bodyProc.entryPath = path
+    bodyProc.command = [root.bin, "body", path]
+    bodyProc.running = true
   }
 
   function reveal(path) {
@@ -77,6 +87,11 @@ Item {
   function typeUser(path)     { if (path) { run(["type-user", path]); markUnlockedSoon() } }
   function typeLogin(path)    { if (path) { run(["login", path]); markUnlockedSoon() } }
   function copyOtp(path)      { if (path && hasOtpSupport) { run(["otp", path, "copy"]); markUnlockedSoon() } }
+  function typeOtp(path)      { if (path && hasOtpSupport) { run(["otp", path, "type"]); markUnlockedSoon() } }
+
+  // Hands off to slurp + grim + zbarimg. Detached, because the overlay has to
+  // be out of the way before the user can drag a box over the QR code.
+  function scanOtp(path)      { if (path && hasOtpSupport) { run(["otp-scan", path]); markUnlockedSoon() } }
   function sync()             { if (hasGit) run(["sync"]) }
 
   // Setup hints are public commands, so this is an ordinary copy — no
@@ -185,6 +200,19 @@ Item {
       }
     }
     onExited: function (exitCode) { if (exitCode === 0) root.unlocked = true }
+  }
+
+  Process {
+    id: bodyProc
+    property string entryPath: ""
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: root.bodyLoaded(bodyProc.entryPath, String(text))
+    }
+    onExited: function (exitCode) {
+      if (exitCode !== 0) root.errorText = "Could not decrypt that entry"
+      else root.unlocked = true
+    }
   }
 
   Process {

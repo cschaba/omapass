@@ -187,6 +187,13 @@ cmd_fields() {
       | {fields: ., otp: $otp}'
 }
 
+# The whole entry, password included. This is the editor's path: pass stores an
+# entry as one blob, so rewriting one means having all of it, and reconstructing
+# it from `fields` would silently drop the otpauth line and any free-form text.
+cmd_body() {
+  decrypt "$1"
+}
+
 # The password only. Deliberately separate from `fields` so a caller has to opt in.
 cmd_reveal() {
   local body
@@ -321,6 +328,53 @@ cmd_otp() {
   esac
 }
 
+# Reads a QR code off the screen and returns the otpauth:// URI it holds.
+# Typing a TOTP secret by hand is miserable, and the code is always already on
+# screen when you are enrolling.
+scan_otp_uri() {
+  has_or_die() { command -v "$1" >/dev/null 2>&1 || die "$1 is not installed"; }
+  has_or_die slurp
+  has_or_die grim
+  has_or_die zbarimg
+
+  local region uri
+  region=$(slurp -d 2>/dev/null) || die "no region selected"
+  [[ -n $region ]] || die "no region selected"
+
+  # Straight down the pipe: the QR image never touches disk.
+  uri=$(grim -g "$region" - 2>/dev/null | zbarimg --quiet --raw - 2>/dev/null | head -n 1) || true
+  uri=${uri%$'\n'}
+
+  [[ -n $uri ]] || die "no QR code found in that region"
+  [[ $uri == otpauth://* ]] || die "that QR code is not an otpauth:// URI"
+
+  printf '%s' "$uri"
+}
+
+cmd_otp_scan() {
+  local entry="${1:-}" uri body rest
+
+  uri=$(scan_otp_uri) || exit 1
+
+  # No entry named: just hand the URI back, for the editor to drop in a field.
+  if [[ -z $entry ]]; then
+    printf '%s\n' "$uri"
+    return
+  fi
+
+  require_pass
+  validate_entry "$entry"
+  entry_exists "$entry" || die "no such entry: $entry"
+
+  body=$(decrypt "$entry")
+  # Replace any existing otpauth line rather than stacking a second one.
+  rest=$(printf '%s\n' "$body" | tail -n +2 | grep -v -i '^otpauth://' || true)
+  printf '%s\n%s\n%s\n' "${body%%$'\n'*}" "$rest" "$uri" |
+    grep -v '^$' | pass insert -m -f "$entry" >/dev/null
+
+  notify "One-time code added" "$entry" "󰯄"
+}
+
 # --- mutations --------------------------------------------------------------
 
 # Same character set pass(1) generates from, so entries made here and entries
@@ -434,12 +488,15 @@ omapass — pass(1) backend for the omapass Omarchy plugin
   list                       JSON: every entry in the store
   fields <entry>             JSON: non-password fields (never the password)
   reveal <entry>             print the password to stdout
+  body <entry>               print the whole entry (the editor's read path)
   copy <entry> [field]       copy password (or field) to the clipboard
   copy-user <entry>          copy the username field
   type <entry> [field]       type password (or field) into the focused window
   type-user <entry>          type the username field
   login <entry>              type username, Tab, password, Enter
   otp <entry> [copy|type]    one-time code, via pass-otp
+  otp-scan [entry]           read a QR code off the screen; store it in <entry>,
+                             or print the otpauth:// URI when given no entry
   insert <entry> [--generate <len> <yes|no>]
                              create/replace an entry, body read from stdin
   generate <entry> [len] [yes|no]   generate a password (symbols yes/no)
@@ -459,12 +516,14 @@ main() {
   list) cmd_list ;;
   fields) cmd_fields "${1:?entry required}" ;;
   reveal) cmd_reveal "${1:?entry required}" ;;
+  body) cmd_body "${1:?entry required}" ;;
   copy) cmd_copy "${1:?entry required}" "${2:-}" ;;
   copy-user) cmd_copy_user "${1:?entry required}" ;;
   type) cmd_type "${1:?entry required}" "${2:-}" ;;
   type-user) cmd_type_user "${1:?entry required}" ;;
   login) cmd_login "${1:?entry required}" ;;
   otp) cmd_otp "${1:?entry required}" "${2:-copy}" ;;
+  otp-scan) cmd_otp_scan "${1:-}" ;;
   insert) cmd_insert "${1:?entry required}" "${@:2}" ;;
   generate) cmd_generate "${1:?entry required}" "${2:-24}" "${3:-yes}" ;;
   rename) cmd_rename "${1:?old required}" "${2:?new required}" ;;

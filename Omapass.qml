@@ -183,6 +183,8 @@ Item {
   function typePassword() { if (root.currentPath) { pass.typePassword(root.currentPath); root.dismiss() } }
   function typeLogin()    { if (root.currentPath) { pass.typeLogin(root.currentPath); root.dismiss() } }
   function copyOtp()      { if (root.currentPath && root.hasOtpSupport) { pass.copyOtp(root.currentPath); root.dismiss() } }
+  function typeOtp()      { if (root.currentPath && root.hasOtpSupport) { pass.typeOtp(root.currentPath); root.dismiss() } }
+  function scanOtp()      { if (root.currentPath && root.hasOtpSupport) { pass.scanOtp(root.currentPath); root.dismiss() } }
   function sync()         { pass.sync() }
   function copyCommand(command) { pass.copyCommand(command) }
 
@@ -394,7 +396,11 @@ Item {
           } else if (ctrl && event.key === Qt.Key_L) {
             root.typeLogin(); event.accepted = true
           } else if (ctrl && event.key === Qt.Key_O) {
-            root.copyOtp(); event.accepted = true
+            if (shift) root.typeOtp()
+            else root.copyOtp()
+            event.accepted = true
+          } else if (ctrl && event.key === Qt.Key_Q) {
+            root.scanOtp(); event.accepted = true
           } else if (ctrl && event.key === Qt.Key_S) {
             root.sync(); event.accepted = true
           } else if (event.key === Qt.Key_Delete || (ctrl && event.key === Qt.Key_D)) {
@@ -683,7 +689,7 @@ Item {
 
                 Text {
                   visible: root.selectedHasOtp
-                  text: "󰯄  one-time code available — Ctrl+O"
+                  text: "󰯄  one-time code — Ctrl+O copy, Ctrl+Shift+O type"
                   color: root.selectedText
                   font.family: root.fontFamily
                   font.pixelSize: Style.font.caption
@@ -716,7 +722,7 @@ Item {
             text: root.errorText
               ? root.errorText
               : "⏎ copy   ⇧⏎ type   ⌥⏎ user   ^L fill login"
-                + (root.hasOtpSupport ? "   ^O otp" : "")
+                + (root.hasOtpSupport ? "   ^O otp   ^Q scan qr" : "")
                 + "   ^R reveal   ^N new   ^E edit   ⌦ delete"
                 + (root.hasGit ? "   ^S sync" : "")
             color: root.errorText ? Color.urgent : root.foreground
@@ -739,7 +745,7 @@ Item {
         anchors.leftMargin: card.contentLeftInset
         z: 10
         opened: root.mode === "editor"
-        bin: root.bin
+        service: pass
         background: root.background
         foreground: root.foreground
         accent: root.selectedText

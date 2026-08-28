@@ -1,0 +1,321 @@
+#!/bin/bash
+
+# omapass-reset — put omapass back to a pre-setup state so the guided setup can
+# be run again from clean.
+#
+# This deletes a password store and, if asked, a GPG secret key. Both are
+# irreversible, so nothing is removed before it has been written to a backup
+# tarball, and the secret key is exported *into that tarball* before deletion —
+# a backup you cannot decrypt is not a backup.
+
+set -euo pipefail
+
+STORE="${PASSWORD_STORE_DIR:-$HOME/.password-store}"
+BACKUP_DIR="${OMAPASS_BACKUP_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/omapass/backups}"
+
+ASSUME_YES=0
+DO_STORE=0
+DO_KEY=0
+DO_PACKAGES=0
+DO_AGENT=1
+
+has() { command -v "$1" >/dev/null 2>&1; }
+
+say() { echo "  $*"; }
+warn() { echo "  ! $*" >&2; }
+die() { echo "omapass-reset: $*" >&2; exit 1; }
+
+confirm() {
+  (( ASSUME_YES )) && return 0
+  local prompt="$1"
+  if has gum && [[ -t 0 ]]; then
+    gum confirm "$prompt" && return 0 || return 1
+  fi
+  if [[ ! -t 0 ]]; then
+    warn "not a terminal and --yes was not given; refusing to guess"
+    return 1
+  fi
+  local reply
+  read -r -p "$prompt [y/N] " reply
+  [[ $reply == [yY]* ]]
+}
+
+# --- what is there right now -------------------------------------------------
+
+store_gpg_ids() {
+  [[ -f $STORE/.gpg-id ]] || return 0
+  grep -v '^[[:space:]]*$' "$STORE/.gpg-id" || true
+}
+
+# Populated once by main(), before anything is deleted: the lookup reads
+# $STORE/.gpg-id, which reset_store removes.
+TARGET_KEYS=""
+
+# Only keys the store is actually encrypted to, and only ones we hold the
+# secret half of. Anything else is none of this script's business.
+store_secret_keys() {
+  local id
+  while read -r id; do
+    [[ -n $id ]] || continue
+    gpg --list-secret-keys --with-colons "$id" 2>/dev/null | awk -F: '
+      $1 == "sec" { fpr = "" }
+      $1 == "fpr" && fpr == "" { fpr = $10 }
+      $1 == "uid" && fpr != "" { print fpr "\t" $10; fpr = "" }
+    '
+  done < <(store_gpg_ids) | sort -u
+}
+
+cmd_status() {
+  echo "omapass state"
+  echo
+  if [[ -d $STORE ]]; then
+    local count
+    count=$(find "$STORE" -name '*.gpg' -type f -not -path '*/.git/*' 2>/dev/null | wc -l)
+    say "store     $STORE ($count entries$([[ -d $STORE/.git ]] && echo ', git'))"
+  else
+    say "store     absent"
+  fi
+
+  local keys
+  keys=$(store_secret_keys)
+  if [[ -n $keys ]]; then
+    while IFS=$'\t' read -r fpr uid; do
+      say "key       ${fpr:(-16)}  $uid"
+    done <<<"$keys"
+  else
+    say "key       none tied to this store"
+  fi
+
+  say "pass      $(has pass && pass version 2>/dev/null | grep -oP 'v\K[0-9.]+' | head -1 || echo absent)"
+  say "pass-otp  $(pass otp --help >/dev/null 2>&1 && echo present || echo absent)"
+
+  if [[ -d $BACKUP_DIR ]] && compgen -G "$BACKUP_DIR/*.tar.gz" >/dev/null; then
+    echo
+    say "backups in $BACKUP_DIR:"
+    local f
+    for f in "$BACKUP_DIR"/*.tar.gz; do
+      say "  $(basename "$f")  ($(du -h "$f" | cut -f1))"
+    done
+  fi
+}
+
+# --- backup ------------------------------------------------------------------
+
+# Writes a tarball holding the store and, when the key is going away, an
+# armoured export of the secret key so the tarball stays decryptable.
+make_backup() {
+  local include_key="$1"
+  local stamp archive staging
+  stamp=$(date +%Y%m%d-%H%M%S)
+  archive="$BACKUP_DIR/omapass-$stamp.tar.gz"
+
+  mkdir -p "$BACKUP_DIR"
+  staging=$(mktemp -d)
+  trap 'rm -rf "$staging"' RETURN
+
+  if [[ -d $STORE ]]; then
+    cp -a "$STORE" "$staging/password-store"
+  fi
+
+  if [[ $include_key == "yes" ]]; then
+    local keys fpr
+    keys="$TARGET_KEYS"
+    if [[ -n $keys ]]; then
+      : >"$staging/secret-keys.asc"
+      while IFS=$'\t' read -r fpr _; do
+        # A passphrase prompt here is expected: exporting a secret key needs it.
+        gpg --armor --export-secret-keys "$fpr" >>"$staging/secret-keys.asc" 2>/dev/null || {
+          rm -f "$staging/secret-keys.asc"
+          return 1
+        }
+      done <<<"$keys"
+      gpg --armor --export $(cut -f1 <<<"$keys" | tr '\n' ' ') \
+        >"$staging/public-keys.asc" 2>/dev/null || true
+      gpg --export-ownertrust >"$staging/ownertrust.txt" 2>/dev/null || true
+    fi
+  fi
+
+  if [[ -z $(ls -A "$staging") ]]; then
+    say "nothing to back up"
+    return 0
+  fi
+
+  tar -czf "$archive" -C "$staging" .
+  chmod 600 "$archive"
+  say "backup  $archive"
+  BACKUP_PATH="$archive"
+}
+
+# --- the destructive bits ----------------------------------------------------
+
+reset_store() {
+  [[ -d $STORE ]] || { say "store already absent"; return 0; }
+  rm -rf "$STORE"
+  say "removed $STORE"
+}
+
+reset_keys() {
+  local keys
+  keys="$TARGET_KEYS"
+  [[ -n $keys ]] || { say "no store key to remove"; return 0; }
+
+  local fpr uid
+  while IFS=$'\t' read -r fpr uid; do
+    gpg --batch --yes --delete-secret-and-public-key "$fpr" 2>/dev/null \
+      && say "removed key $uid" \
+      || warn "could not remove key $uid"
+  done <<<"$keys"
+}
+
+reset_packages() {
+  local drop=()
+  has pass && drop+=(pass)
+  pass otp --help >/dev/null 2>&1 && drop+=(pass-otp)
+  [[ ${#drop[@]} -gt 0 ]] || { say "pass is not installed"; return 0; }
+
+  say "removing ${drop[*]} (needs sudo)"
+  sudo pacman -Rns --noconfirm "${drop[@]}" >/dev/null 2>&1 \
+    && say "removed ${drop[*]}" \
+    || warn "could not remove ${drop[*]}"
+}
+
+# Setup should be exercised from locked, which means the agent must forget the
+# passphrase it is holding.
+reset_agent() {
+  gpgconf --kill gpg-agent >/dev/null 2>&1 || true
+  say "gpg-agent restarted (store is locked again)"
+}
+
+# --- restore -----------------------------------------------------------------
+
+cmd_restore() {
+  local archive="${1:-}"
+
+  if [[ -z $archive ]]; then
+    compgen -G "$BACKUP_DIR/*.tar.gz" >/dev/null || die "no backups in $BACKUP_DIR"
+    if has gum && [[ -t 0 ]]; then
+      archive=$(find "$BACKUP_DIR" -name '*.tar.gz' | sort -r |
+        gum choose --header "Restore which backup?") || exit 0
+    else
+      archive=$(find "$BACKUP_DIR" -name '*.tar.gz' | sort -r | head -1)
+      say "restoring the most recent backup: $(basename "$archive")"
+    fi
+  fi
+  [[ -f $archive ]] || die "no such backup: $archive"
+
+  local staging
+  staging=$(mktemp -d)
+  trap 'rm -rf "$staging"' RETURN
+  tar -xzf "$archive" -C "$staging"
+
+  if [[ -f $staging/secret-keys.asc ]]; then
+    gpg --batch --import "$staging/secret-keys.asc" >/dev/null 2>&1 \
+      && say "imported secret key(s)" \
+      || warn "could not import the secret key"
+  fi
+  [[ -f $staging/public-keys.asc ]] && gpg --batch --import "$staging/public-keys.asc" >/dev/null 2>&1 || true
+
+  # Without the ownertrust back, gpg refuses to encrypt to the key it just
+  # imported and every pass write fails with "Unusable public key".
+  if [[ -f $staging/ownertrust.txt ]]; then
+    gpg --import-ownertrust "$staging/ownertrust.txt" >/dev/null 2>&1 \
+      && say "restored key trust" \
+      || warn "could not restore key trust — run: gpg --edit-key <id> trust"
+  fi
+
+  if [[ -d $staging/password-store ]]; then
+    [[ -e $STORE ]] && die "$STORE already exists — move it aside first"
+    cp -a "$staging/password-store" "$STORE"
+    say "restored $STORE"
+  fi
+
+  say "restored from $(basename "$archive")"
+}
+
+# --- entry point -------------------------------------------------------------
+
+usage() {
+  cat <<'USAGE'
+omapass-reset — return omapass to a pre-setup state for testing
+
+  --store          remove the password store
+  --key            remove the GPG key the store is encrypted to
+  --packages       uninstall pass and pass-otp (needs sudo)
+  --all            all three
+  --keep-agent     do not restart gpg-agent (it is restarted by default, so
+                   the next run starts locked)
+
+  --status         show what is currently set up, and list backups
+  --restore [file] put a backup back (picks interactively when given no file)
+  --yes, -y        do not ask for confirmation
+
+Everything removable is written to a tarball under
+~/.local/state/omapass/backups first, including an export of the secret key
+whenever --key is used. With no options, --store --key is assumed: enough to
+test the setup flow again, without touching your packages.
+USAGE
+}
+
+main() {
+  local explicit=0
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+    --store) DO_STORE=1; explicit=1 ;;
+    --key) DO_KEY=1; explicit=1 ;;
+    --packages) DO_PACKAGES=1; explicit=1 ;;
+    --all) DO_STORE=1; DO_KEY=1; DO_PACKAGES=1; explicit=1 ;;
+    --keep-agent) DO_AGENT=0 ;;
+    --yes | -y) ASSUME_YES=1 ;;
+    --status) cmd_status; exit 0 ;;
+    --restore) shift; cmd_restore "${1:-}"; exit 0 ;;
+    -h | --help) usage; exit 0 ;;
+    *) die "unknown option: $1" ;;
+    esac
+    shift
+  done
+
+  if (( ! explicit )); then
+    DO_STORE=1
+    DO_KEY=1
+  fi
+
+  # Before any deletion: reset_store takes .gpg-id with it.
+  TARGET_KEYS=$(store_secret_keys)
+
+  echo "omapass-reset will remove:"
+  (( DO_STORE )) && say "the password store at $STORE"
+  if (( DO_KEY )); then
+    local keys
+    keys="$TARGET_KEYS"
+    if [[ -n $keys ]]; then
+      while IFS=$'\t' read -r _ uid; do say "the GPG key  $uid"; done <<<"$keys"
+    else
+      say "(no GPG key is tied to this store)"
+    fi
+  fi
+  (( DO_PACKAGES )) && say "the pass and pass-otp packages"
+  echo
+
+  confirm "Back everything up and continue?" || { say "nothing done"; exit 0; }
+
+  BACKUP_PATH=""
+  if (( DO_STORE || DO_KEY )); then
+    make_backup "$( (( DO_KEY )) && echo yes || echo no )" || {
+      warn "the backup failed — refusing to delete anything"
+      exit 1
+    }
+  fi
+
+  (( DO_STORE )) && reset_store
+  (( DO_KEY )) && reset_keys
+  (( DO_PACKAGES )) && reset_packages
+  (( DO_AGENT )) && reset_agent
+
+  echo
+  say "done — open omapass and it will offer the setup again"
+  [[ -n $BACKUP_PATH ]] && say "undo with: omapass-reset --restore $BACKUP_PATH"
+  exit 0
+}
+
+main "$@"

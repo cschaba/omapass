@@ -1,4 +1,3 @@
-import Quickshell.Io
 import QtQuick
 import QtQuick.Controls as QQC
 import qs.Commons
@@ -15,7 +14,7 @@ Item {
   id: root
 
   property bool opened: false
-  property string bin: ""
+  property var service: null
 
   property color background: Color.menu.background
   property color foreground: Color.menu.text
@@ -77,11 +76,11 @@ Item {
     otpField.text = ""
     notesArea.text = ""
 
+    // The whole body, not reveal + fields: reconstructing an entry from its
+    // parsed fields silently drops the otpauth line and any free-form text,
+    // which then vanishes on save.
     root.loadingEntry = true
-    loadProc.command = [root.bin, "reveal", path]
-    loadProc.running = true
-    fieldsProc.command = [root.bin, "fields", path]
-    fieldsProc.running = true
+    if (root.service) root.service.loadBody(path)
 
     Qt.callLater(function () { nameField.forceActiveFocus() })
   }
@@ -100,23 +99,14 @@ Item {
     root.cancelled()
   }
 
-  function applyFields(raw) {
-    var parsed = null
-    try { parsed = JSON.parse(raw) } catch (e) { return }
-    if (!parsed || !parsed.fields) return
-
-    var leftovers = []
-    for (var i = 0; i < parsed.fields.length; i++) {
-      var f = parsed.fields[i]
-      var key = String(f.key || "").toLowerCase()
-      if (!userField.text && (key === "login" || key === "username" || key === "user" || key === "email"))
-        userField.text = f.value
-      else if (!urlField.text && (key === "url" || key === "site" || key === "host"))
-        urlField.text = f.value
-      else
-        leftovers.push(f.key + ": " + f.value)
-    }
-    notesArea.text = leftovers.join("\n")
+  function applyBody(raw) {
+    root.loadingEntry = false
+    var parsed = PassStore.parseBody(raw)
+    passwordField.text = parsed.password
+    userField.text = parsed.login
+    urlField.text = parsed.url
+    otpField.text = parsed.otp
+    notesArea.text = parsed.notes.join("\n")
   }
 
   function submit() {
@@ -153,23 +143,11 @@ Item {
 
   // --- data ----------------------------------------------------------------
 
-  Process {
-    id: loadProc
-    stdout: StdioCollector {
-      waitForEnd: true
-      onStreamFinished: passwordField.text = String(text).replace(/\n+$/, "")
-    }
-    onExited: function (exitCode) {
-      root.loadingEntry = false
-      if (exitCode !== 0) root.loadError = "Could not decrypt this entry"
-    }
-  }
-
-  Process {
-    id: fieldsProc
-    stdout: StdioCollector {
-      waitForEnd: true
-      onStreamFinished: root.applyFields(text)
+  Connections {
+    target: root.service
+    function onBodyLoaded(path, body) {
+      if (path !== root.originalPath) return
+      root.applyBody(body)
     }
   }
 
@@ -413,7 +391,7 @@ Item {
       spacing: Style.space(3)
 
       Text {
-        text: "OTP secret (otpauth:// URI)"
+        text: "OTP secret (otpauth:// URI — or save, then Ctrl+Q to scan a QR code)"
         color: root.foreground
         opacity: 0.5
         font.family: root.fontFamily

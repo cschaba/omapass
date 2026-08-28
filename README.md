@@ -115,6 +115,7 @@ The search field is focused the moment it opens, so just type.
 | `Alt+Enter` | copy the username |
 | `Ctrl+L` | fill a login form |
 | `Ctrl+O` | copy the one-time code |
+| `Ctrl+Shift+O` | type the one-time code |
 | `Ctrl+N` / `Ctrl+E` | open the full manager |
 | `Esc` | clear the search, then close |
 
@@ -129,6 +130,8 @@ The search field is focused the moment it opens, so just type.
 | `Alt+Enter` | copy the username |
 | `Ctrl+L` | fill a login form — username, Tab, password, Enter |
 | `Ctrl+O` | copy the one-time code (needs `pass-otp`) |
+| `Ctrl+Shift+O` | type the one-time code |
+| `Ctrl+Q` | scan a QR code into the selected entry |
 | `Ctrl+R` | reveal the password in the detail pane |
 | `Tab` | unlock the store / load details for the selected entry |
 | `Ctrl+N` | new entry |
@@ -184,6 +187,8 @@ bin/omapass copy github.com/cs
 bin/omapass type github.com/cs
 bin/omapass login github.com/cs     # username, Tab, password, Enter
 bin/omapass otp github.com/cs copy
+bin/omapass otp-scan github.com/cs  # read a QR code off the screen
+bin/omapass body github.com/cs      # whole entry — the editor's read path
 bin/omapass insert new/entry --generate 32 yes < body
 bin/omapass rename old/name new/name
 bin/omapass remove old/entry
@@ -200,6 +205,50 @@ url: https://github.com
 otpauth://totp/GitHub:cs?secret=…
 ```
 
+## One-time codes (TOTP)
+
+omapass stores TOTP secrets the way `pass-otp` does — an `otpauth://` line in
+the entry — so anything else that speaks pass-otp reads the same store.
+
+| What | How |
+|------|-----|
+| Enrol from a QR code | select the entry, `Ctrl+Q`, drag a box over the code on screen |
+| Enrol by hand | paste the `otpauth://` URI into the editor's OTP field |
+| Copy the current code | `Ctrl+O` (overlay or pulldown) |
+| Type the code into a form | `Ctrl+Shift+O` |
+| See which entries have one | the detail pane says so; `omapass fields` reports `"otp": true` |
+
+`Ctrl+Q` pipes `grim` into `zbarimg` without the screenshot touching disk, and
+replaces an entry's existing `otpauth://` line rather than stacking a second
+one. It needs `slurp`, `grim` and `zbar`; the first two ship with Omarchy.
+
+The code itself is treated like a password: copied with the sensitive hint set,
+and dropped from the clipboard after `OMAPASS_CLIP_TIME`.
+
+Not implemented: showing a live code with a countdown in the detail pane. Copy
+and type cover the actual use, and a live display would mean decrypting the
+entry on a timer for as long as the panel is open.
+
+## Testing the setup flow again
+
+`bin/omapass-reset` puts things back to a pre-setup state so the first-run
+experience can be exercised more than once.
+
+```bash
+bin/omapass-reset --status         # what is set up, and which backups exist
+bin/omapass-reset                  # remove the store and its GPG key
+bin/omapass-reset --all            # also uninstall pass and pass-otp
+bin/omapass-reset --restore        # put the most recent backup back
+```
+
+Nothing is deleted before it has been written to a tarball under
+`~/.local/state/omapass/backups`, and `--key` exports the secret key *into that
+tarball* first — along with its ownertrust, without which a restored key cannot
+encrypt. `--restore` puts the store, the key, and the trust back.
+
+gpg-agent is restarted at the end so the next run starts locked, which is the
+state the setup flow is meant to be tested from.
+
 ## Configuration
 
 | Variable | Default | Meaning |
@@ -213,7 +262,8 @@ otpauth://totp/GitHub:cs?secret=…
 ## Requirements
 
 Omarchy 4, `pass`, `gpg`, `wl-clipboard`, `wtype`, and `jq` — all but `pass`
-ship with Omarchy. `pass-otp` is optional and only needed for one-time codes.
+ship with Omarchy. `pass-otp` is optional and only needed for one-time codes;
+QR enrolment additionally wants `zbar` (`slurp` and `grim` already ship).
 
 ## Development
 

@@ -19,6 +19,8 @@
 A password manager for [Omarchy 4](https://omarchy.org), built as a shell
 plugin and backed by [`pass`](https://www.passwordstore.org/).
 
+![omapass](docs/preview.png)
+
 It gives you two ways in. A bar icon with a search pulldown for the common
 case — find a password, copy it, get on with your day. And a full-screen
 overlay, in the same family as Omarchy's clipboard and emoji pickers, that also

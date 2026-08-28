@@ -118,8 +118,19 @@ function guidedSetupHelps(status) {
 // Note what is *not* rejected: "/" separates folders and is the whole point,
 // and "$" and other punctuation are ordinary characters here. Nothing omapass
 // runs goes through a shell, so shell metacharacters carry no meaning.
+// Tidies what a person types into what pass stores. "work / aws" is a folder
+// path typed the way people write paths; rejecting it for the spaces is
+// pedantry, and rejecting it *quietly* reads as the save doing nothing at all.
+function normalizeName(name) {
+  return String(name === undefined || name === null ? "" : name)
+    .trim()
+    .split("/")
+    .map(function (part) { return part.trim() })
+    .join("/")
+}
+
 function nameProblem(name) {
-  var value = String(name === undefined || name === null ? "" : name).trim()
+  var value = normalizeName(name)
   if (!value) return "Enter a name, like github.com/you"
   if (value.charAt(0) === "/") return "Name must be relative — drop the leading /"
   if (value.charAt(0) === "-") return "Name may not start with -"

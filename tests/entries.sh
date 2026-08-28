@@ -121,6 +121,17 @@ run_case "one note"    "n/one"  "pw" "" "" "" "recovery: single"
 run_case "many notes"  "n/many" "pw" "" "" "" "$(printf 'first line\nsecond line\nthird line')"
 echo
 
+echo "name tidying"
+tidy() { node -e '
+  const fs=require("fs");
+  let src=fs.readFileSync(process.argv[1],"utf8").replace(".pragma library","");
+  eval(src);
+  process.stdout.write(normalizeName(process.argv[2]));' "$ROOT/PassStore.js" "$1"; }
+same "spaces around a slash are tidied" "$(tidy 'work / aws')" "work/aws"
+same "spaces inside a name are kept"    "$(tidy 'my site/my account')" "my site/my account"
+same "surrounding whitespace goes"      "$(tidy '  work/aws  ')" "work/aws"
+echo
+
 echo "conflicts"
 printf 'ORIGINAL\n' | "$OMAPASS" insert c/exists >/dev/null 2>&1
 printf 'REPLACEMENT\n' | "$OMAPASS" insert c/exists >/dev/null 2>&1

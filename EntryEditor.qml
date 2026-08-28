@@ -155,7 +155,9 @@ Item {
   }
 
   function submit() {
-    var name = nameField.text.trim()
+    var name = PassStore.normalizeName(nameField.text)
+    // Show the tidied name, so what is saved is what is on screen.
+    if (name !== nameField.text) nameField.text = name
     var problem = PassStore.nameProblem(name)
     if (problem) {
       root.loadError = problem
@@ -534,17 +536,36 @@ Item {
       width: parent.width
       height: Style.space(20)
 
-      Text {
+      Row {
         anchors.left: parent.left
+        anchors.right: saveRow.left
+        anchors.rightMargin: Style.space(10)
         anchors.verticalCenter: parent.verticalCenter
-        text: root.loadError ? root.loadError : "Ctrl+⏎ save   Esc cancel"
-        color: root.loadError ? Color.urgent : root.foreground
-        opacity: root.loadError ? 1 : 0.45
-        font.family: root.fontFamily
-        font.pixelSize: Style.font.caption
+        spacing: Style.space(6)
+
+        // Caption-sized grey was too easy to walk past — a refused save that
+        // goes unnoticed is indistinguishable from a save that did nothing.
+        Text {
+          visible: root.loadError.length > 0
+          text: "⚠"
+          color: Color.urgent
+          font.family: root.fontFamily
+          font.pixelSize: Style.font.body
+        }
+
+        Text {
+          width: parent.width - (root.loadError ? Style.space(20) : 0)
+          text: root.loadError ? root.loadError : "Ctrl+⏎ save   Esc cancel"
+          color: root.loadError ? Color.urgent : root.foreground
+          opacity: root.loadError ? 1 : 0.45
+          font.family: root.fontFamily
+          font.pixelSize: root.loadError ? Style.font.body : Style.font.caption
+          elide: Text.ElideRight
+        }
       }
 
       Row {
+        id: saveRow
         anchors.right: parent.right
         anchors.verticalCenter: parent.verticalCenter
         spacing: Style.space(8)

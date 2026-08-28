@@ -6,6 +6,14 @@ the CLI surface, or the entry format bump the major.
 
 ## [Unreleased]
 
+### Fixed
+
+- `work / aws` — a folder path typed the way people write paths — was rejected
+  for the spaces, and the refusal was small grey text in the editor's footer.
+  Between them that reads as the save doing nothing. Whitespace around a `/` is
+  tidied away now, and a refused save is shown in full size with a warning
+  mark. ([#21])
+
 ## [0.1.20] — 2026-08-28
 
 ### Security

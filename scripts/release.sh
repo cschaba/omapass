@@ -2,6 +2,12 @@
 
 # Cut a release: bump the version, move the changelog entry, tag, push.
 #
+# A maintainer tool, run by hand from a local checkout. It is not part of
+# installing or running omapass and is not included in the release tarball, so
+# no user ever executes it. The `git fetch` below only counts how far behind
+# origin/main this checkout is — nothing fetched is ever checked out, merged or
+# run.
+#
 # The tag is what triggers the packaging workflow, so everything that could fail
 # is checked here first — a tag you have to delete and re-push is worse than a
 # release that refuses to start.

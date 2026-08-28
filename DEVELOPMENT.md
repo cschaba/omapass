@@ -3,9 +3,7 @@
 Notes for working on omapass itself. If you only want to *use* it, everything
 you need is in [README.md](README.md).
 
-Two more documents matter: [CHANGELOG.md](CHANGELOG.md) for what changed when,
-and `HANDOFF.md` on the `handoff/fingerprint-testing` branch, which carries the
-context for testing the fingerprint paths on real hardware.
+[CHANGELOG.md](CHANGELOG.md) records what changed when.
 
 ## Layout
 
@@ -79,6 +77,59 @@ quickshell -p /tmp/probe
 Keep the plugin outside that config root — inside it, Quickshell treats the
 directory as a module and sibling types stop resolving, which produces
 misleading `X is not a type` errors.
+
+## Testing the fingerprint paths
+
+These cannot be tested without hardware, so they are the least-proven part of
+omapass. This is the plan a tester should work through; the running record of
+what has actually been confirmed is
+[issue #11](https://github.com/cschaba/omapass/issues/11).
+
+Check the gate is even active before starting — `bin/omapass fingerprint` must
+report `true`, which needs **both** `/etc/pam.d/omarchy-lock-fingerprint` and an
+enrolled finger in `fprintd-list $USER`.
+
+| # | Case | Expected |
+|---|------|----------|
+| 1 | Open the overlay with a finger enrolled | Gate instead of the picker |
+| 2 | Open the pulldown | Compact gate, search field hidden |
+| 3 | Good scan | Gate clears, entries appear |
+| 4 | Reopen within `fingerprint-grace` | No second scan |
+| 5 | Reopen after it expires | Scan asked for again |
+| 6 | Unlock the pulldown, then open the overlay | Overlay asks again — separate windows, by design |
+| 7 | Wrong finger | Falls back to the password after `fingerprint-retries` conversations |
+| 8 | Reader unreachable (`systemctl stop fprintd`, or block the sensor) | Falls back after two device errors, "reader is not available" |
+| 9 | `Tab` after a fallback has fired | Returns to the reader, counters reset, scan retried |
+| 10 | Correct login password | Unlocks |
+| 11 | Wrong login password | "Wrong password", field cleared, retry works |
+| 12 | `Esc` from either mode | Closes, nothing unlocked |
+| 13 | `touch ~/.config/omapass/no-fingerprint` | Gate gone |
+| 14 | `fingerprint = off` | Gate gone |
+| 15 | `fingerprint = always` with the reader unavailable | Gate appears, then falls back |
+| 16 | No `omarchy-lock-password` service, then fail the reader | Says there is nothing to fall back on, rather than offering a dead link |
+
+Case 16 needs root and moves a system file; put it back afterwards.
+
+### Counting is per conversation, not per touch
+
+`fprintd` retries roughly three scans inside one PAM conversation before
+reporting failure, and `fingerprint-retries` counts conversations. One is
+therefore about three touches. Getting this wrong once made the fallback take
+ten touches and read as a hang — see [#10].
+
+### A trap when testing the pinentry paths
+
+Reveal, the editor, and the pulldown's OTP hint are gated on gpg-agent already
+holding a key, so they need a test key **with** a passphrase that you unlock
+once. With a passphrase-less key `gpg-connect-agent` never reports anything
+cached, `omapass unlocked` stays false, and those paths look broken when they
+are not.
+
+Everything else works fine against a passphrase-less key, which is otherwise the
+easier fixture — see the safety rules above about never testing against a real
+store.
+
+[#10]: https://github.com/cschaba/omapass/issues/10
 
 ## Verifying the argv claim
 

@@ -6,7 +6,7 @@
 # config — a per-user step by nature.
 
 pkgname=omapass
-pkgver=1.0.0
+pkgver=0.1.0
 pkgrel=1
 pkgdesc="Password manager for Omarchy, backed by the pass CLI"
 arch=('any')

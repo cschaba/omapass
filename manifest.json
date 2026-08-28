@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "omapass",
   "name": "omapass",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "author": "omapass",
   "license": "MIT",
   "description": "Password manager overlay for Omarchy, backed by the pass CLI",

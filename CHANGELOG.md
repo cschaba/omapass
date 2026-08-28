@@ -6,7 +6,7 @@ the CLI surface, or the entry format bump the major.
 
 ## [Unreleased]
 
-## [1.0.0] — 2026-08-28
+## [0.1.0] — 2026-08-28
 
 First release. Under development and largely untested — see the warning at the
 top of the README.
@@ -37,5 +37,5 @@ top of the README.
 - The clipboard is marked sensitive, so Omarchy's clipboard manager will not
   record it, and the selection is dropped after a timeout.
 
-[Unreleased]: https://github.com/cschaba/omapass/compare/v1.0.0...HEAD
-[1.0.0]: https://github.com/cschaba/omapass/releases/tag/v1.0.0
+[Unreleased]: https://github.com/cschaba/omapass/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/cschaba/omapass/releases/tag/v0.1.0

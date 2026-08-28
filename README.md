@@ -80,6 +80,12 @@ cd omapass
 it in the running shell, puts the widget on your bar, and adds a
 `SUPER + SHIFT + K` binding to `~/.config/hypr/bindings.conf`.
 
+It edits two files that belong to you — `~/.config/omarchy/shell.json` and
+`~/.config/hypr/bindings.conf` — and says so before it does. It only ever adds
+or removes its own entries, leaves a `.omapass-backup` copy of each beside the
+original, and refuses to touch a `shell.json` it cannot parse rather than
+rewriting it. `./uninstall.sh` takes the same entries back out.
+
 To use a different hotkey, set it in the config and run the installer again:
 
 ```ini

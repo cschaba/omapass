@@ -11,6 +11,7 @@ LEGACY_ID="omapass"
 PLUGIN_DIR="$HOME/.config/omarchy/plugins/$PLUGIN_ID"
 LEGACY_DIR="$HOME/.config/omarchy/plugins/$LEGACY_ID"
 BINDINGS="$HOME/.config/hypr/bindings.conf"
+SHELL_JSON="$HOME/.config/omarchy/shell.json"
 
 # The hotkey comes from the config file, so changing it is a config edit plus a
 # re-run rather than an argument you have to remember. OMAPASS_KEYBIND still
@@ -20,6 +21,25 @@ KEYBIND="$("$SOURCE_DIR/bin/omapass" config 2>/dev/null |
 KEYBIND="${KEYBIND:-SUPER SHIFT, K}"
 
 say() { echo "  $*"; }
+
+# Everything this script writes outside its own plugin directory, backed up the
+# first time it is touched in a run. install.sh edits two files the user owns —
+# saying so, and leaving a copy, is the difference between "we only change our
+# own entries" being a claim and being checkable.
+backup_once() {
+  local file="$1" stamp
+  [[ -f $file ]] || return 0
+  stamp="${file}.omapass-backup"
+  [[ -e $stamp ]] && return 0
+  cp -p "$file" "$stamp"
+  say "  saved $stamp"
+}
+
+echo "omapass will change two files that belong to you:"
+say "$SHELL_JSON — adds its bar widget and plugin entry"
+say "$BINDINGS — adds the keybinding"
+say "A copy of each is kept alongside it. ./uninstall.sh removes both entries."
+echo
 
 # 0. migrate an install from before the id was namespaced. Without this the old
 # plugin directory stays behind and the shell loads omapass twice — once under
@@ -61,7 +81,8 @@ fi
 # so `omarchy bar put` reports success and adds nothing. Write the layout entry
 # ourselves when it is missing.
 if command -v python3 >/dev/null 2>&1; then
-  python3 - "$HOME/.config/omarchy/shell.json" "$PLUGIN_ID" "$LEGACY_ID" <<'PYEOF'
+  backup_once "$SHELL_JSON"
+  python3 - "$SHELL_JSON" "$PLUGIN_ID" "$LEGACY_ID" <<'PYEOF'
 import json, os, sys, tempfile
 
 path, plugin_id, legacy_id = sys.argv[1], sys.argv[2], sys.argv[3]
@@ -69,8 +90,15 @@ if not os.path.exists(path):
     print(f"  ! no shell.json yet — add the widget with: omarchy bar put {plugin_id}")
     raise SystemExit(0)
 
-with open(path) as f:
-    config = json.load(f)
+try:
+    with open(path) as f:
+        config = json.load(f)
+except (json.JSONDecodeError, OSError) as exc:
+    # Refuse rather than guess: rewriting a file we could not parse is exactly
+    # the way an installer eats somebody's configuration.
+    print(f"  ! could not read {path}: {exc}")
+    print(f"  ! leaving it alone — add the widget yourself with: omarchy bar put {plugin_id}")
+    raise SystemExit(0)
 
 changed = False
 
@@ -115,6 +143,7 @@ fi
 # the binding, not leave the old one behind to conflict with the new one.
 mkdir -p "$(dirname "$BINDINGS")"
 touch "$BINDINGS"
+backup_once "$BINDINGS"
 
 if grep -qE "shell toggle ($PLUGIN_ID|$LEGACY_ID)\\b" "$BINDINGS"; then
   existing=$(grep -m1 -E "shell toggle ($PLUGIN_ID|$LEGACY_ID)\\b" "$BINDINGS")

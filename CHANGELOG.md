@@ -6,6 +6,12 @@ the CLI surface, or the entry format bump the major.
 
 ## [Unreleased]
 
+### Changed
+
+- `install.sh` names the two files it edits before it edits them, keeps a
+  `.omapass-backup` copy of each, and refuses to rewrite a `shell.json` it
+  cannot parse. It only ever adds or removes its own entries. ([#12])
+
 ## [0.1.13] — 2026-08-28
 
 ### Changed

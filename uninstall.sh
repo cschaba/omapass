@@ -108,5 +108,9 @@ say "omapass removed."
 if (( ! PURGE )); then
   [[ -e $CONFIG ]] && say "Its config is still at $CONFIG (--purge removes it)."
 fi
+for backup in "$HOME/.config/omarchy/shell.json.omapass-backup" \
+              "$HOME/.config/hypr/bindings.conf.omapass-backup"; do
+  [[ -f $backup ]] && say "install.sh left a copy of your config at $backup"
+done
 say "Your password store is untouched at ${PASSWORD_STORE_DIR:-$HOME/.password-store}."
 say "It is a plain pass store — the pass command still reads it."

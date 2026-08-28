@@ -1,2 +1,5 @@
 *.swp
 .DS_Store
+
+# Claude Code local state (scheduler locks, session settings)
+.claude/

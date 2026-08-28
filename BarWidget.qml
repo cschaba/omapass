@@ -30,6 +30,10 @@ Panel {
   implicitWidth: button.implicitWidth
   implicitHeight: button.implicitHeight
 
+  readonly property bool fingerprintRequired: pass.fingerprintRequired
+  property bool fingerprintPassed: false
+  readonly property bool vaultLocked: pass.ready && root.fingerprintRequired && !root.fingerprintPassed
+
   readonly property int visibleRows: Math.max(1, setting("rows", 7))
   readonly property int rowHeight: Math.max(Style.space(26), Style.font.body + Style.spacing.controlPaddingY)
 
@@ -45,7 +49,16 @@ Panel {
       root.selectedIndex = 0
       pass.refresh()
       searchField.text = ""
+    } else if (root.fingerprintPassed) {
+      // The pulldown is its own surface, so it keeps its own grace window.
+      graceTimer.restart()
     }
+  }
+
+  Timer {
+    id: graceTimer
+    interval: 120000
+    onTriggered: root.fingerprintPassed = false
   }
 
   function rebuild() {
@@ -83,7 +96,7 @@ Panel {
   }
 
   function activate(action) {
-    if (!root.currentPath) return
+    if (root.vaultLocked || !root.currentPath) return
     var path = root.currentPath
     root.close()
     if (action === "type") pass.typePassword(path)
@@ -149,7 +162,7 @@ Panel {
         TextField {
           id: searchField
           width: parent.width
-          visible: pass.ready
+          visible: pass.ready && !root.vaultLocked
           placeholderText: "Search passwords…"
           foreground: root.foreground
           accent: Color.accent
@@ -195,7 +208,7 @@ Panel {
         ListView {
           id: resultList
           width: parent.width
-          visible: pass.ready && resultModel.count > 0
+          visible: pass.ready && !root.vaultLocked && resultModel.count > 0
           height: visible ? Math.min(resultModel.count, root.visibleRows) * root.rowHeight : 0
           model: resultModel
           clip: true
@@ -261,7 +274,7 @@ Panel {
 
         Text {
           width: parent.width
-          visible: pass.ready && resultModel.count === 0
+          visible: pass.ready && !root.vaultLocked && resultModel.count === 0
           text: pass.entries.length === 0 ? "No passwords in your store yet"
                                           : "No matches"
           color: root.dim
@@ -273,7 +286,7 @@ Panel {
 
         Column {
           width: parent.width
-          visible: !pass.ready
+          visible: !pass.ready && !root.vaultLocked
           spacing: Style.space(6)
 
           Text {
@@ -297,6 +310,22 @@ Panel {
           }
         }
 
+        FingerprintGate {
+          width: parent.width
+          height: visible ? Style.space(110) : 0
+          visible: root.vaultLocked
+          armed: root.opened && root.vaultLocked
+          compact: true
+          foreground: root.foreground
+          accent: Color.accent
+          fontFamily: root.fontFamily
+          onAuthenticated: {
+            root.fingerprintPassed = true
+            root.rebuild()
+            Qt.callLater(function () { searchField.forceActiveFocus() })
+          }
+        }
+
         PanelSeparator { width: parent.width }
 
         // --- footer ---------------------------------------------------------
@@ -308,7 +337,7 @@ Panel {
           Text {
             anchors.left: parent.left
             anchors.verticalCenter: parent.verticalCenter
-            text: pass.ready ? "⏎ copy   ⇧⏎ type" : ""
+            text: root.vaultLocked ? "" : (pass.ready ? "⏎ copy   ⇧⏎ type" : "")
             color: root.dim
             font.family: root.fontFamily
             font.pixelSize: Style.font.caption
@@ -318,7 +347,7 @@ Panel {
             id: manageLabel
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
-            text: pass.ready ? "Manage…" : "Set up…"
+            text: root.vaultLocked ? "" : (pass.ready ? "Manage…" : "Set up…")
             color: manageArea.containsMouse ? Color.accent : root.dim
             font.family: root.fontFamily
             font.pixelSize: Style.font.caption

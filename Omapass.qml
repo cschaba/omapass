@@ -35,6 +35,14 @@ Item {
   readonly property bool ready: pass.ready
   readonly property bool hasOtpSupport: pass.hasOtpSupport
   readonly property bool hasGit: pass.hasGit
+
+  // A fingerprint is enrolled and the PAM service exists, so the vault sits
+  // behind a scan. The grace window keeps a quick reopen from demanding a
+  // second touch; closing the surface does not by itself re-lock.
+  readonly property bool fingerprintRequired: pass.fingerprintRequired
+  property bool fingerprintPassed: false
+  property int fingerprintGraceMs: 120000
+  readonly property bool vaultLocked: root.ready && root.fingerprintRequired && !root.fingerprintPassed
   readonly property var entries: pass.entries
   readonly property bool loading: pass.loading
   readonly property string errorText: pass.errorText
@@ -80,6 +88,7 @@ Item {
     root.filterText = ""
     root.selectedIndex = 0
     root.cursorActive = true
+    graceTimer.stop()
     root.refresh()
     Qt.callLater(function () { keyCatcher.forceActiveFocus() })
   }
@@ -88,6 +97,14 @@ Item {
     root.opened = false
     root.mode = "list"
     root.forgetSecrets()
+    // Re-lock after the grace window rather than immediately: opening the
+    // picker twice in a row should not cost two scans.
+    if (root.fingerprintPassed) graceTimer.restart()
+  }
+
+  function lockVault() {
+    root.fingerprintPassed = false
+    graceTimer.stop()
   }
 
   function dismiss() {
@@ -281,6 +298,12 @@ Item {
   }
 
   Timer {
+    id: graceTimer
+    interval: root.fingerprintGraceMs
+    onTriggered: root.fingerprintPassed = false
+  }
+
+  Timer {
     id: revealTimer
     interval: 15000
     onTriggered: root.revealedPassword = ""
@@ -358,6 +381,12 @@ Item {
             return
           }
 
+          if (root.vaultLocked) {
+            if (event.key === Qt.Key_Escape) { root.dismiss(); event.accepted = true }
+            else event.accepted = true
+            return
+          }
+
           if (!root.ready) {
             if (event.key === Qt.Key_Escape) { root.dismiss(); event.accepted = true }
             else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) { root.launchSetup(); event.accepted = true }
@@ -426,6 +455,23 @@ Item {
 
       // --- setup gate --------------------------------------------------------
 
+      FingerprintGate {
+        anchors.fill: parent
+        anchors.topMargin: card.contentTopInset
+        anchors.rightMargin: card.contentRightInset
+        anchors.bottomMargin: card.contentBottomInset
+        anchors.leftMargin: card.contentLeftInset
+        visible: root.vaultLocked
+        armed: root.opened && root.vaultLocked
+        foreground: root.foreground
+        accent: root.selectedText
+        fontFamily: root.fontFamily
+        onAuthenticated: {
+          root.fingerprintPassed = true
+          Qt.callLater(function () { keyCatcher.forceActiveFocus() })
+        }
+      }
+
       SetupNotice {
         id: setupNotice
         anchors.fill: parent
@@ -451,7 +497,7 @@ Item {
         anchors.bottomMargin: card.contentBottomInset
         anchors.leftMargin: card.contentLeftInset
         spacing: root.contentSpacing
-        visible: root.ready
+        visible: root.ready && !root.vaultLocked
 
         // header: search line
         Item {

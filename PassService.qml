@@ -26,6 +26,7 @@ Item {
   readonly property bool ready: status !== null && status.ready === true
   readonly property bool hasOtpSupport: status !== null && status.otp === true
   readonly property bool hasGit: status !== null && status.git === true
+  readonly property bool fingerprintRequired: status !== null && status.fingerprint === true
   readonly property var requirements: PassStore.setupSteps(status)
 
   signal listReloaded()

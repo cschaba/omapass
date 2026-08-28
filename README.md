@@ -147,6 +147,7 @@ The search field is focused the moment it opens, so just type.
 | `Ctrl+O` | copy the one-time code (needs `pass-otp`) |
 | `Ctrl+Shift+O` | type the one-time code |
 | `Ctrl+Q` | scan a QR code into the selected entry |
+| `Esc` | leave the fingerprint prompt, when one is shown |
 | `Ctrl+R` | reveal the password in the detail pane |
 | `Tab` | unlock the store / load details for the selected entry |
 | `Ctrl+N` | new entry |
@@ -233,6 +234,7 @@ and every call site passes `--` before the name.
 
 ```bash
 bin/omapass status                  # JSON: what is installed and set up
+bin/omapass fingerprint             # JSON: whether fingerprint unlock applies
 bin/omapass list                    # JSON: every entry
 bin/omapass fields github.com/cs    # JSON: everything except the password
 bin/omapass copy github.com/cs
@@ -256,6 +258,46 @@ login: cs@example.com
 url: https://github.com
 otpauth://totp/GitHub:cs?secret=…
 ```
+
+## Fingerprint unlock
+
+If you have a fingerprint enrolled, omapass puts a scan in front of the vault —
+both the overlay and the bar pulldown show a reader prompt instead of your
+entries until you touch it.
+
+It is on automatically when, and only when, both of these are true:
+
+- `/etc/pam.d/omarchy-lock-fingerprint` exists, and
+- `fprintd-list $USER` reports an enrolled finger
+
+That is the same pair Omarchy's own lock screen tests, and it authenticates
+against the same PAM service. Requiring both matters: a reader with nothing
+enrolled would put up a prompt that can never be satisfied.
+
+A successful scan holds for two minutes, so opening the picker twice in a row
+does not cost two touches. Each surface keeps its own window — unlocking the
+pulldown does not unlock the overlay.
+
+### It cannot lock you out
+
+A biometric gate in front of your passwords is only reasonable if it always has
+a way past:
+
+- `Esc` closes the surface at any time.
+- `pass` on the command line is untouched, and so is `bin/omapass`. The gate is
+  in the GUI, not in the store.
+- Creating `~/.config/omapass/no-fingerprint` turns it off. After three failed
+  reads the prompt says so on screen.
+- A failed scan re-arms rather than giving up, because fprintd ends the
+  conversation on a bad read.
+
+This is a second local factor in front of a GUI, not a cryptographic one. Your
+entries are still encrypted to your GPG key and still need its passphrase; the
+fingerprint does not protect anything on disk.
+
+> **Untested.** This machine has no fingerprint reader and no
+> `omarchy-lock-fingerprint` PAM service, so the detection logic was verified in
+> both directions but the scan itself has never run. Treat it as unproven.
 
 ## One-time codes (TOTP)
 

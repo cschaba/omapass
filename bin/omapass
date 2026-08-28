@@ -91,6 +91,20 @@ secret_key_lines() {
   '
 }
 
+# Fingerprint unlock, detected exactly the way Omarchy's own lock screen does:
+# the PAM service has to exist and a finger has to actually be enrolled.
+# Touching a reader that has nothing enrolled would lock the user out of their
+# own vault, so both halves are required.
+fingerprint_available() {
+  [[ -f /etc/pam.d/omarchy-lock-fingerprint ]] || return 1
+  command -v fprintd-list >/dev/null 2>&1 || return 1
+  fprintd-list "$USER" 2>/dev/null | grep -qi finger || return 1
+  # Deliberate opt-out, for a reader that works badly or a user who does not
+  # want the extra step.
+  [[ ! -e ${XDG_CONFIG_HOME:-$HOME/.config}/omapass/no-fingerprint ]] || return 1
+  return 0
+}
+
 cmd_status() {
   local has_pass has_gpg has_wlcopy has_wtype has_jq has_otp=false
   has_pass=$(have pass)
@@ -103,6 +117,9 @@ cmd_status() {
   local keys_raw has_key=false
   keys_raw=$(secret_key_lines)
   [[ -n $keys_raw ]] && has_key=true
+
+  local has_fingerprint=false
+  fingerprint_available && has_fingerprint=true
 
   local has_store=false has_git=false entries=0
   [[ -f $STORE/.gpg-id ]] && has_store=true
@@ -142,8 +159,8 @@ cmd_status() {
     sep=","
   done <<<"$keys_raw"
 
-  printf '{"pass":%s,"otp":%s,"gpg":%s,"key":%s,"store":%s,"git":%s,' \
-    "$has_pass" "$has_otp" "$has_gpg" "$has_key" "$has_store" "$has_git"
+  printf '{"pass":%s,"otp":%s,"gpg":%s,"key":%s,"store":%s,"git":%s,"fingerprint":%s,' \
+    "$has_pass" "$has_otp" "$has_gpg" "$has_key" "$has_store" "$has_git" "$has_fingerprint"
   printf '"entries":%s,"storePath":"%s","keys":[%s],' \
     "$entries" "$(json_escape "$STORE")" "$keys"
   printf '"requirements":[%s],"ready":%s}\n' "$requirements" "$ready"
@@ -497,6 +514,7 @@ omapass — pass(1) backend for the omapass Omarchy plugin
 
   status                     JSON: what is installed and set up
   unlocked                   JSON: whether gpg-agent has a key cached
+  fingerprint                JSON: whether fingerprint unlock is required
   list                       JSON: every entry in the store
   fields <entry>             JSON: non-password fields (never the password)
   reveal <entry>             print the password to stdout
@@ -524,6 +542,7 @@ main() {
 
   case "$cmd" in
   status) cmd_status ;;
+  fingerprint) fingerprint_available && echo '{"fingerprint":true}' || echo '{"fingerprint":false}' ;;
   unlocked) cmd_unlocked ;;
   list) cmd_list ;;
   fields) cmd_fields "${1:?entry required}" ;;

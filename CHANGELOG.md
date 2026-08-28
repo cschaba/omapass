@@ -6,6 +6,13 @@ the CLI surface, or the entry format bump the major.
 
 ## [Unreleased]
 
+### Added
+
+- A real quit. **Quit omapass** on the About screen, or `bin/omapass quit`,
+  disables the plugin: the bar icon goes, the hotkey stops responding, and the
+  shell unloads it. Nothing is uninstalled, and both the confirmation and the
+  command print how to start it again. ([#20])
+
 ## [0.1.18] — 2026-08-28
 
 ### Fixed
@@ -267,3 +274,4 @@ top of the README.
 [0.1.17]: https://github.com/cschaba/omapass/releases/tag/v0.1.17
 [#21]: https://github.com/cschaba/omapass/issues/21
 [0.1.18]: https://github.com/cschaba/omapass/releases/tag/v0.1.18
+[#20]: https://github.com/cschaba/omapass/issues/20

@@ -140,16 +140,34 @@ Your password store and GPG key are never touched. The store is a plain `pass`
 store — the `pass` command carries on reading it whether omapass is installed or
 not.
 
-There are two ways to undo things, and they do opposite halves of the job:
+### Quitting
 
-| | Removes the app | Removes your passwords |
-|---|---|---|
-| `./uninstall.sh` | yes | no |
-| [`omapass-reset`](#starting-over) | no | yes, after backing them up |
+To stop omapass without removing it — the bar icon goes, the hotkey stops doing
+anything, and the shell unloads it:
 
-So `uninstall.sh` if you are done with omapass, and `omapass-reset` if you want
-to keep it but start again with a new key or an empty store. Running both, in
-either order, removes everything.
+```bash
+bin/omapass quit
+```
+
+Or **Quit omapass** on the About screen (`F1`), which asks first. Everything
+stays installed; bring it back with:
+
+```bash
+omarchy plugin enable cschaba.omapass
+```
+
+### Which one do I want?
+
+| | Stops the app | Removes the app | Removes your passwords |
+|---|---|---|---|
+| `bin/omapass quit` | yes | no | no |
+| `./uninstall.sh` | yes | yes | no |
+| [`omapass-reset`](#starting-over) | no | no | yes, after backing them up |
+
+**Quit** to put it away for now. **Uninstall** when you are done with it.
+**Reset** to keep omapass but start over with a new key or an empty store. Your
+password store is a plain `pass` store and survives all three — only reset
+touches it, and only after making a backup.
 
 ### First run
 
@@ -386,6 +404,7 @@ entry on a timer for as long as the panel is open.
 ```bash
 bin/omapass status                  # JSON: what is installed and set up
 bin/omapass fingerprint             # JSON: whether fingerprint unlock applies
+bin/omapass quit                    # stop the plugin; it stays installed
 bin/omapass list                    # JSON: every entry
 bin/omapass fields github.com/cs    # JSON: everything except the password
 bin/omapass copy github.com/cs

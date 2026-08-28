@@ -32,6 +32,10 @@ Item {
 
   function markWelcomed() { run(["welcomed", "--mark"]) }
 
+  // Detached like everything else: the shell is about to unload this plugin,
+  // so nothing here can wait for the result.
+  function quit() { run(["quit"]) }
+
   // The effective configuration, already resolved by bin/omapass — file,
   // environment and defaults folded together. The UI never parses the file.
   readonly property var config: status !== null && status.config ? status.config : ({})

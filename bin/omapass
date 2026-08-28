@@ -62,6 +62,25 @@ log_line() {
   printf '%s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*" >>"$LOG_FILE" 2>/dev/null || true
 }
 
+# Stop the plugin: the bar icon goes, the hotkey stops doing anything, and the
+# shell unloads it. Everything stays installed — this is "quit", not "uninstall"
+# — so a single command brings it all back, and that command is printed because
+# a quit you cannot undo without reading the manual is a trap.
+cmd_quit() {
+  local id
+  id=$(manifest_field id)
+  id="${id:-cschaba.omapass}"
+
+  if command -v omarchy >/dev/null 2>&1 && omarchy plugin disable "$id" >/dev/null 2>&1; then
+    :
+  elif ! omarchy-shell shell setPluginEnabled "$id" false >/dev/null 2>&1; then
+    die "could not stop the plugin — is omarchy-shell running?"
+  fi
+
+  echo "omapass stopped. It is still installed."
+  echo "Start it again with:  omarchy plugin enable $id"
+}
+
 cmd_log() {
   case "${1:-}" in
   --path) printf '%s\n' "$LOG_FILE" ;;
@@ -394,8 +413,9 @@ cmd_status() {
     sep=","
   done <<<"$keys_raw"
 
-  printf '{"version":"%s","name":"%s","homepage":"%s","welcomed":%s,"pass":%s,"otp":%s,"gpg":%s,"key":%s,"store":%s,"git":%s,"fingerprint":%s,"passwordAuth":%s,' \
+  printf '{"version":"%s","id":"%s","name":"%s","homepage":"%s","welcomed":%s,"pass":%s,"otp":%s,"gpg":%s,"key":%s,"store":%s,"git":%s,"fingerprint":%s,"passwordAuth":%s,' \
     "$(json_escape "$(omapass_version)")" \
+    "$(json_escape "$(manifest_field id)")" \
     "$(json_escape "$(manifest_field name)")" \
     "$(json_escape "$(manifest_field homepage)")" \
     "$([[ -e $WELCOME_MARKER ]] && echo true || echo false)" \
@@ -768,6 +788,7 @@ omapass — pass(1) backend for the omapass Omarchy plugin
 
   version                    print the omapass version
   log [--path|--clear]       debug log location, or clear it
+  quit                       stop the plugin; it stays installed
   welcomed [--mark|--reset]  whether the welcome screen has been shown
   status                     JSON: what is installed and set up
   unlocked                   JSON: whether gpg-agent has a key cached
@@ -837,6 +858,7 @@ dispatch() {
   status) cmd_status ;;
   config) cmd_config "${1:-}" ;;
   log) cmd_log "${1:-}" ;;
+  quit) cmd_quit ;;
   fingerprint) fingerprint_available && echo '{"fingerprint":true}' || echo '{"fingerprint":false}' ;;
   unlocked) cmd_unlocked ;;
   list) cmd_list ;;

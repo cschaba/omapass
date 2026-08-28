@@ -550,6 +550,11 @@ Item {
         selectedBackground: root.selectedBackground
         fontFamily: root.fontFamily
         onDismissed: root.dismissAbout()
+        onQuitRequested: {
+          root.dismissAbout()
+          root.dismiss()
+          pass.quit()
+        }
       }
 
       SetupNotice {

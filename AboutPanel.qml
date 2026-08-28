@@ -17,6 +17,13 @@ Item {
   property string fontFamily: Style.font.menuFamily
 
   signal dismissed()
+  signal quitRequested()
+
+  // Quitting takes the bar icon away and makes the hotkey inert, so it asks
+  // first and shows the one command that brings it back. A quit whose undo is
+  // undiscoverable is a trap, not a feature.
+  property bool confirmingQuit: false
+  readonly property string pluginId: service ? service.setting("id", "cschaba.omapass") : "cschaba.omapass"
 
   readonly property string appName: service ? service.setting("name", "omapass") : "omapass"
   readonly property string appVersion: service && service.status ? (service.status.version || "") : ""
@@ -188,6 +195,101 @@ Item {
         hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
         onClicked: root.dismissed()
+      }
+    }
+
+    // Quit
+    Column {
+      width: parent.width
+      spacing: Style.space(4)
+
+      Text {
+        width: parent.width
+        visible: !root.confirmingQuit
+        text: "󰗼  Quit omapass"
+        color: quitArea.containsMouse ? Color.urgent : root.foreground
+        opacity: quitArea.containsMouse ? 1 : 0.6
+        font.family: root.fontFamily
+        font.pixelSize: Style.font.caption
+        horizontalAlignment: Text.AlignHCenter
+
+        MouseArea {
+          id: quitArea
+          anchors.fill: parent
+          anchors.margins: -Style.space(4)
+          hoverEnabled: true
+          cursorShape: Qt.PointingHandCursor
+          onClicked: root.confirmingQuit = true
+        }
+      }
+
+      Column {
+        width: parent.width
+        visible: root.confirmingQuit
+        spacing: Style.space(4)
+
+        Text {
+          width: parent.width
+          text: "Stop omapass? The bar icon and the hotkey stop working."
+          color: root.foreground
+          font.family: root.fontFamily
+          font.pixelSize: Style.font.caption
+          horizontalAlignment: Text.AlignHCenter
+          wrapMode: Text.WordWrap
+        }
+
+        Text {
+          width: parent.width
+          text: "It stays installed. Start it again with:\nomarchy plugin enable " + root.pluginId
+          color: root.foreground
+          opacity: 0.55
+          font.family: Style.font.family
+          font.pixelSize: Style.font.caption
+          horizontalAlignment: Text.AlignHCenter
+          wrapMode: Text.WordWrap
+        }
+
+        Row {
+          anchors.horizontalCenter: parent.horizontalCenter
+          spacing: Style.space(16)
+
+          Text {
+            text: "Cancel"
+            color: cancelArea.containsMouse ? root.accent : root.foreground
+            opacity: cancelArea.containsMouse ? 1 : 0.7
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.caption
+
+            MouseArea {
+              id: cancelArea
+              anchors.fill: parent
+              anchors.margins: -Style.space(5)
+              hoverEnabled: true
+              cursorShape: Qt.PointingHandCursor
+              onClicked: root.confirmingQuit = false
+            }
+          }
+
+          Text {
+            text: "Quit"
+            color: Color.urgent
+            opacity: confirmArea.containsMouse ? 1 : 0.85
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.caption
+
+            MouseArea {
+              id: confirmArea
+              anchors.fill: parent
+              anchors.margins: -Style.space(5)
+              hoverEnabled: true
+              cursorShape: Qt.PointingHandCursor
+              onClicked: {
+                root.confirmingQuit = false
+                root.quitRequested()
+              }
+            }
+          }
+        }
       }
     }
 

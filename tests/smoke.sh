@@ -219,6 +219,10 @@ import json
 m = json.load(open('$ROOT/manifest.json'))
 need = ['schemaVersion','id','name','version','author','description','kinds','entryPoints']
 print(all(m.get(k) for k in need))")" "True"
+check "quit is a real subcommand" \
+  "$(grep -cE '^\s+quit\) cmd_quit' "$ROOT/bin/omapass")" "1"
+check "quit tells you how to come back" \
+  "$(grep -c 'omarchy plugin enable' "$ROOT/bin/omapass")" "1"
 check "uninstall script is executable" \
   "$([[ -x "$ROOT/uninstall.sh" ]] && echo yes || echo no)" "yes"
 check "manifest version is semver" \

@@ -6,6 +6,8 @@ the CLI surface, or the entry format bump the major.
 
 ## [Unreleased]
 
+## [0.1.2] — 2026-08-28
+
 ### Changed
 
 - The default hotkey is `SUPER + SHIFT + K`. `SUPER + CTRL + K` was already
@@ -52,8 +54,9 @@ top of the README.
 - The clipboard is marked sensitive, so Omarchy's clipboard manager will not
   record it, and the selection is dropped after a timeout.
 
-[Unreleased]: https://github.com/cschaba/omapass/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/cschaba/omapass/compare/v0.1.2...HEAD
 [0.1.0]: https://github.com/cschaba/omapass/releases/tag/v0.1.0
 [#2]: https://github.com/cschaba/omapass/issues/2
 [0.1.1]: https://github.com/cschaba/omapass/releases/tag/v0.1.1
 [#4]: https://github.com/cschaba/omapass/issues/4
+[0.1.2]: https://github.com/cschaba/omapass/releases/tag/v0.1.2

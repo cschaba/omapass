@@ -41,6 +41,9 @@ jobs:
       - name: Run the smoke test
         run: ./tests/smoke.sh
 
+      - name: Run the entry round-trip matrix
+        run: ./tests/entries.sh
+
   qml:
     name: qml syntax
     runs-on: ubuntu-latest

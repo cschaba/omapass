@@ -99,6 +99,7 @@ main() {
 
   say "running tests"
   ./tests/smoke.sh >/dev/null 2>&1 || die "tests/smoke.sh failed — not releasing"
+  ./tests/entries.sh >/dev/null 2>&1 || die "tests/entries.sh failed — not releasing"
   say "  tests pass"
 
   local f

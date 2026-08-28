@@ -42,7 +42,9 @@ jobs:
         run: sudo apt-get update -qq && sudo apt-get install -y -qq pass jq
 
       - name: Test before publishing
-        run: ./tests/smoke.sh
+        run: |
+          ./tests/smoke.sh
+          ./tests/entries.sh
 
       - name: Build the package
         id: package

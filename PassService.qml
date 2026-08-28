@@ -62,9 +62,13 @@ Item {
 
   function reload() {
     root.loading = true
-    root.errorText = ""
     listProc.running = true
   }
+
+  // Cleared deliberately, not as a side effect of reloading — a write that
+  // fails asks for a reload, and clearing there wiped the reason before anyone
+  // could read it.
+  function clearError() { root.errorText = "" }
 
   // Only ever called once gpg-agent is warm; see the note on `unlocked`.
   function loadFields(path) {
@@ -146,6 +150,10 @@ Item {
     var args = [root.bin, "insert", payload.path]
     if (payload.generate)
       args = args.concat(["--generate", String(payload.length), payload.symbols ? "yes" : "no"])
+    // Editing replaces on purpose; creating must not. originalPath is set only
+    // when the editor was opened on an entry that already existed — including
+    // after a rename, where the entry now sits at the new path.
+    if (payload.originalPath) args.push("--force")
 
     insertProc.command = args
     insertProc.pendingBody = payload.body
@@ -257,6 +265,15 @@ Item {
     id: insertProc
     property string pendingBody: ""
     property bool generated: false
+    property string failure: ""
+
+    // The helper already explains itself — "github.com/you already exists —
+    // edit it, or choose another name" is far more use than a generic failure,
+    // and inventing a second wording for every case is how the two drift.
+    stderr: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: insertProc.failure = String(text).replace(/^omapass:\s*/, "").trim()
+    }
     // Re-armed by write() before every run; see the note there.
     stdinEnabled: true
     // Write on `started`: the pipe does not exist before the child is up, and
@@ -267,9 +284,13 @@ Item {
       insertProc.stdinEnabled = false
     }
     onExited: function (exitCode) {
-      if (exitCode !== 0)
-        root.errorText = insertProc.generated ? "Could not generate a password"
-                                              : "Could not save that entry"
+      if (exitCode !== 0) {
+        root.errorText = insertProc.failure
+          || (insertProc.generated ? "Could not generate a password"
+                                   : "Could not save that entry")
+      }
+      else root.errorText = ""
+      insertProc.failure = ""
       if (insertProc.generated) root.markUnlockedSoon()
       root.writeFinished(exitCode === 0)
       root.reload()
@@ -279,11 +300,19 @@ Item {
   Process {
     id: renameProc
     property var pendingPayload: null
+    property string failure: ""
+
+    stderr: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: renameProc.failure = String(text).replace(/^omapass:\s*/, "").trim()
+    }
+
     onExited: function (exitCode) {
       var payload = renameProc.pendingPayload
       renameProc.pendingPayload = null
       if (exitCode !== 0) {
-        root.errorText = "Could not rename that entry"
+        root.errorText = renameProc.failure || "Could not rename that entry"
+        renameProc.failure = ""
         root.writeFinished(false)
         root.reload()
         return

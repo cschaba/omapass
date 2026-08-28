@@ -6,6 +6,29 @@ the CLI surface, or the entry format bump the major.
 
 ## [Unreleased]
 
+### Security
+
+- Saving a new entry over an existing name destroyed the old password without a
+  word, and renaming onto an existing name destroyed the target the same way.
+  Both used `pass`'s force flag. Creating now refuses when the name is taken,
+  renaming refuses when the destination is, and only editing replaces. ([#21])
+
+### Fixed
+
+- A refused save reported nothing: the reload that followed cleared the error
+  before it could be read. Errors are now cleared deliberately rather than as a
+  side effect, and the helper's own message is shown instead of a generic one.
+  ([#21])
+- The editor catches a name clash before saving, so it stays open with the name
+  selected rather than closing on a save the store will reject. ([#21])
+
+### Added
+
+- `tests/entries.sh`: a round-trip matrix over the editor's data path — fields
+  present and absent, spaces everywhere, `http`/`https`/`ftp`/`ssh` URLs,
+  none/one/many extra lines, and conflict handling. Runs in CI and before every
+  release. ([#21])
+
 ## [0.1.19] — 2026-08-28
 
 ### Added

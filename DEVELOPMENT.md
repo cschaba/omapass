@@ -164,14 +164,24 @@ setsid|timeout 45 wl-copy --type text/plain --sensitive --foreground
 ## Tests
 
 ```bash
-tests/smoke.sh
+tests/smoke.sh      # the CLI, config, validation and release plumbing
+tests/entries.sh    # what the editor writes, survives, and reads back
 ```
 
-Builds a throwaway GPG home and password store, exercises the CLI against it,
-and cleans up after itself — it never touches a real store. It also checks that
-every subcommand the dispatcher can reach is actually defined, which is not
-paranoia: `unlocked` was dispatched to a function that had been deleted, and
-bash only complains when that branch is taken, so it shipped twice.
+Both build a throwaway GPG home and password store and clean up after
+themselves; neither touches a real store.
+
+`entries.sh` walks the editor's data path without the GUI: `composeBody` builds
+the entry exactly as the editor does, `bin/omapass` writes and reads it, and
+`parseBody` parses it exactly as the editor would. A value that survives all
+three survives the app. It covers fields present and absent, spaces in every
+field, `http`/`https`/`ftp`/`ssh` URLs, none/one/many extra lines, and refusing
+to overwrite on create and rename.
+
+`smoke.sh` additionally checks  that every subcommand the dispatcher can reach is actually
+defined, which is not paranoia: `unlocked` was dispatched to a function that had
+been deleted, and bash only complains when that branch is taken, so it shipped
+twice.
 
 ## Releasing
 

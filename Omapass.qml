@@ -110,6 +110,7 @@ Item {
     root.selectedIndex = 0
     root.cursorActive = true
     graceTimer.stop()
+    pass.clearError()
     root.refresh()
     Qt.callLater(function () { keyCatcher.forceActiveFocus() })
   }

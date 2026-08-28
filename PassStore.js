@@ -138,6 +138,14 @@ function nameProblem(name) {
   return ""
 }
 
+// Case-sensitive, like the filesystem the store lives on.
+function entryExists(entries, name) {
+  if (!entries || !name) return false
+  for (var i = 0; i < entries.length; i++)
+    if (entries[i] && entries[i].path === name) return true
+  return false
+}
+
 function validName(name) {
   return nameProblem(name) === ""
 }

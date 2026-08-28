@@ -701,7 +701,7 @@ gen_password() {
 # the other lines — username, url, otp — intact when you regenerate, which
 # `pass generate` on its own would throw away.
 cmd_insert() {
-  local entry="$1" generate="no" length=24 symbols="yes"
+  local entry="$1" generate="no" length=24 symbols="yes" force="no"
   shift
 
   while [[ $# -gt 0 ]]; do
@@ -712,12 +712,22 @@ cmd_insert() {
       symbols="${3:-yes}"
       shift 3 || shift $#
       ;;
+    # Replacing an entry is only ever right when the caller knows one is there
+    # — editing it. Creating one is not, so the default refuses.
+    --force)
+      force="yes"
+      shift
+      ;;
     *) die "unknown insert option: $1" ;;
     esac
   done
 
   require_pass
   validate_entry "$entry"
+
+  if [[ $force == "no" ]] && entry_exists "$entry"; then
+    die "$entry already exists — edit it, or choose another name"
+  fi
   [[ $length =~ ^[0-9]+$ ]] || die "length must be a number"
 
   local body password rest
@@ -752,7 +762,7 @@ cmd_generate() {
     rest=$(pass show -- "$entry" 2>/dev/null | tail -n +2) || rest=""
   fi
 
-  printf 'placeholder\n%s\n' "$rest" | cmd_insert "$entry" --generate "$length" "$symbols"
+  printf 'placeholder\n%s\n' "$rest" | cmd_insert "$entry" --generate "$length" "$symbols" --force
 }
 
 cmd_rename() {
@@ -760,6 +770,9 @@ cmd_rename() {
   validate_entry "$1"
   validate_entry "$2"
   entry_exists "$1" || die "no such entry: $1"
+  # -f below is what lets pass overwrite; without this check a rename would
+  # quietly destroy whatever was already sitting at the destination.
+  entry_exists "$2" && die "$2 already exists — choose another name"
   pass mv -f -- "$1" "$2" >/dev/null 2>&1 || die "could not rename $1"
   notify "Renamed" "$1 → $2" "󰑕"
 }
@@ -807,8 +820,9 @@ omapass — pass(1) backend for the omapass Omarchy plugin
   otp <entry> [copy|type]    one-time code, via pass-otp
   otp-scan [entry]           read a QR code off the screen; store it in <entry>,
                              or print the otpauth:// URI when given no entry
-  insert <entry> [--generate <len> <yes|no>]
-                             create/replace an entry, body read from stdin
+  insert <entry> [--generate <len> <yes|no>] [--force]
+                             create an entry, body read from stdin; refuses to
+                             replace an existing one unless --force
   generate <entry> [len] [yes|no]   generate a password (symbols yes/no)
   rename <old> <new>
   remove <entry>

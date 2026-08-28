@@ -167,6 +167,15 @@ Item {
       passwordField.forceActiveFocus()
       return
     }
+    // The entry list is already loaded, so a clash can be caught here — the
+    // editor stays open with the name selected instead of closing on a save
+    // that the store is going to refuse anyway.
+    if (root.isNew && root.service && PassStore.entryExists(root.service.entries, name)) {
+      root.loadError = "“" + name + "” already exists — edit it, or pick another name"
+      nameField.forceActiveFocus()
+      nameField.selectAll()
+      return
+    }
     // Rejected here rather than dropped on the way to the store, so a mistyped
     // secret is not silently discarded.
     if (!PassStore.validOtpUri(otpField.text)) {

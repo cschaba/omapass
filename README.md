@@ -41,7 +41,7 @@ The bar pulldown — click the lock, or search straight away:
 And the full manager:
 
 ```
-SUPER + CTRL + K
+SUPER + SHIFT + K
 
  ┌────────────────────────────────────────────────┐
  │ github                              3 of 24    │
@@ -69,12 +69,21 @@ cd omapass
 
 `install.sh` links the plugin into `~/.config/omarchy/plugins/omapass`, enables
 it in the running shell, puts the widget on your bar, and adds a
-`SUPER + CTRL + K` binding to `~/.config/hypr/bindings.conf`. Set
-`OMAPASS_KEYBIND` to choose a different one:
+`SUPER + SHIFT + K` binding to `~/.config/hypr/bindings.conf`.
+
+The hotkey is a config setting, so changing it is an edit plus a re-run — the
+old binding is moved, not duplicated:
+
+```ini
+# ~/.config/omapass/config
+keybind = SUPER ALT, P
+```
 
 ```bash
-OMAPASS_KEYBIND="SUPER, P" ./install.sh
+./install.sh
 ```
+
+`SUPER + CTRL + K` is deliberately not the default: Omarchy already binds it.
 
 If you would rather use Omarchy's own plugin installer:
 
@@ -95,7 +104,7 @@ enabled through `plugins[]` and never writes a layout entry. Add it to
 and the binding:
 
 ```
-bindd = SUPER CTRL, K, Passwords, exec, omarchy-shell shell toggle omapass
+bindd = SUPER SHIFT, K, Passwords, exec, omarchy-shell shell toggle omapass
 ```
 
 To reach it from the Omarchy menu too, add a row to
@@ -364,6 +373,7 @@ fingerprint       = auto                # auto | always | off
 fingerprint-grace = 120                 # seconds a successful scan stays valid
 pulldown-rows     = 7                   # rows in the bar pulldown
 backup-dir        = ~/.local/state/omapass/backups
+keybind           = SUPER SHIFT, K      # re-run ./install.sh after changing
 ```
 
 `key = value`, `#` comments, and `key_name` works as well as `key-name`.

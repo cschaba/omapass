@@ -43,6 +43,7 @@ declare -A CONFIG=(
   [fingerprint]="auto"
   [fingerprint-grace]="120"
   [pulldown-rows]="7"
+  [keybind]="SUPER SHIFT, K"
   [backup-dir]=""
 )
 

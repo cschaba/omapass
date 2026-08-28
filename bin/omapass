@@ -71,8 +71,9 @@ config_json() {
     "$(json_escape "${CONFIG[fingerprint]}")" \
     "$(config_number fingerprint-grace 120)" \
     "$(config_number pulldown-rows 7)"
-  printf '"backupDir":"%s"}' \
-    "$(json_escape "$BACKUP_DIR")"
+  printf '"backupDir":"%s","keybind":"%s"}' \
+    "$(json_escape "$BACKUP_DIR")" \
+    "$(json_escape "${OMAPASS_KEYBIND:-${CONFIG[keybind]}}")"
 }
 
 cmd_config() {
@@ -130,6 +131,13 @@ write_config_template() {
 
 # Where omapass-reset writes its backups.
 # backup-dir = ~/.local/state/omapass/backups
+
+# The hotkey install.sh binds to open the overlay, in Hyprland's own syntax:
+# modifiers, then the key. Re-run ./install.sh after changing it — the old
+# binding is replaced, not duplicated.
+#
+# SUPER + CTRL + K is NOT a good choice: Omarchy already uses it.
+# keybind = SUPER SHIFT, K
 TEMPLATE
   echo "omapass: wrote $CONFIG_FILE"
 }

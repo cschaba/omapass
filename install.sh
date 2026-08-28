@@ -8,7 +8,13 @@ set -euo pipefail
 SOURCE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PLUGIN_DIR="$HOME/.config/omarchy/plugins/omapass"
 BINDINGS="$HOME/.config/hypr/bindings.conf"
-KEYBIND="${OMAPASS_KEYBIND:-SUPER CTRL, K}"
+
+# The hotkey comes from the config file, so changing it is a config edit plus a
+# re-run rather than an argument you have to remember. OMAPASS_KEYBIND still
+# wins, as it does everywhere else.
+KEYBIND="$("$SOURCE_DIR/bin/omapass" config 2>/dev/null |
+  python3 -c 'import json,sys; print(json.load(sys.stdin)["keybind"])' 2>/dev/null)"
+KEYBIND="${KEYBIND:-SUPER SHIFT, K}"
 
 say() { echo "  $*"; }
 
@@ -67,10 +73,29 @@ PYEOF
 fi
 
 # 4. keybinding
-if [[ -f $BINDINGS ]] && grep -q "shell toggle omapass" "$BINDINGS"; then
-  say "✓ keybinding already present in $BINDINGS"
+# Rewrite rather than append: re-running after changing the hotkey should move
+# the binding, not leave the old one behind to conflict with the new one.
+mkdir -p "$(dirname "$BINDINGS")"
+touch "$BINDINGS"
+
+if grep -q "shell toggle omapass" "$BINDINGS"; then
+  existing=$(grep -m1 "shell toggle omapass" "$BINDINGS")
+  if [[ $existing == *"$KEYBIND"* ]]; then
+    say "✓ keybinding already set to ${KEYBIND//,/ +}"
+  else
+    tmp=$(mktemp)
+    grep -v "shell toggle omapass" "$BINDINGS" |
+      grep -v "^# omapass — password manager overlay$" >"$tmp"
+    mv "$tmp" "$BINDINGS"
+    cat >>"$BINDINGS" <<BIND
+
+# omapass — password manager overlay
+bindd = $KEYBIND, Passwords, exec, omarchy-shell shell toggle omapass
+BIND
+    say "✓ moved the keybinding to ${KEYBIND//,/ +}"
+    hyprctl reload >/dev/null 2>&1 || true
+  fi
 else
-  mkdir -p "$(dirname "$BINDINGS")"
   cat >>"$BINDINGS" <<BIND
 
 # omapass — password manager overlay

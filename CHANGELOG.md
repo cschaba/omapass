@@ -6,6 +6,13 @@ the CLI surface, or the entry format bump the major.
 
 ## [Unreleased]
 
+### Changed
+
+- The default hotkey is `SUPER + SHIFT + K`. `SUPER + CTRL + K` was already
+  bound by Omarchy itself, so the old default could never have worked. The
+  hotkey is a `keybind` setting in the config file now, and re-running
+  `install.sh` moves the binding rather than adding a second one. ([#4])
+
 ## [0.1.1] — 2026-08-28
 
 ### Fixed
@@ -49,3 +56,4 @@ top of the README.
 [0.1.0]: https://github.com/cschaba/omapass/releases/tag/v0.1.0
 [#2]: https://github.com/cschaba/omapass/issues/2
 [0.1.1]: https://github.com/cschaba/omapass/releases/tag/v0.1.1
+[#4]: https://github.com/cschaba/omapass/issues/4

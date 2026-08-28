@@ -123,8 +123,9 @@ Item {
 
   // payload: { path, originalPath, body, generate, length, symbols }
   function save(payload) {
-    if (!PassStore.validName(payload.path)) {
-      root.errorText = "Invalid entry name"
+    var problem = PassStore.nameProblem(payload.path)
+    if (problem) {
+      root.errorText = problem
       root.writeFinished(false)
       return
     }

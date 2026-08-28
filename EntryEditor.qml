@@ -153,12 +153,22 @@ Item {
 
   function submit() {
     var name = nameField.text.trim()
-    if (!PassStore.validName(name)) {
-      root.loadError = "Enter a name like github.com/you"
+    var problem = PassStore.nameProblem(name)
+    if (problem) {
+      root.loadError = problem
+      nameField.forceActiveFocus()
       return
     }
     if (!root.generate && !passwordField.text) {
       root.loadError = "Enter a password, or switch on Generate"
+      passwordField.forceActiveFocus()
+      return
+    }
+    // Rejected here rather than dropped on the way to the store, so a mistyped
+    // secret is not silently discarded.
+    if (!PassStore.validOtpUri(otpField.text)) {
+      root.loadError = "OTP must be an otpauth:// URI, or empty"
+      otpField.forceActiveFocus()
       return
     }
 

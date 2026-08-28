@@ -6,6 +6,25 @@ the CLI surface, or the entry format bump the major.
 
 ## [Unreleased]
 
+### Security
+
+- Entry names could put files where they did not belong. A name beginning with a
+  dot was accepted, so `.git/hooks/pre-commit` wrote inside the store's own git
+  repository, and control characters produced entries that could not be referred
+  to again. Names are now checked for dot-prefixed parts, control characters,
+  empty folders and trailing space or dot. ([#17])
+- A newline pasted into any editor field was written straight into the entry. A
+  `pass` entry is line-oriented, so a newline in the username box became a new
+  line in the file — enough to attach an unwanted `otpauth://` secret without it
+  appearing in the field it was pasted into. Field values are now stripped of
+  newlines and control characters, and the OTP box only accepts an `otpauth://`
+  URI. ([#17])
+
+### Changed
+
+- The editor says why a name is rejected instead of showing one generic
+  message. ([#17])
+
 ## [0.1.15] — 2026-08-28
 
 ### Fixed
@@ -214,3 +233,4 @@ top of the README.
 [0.1.14]: https://github.com/cschaba/omapass/releases/tag/v0.1.14
 [#16]: https://github.com/cschaba/omapass/issues/16
 [0.1.15]: https://github.com/cschaba/omapass/releases/tag/v0.1.15
+[#17]: https://github.com/cschaba/omapass/issues/17

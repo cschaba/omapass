@@ -111,15 +111,35 @@ function guidedSetupHelps(status) {
   return missingRequirements(status).length > 0
 }
 
-// A name is valid if pass can store it: relative, no traversal, no newline.
+// Why a name cannot be stored, or "" when it can. The same rules bin/omapass
+// enforces — it is the boundary that matters, this is so the editor can say
+// what is wrong before asking the user to press save again.
+//
+// Note what is *not* rejected: "/" separates folders and is the whole point,
+// and "$" and other punctuation are ordinary characters here. Nothing omapass
+// runs goes through a shell, so shell metacharacters carry no meaning.
+function nameProblem(name) {
+  var value = String(name === undefined || name === null ? "" : name).trim()
+  if (!value) return "Enter a name, like github.com/you"
+  if (value.charAt(0) === "/") return "Name must be relative — drop the leading /"
+  if (value.charAt(0) === "-") return "Name may not start with -"
+  if (value.indexOf("..") !== -1) return "Name may not contain .."
+  if (/[\u0000-\u001f\u007f]/.test(value)) return "Name may not contain control characters"
+
+  var parts = value.split("/")
+  for (var i = 0; i < parts.length; i++) {
+    var part = parts[i]
+    if (!part) return "Name has an empty folder — check the slashes"
+    if (part.charAt(0) === ".") return "Folders and names may not start with a dot"
+    if (/[\s.]$/.test(part)) return "Name may not end with a space or dot"
+    // Bytes, not characters: this becomes a filename.
+    if (unescape(encodeURIComponent(part)).length > 255) return "Name is too long"
+  }
+  return ""
+}
+
 function validName(name) {
-  if (!name) return false
-  var trimmed = String(name).trim()
-  if (!trimmed) return false
-  if (trimmed.charAt(0) === "/") return false
-  if (trimmed.indexOf("..") !== -1) return false
-  if (trimmed.indexOf("\n") !== -1) return false
-  return true
+  return nameProblem(name) === ""
 }
 
 // Splits a decrypted entry into the parts the editor shows. Everything that is
@@ -158,18 +178,50 @@ function parseBody(raw) {
   return out
 }
 
+// A pass entry is a line-oriented format, so a newline inside a field value is
+// not data — it is a new line in the file. Pasting one into the username field
+// could silently attach an attacker's otpauth:// secret, or overwrite another
+// field. Everything the editor writes goes through here first.
+//
+// Control characters go too: they are invisible when the entry is read back,
+// which makes them the wrong thing to store either way.
+function sanitizeValue(value) {
+  return String(value === undefined || value === null ? "" : value)
+    .replace(/[\u0000-\u001f\u007f]+/g, " ")
+    .trim()
+}
+
+// Field keys additionally cannot contain the separator, or reading the entry
+// back would split them in the wrong place.
+function sanitizeKey(key) {
+  return sanitizeValue(key).replace(/[:=]/g, "").trim()
+}
+
+// Accepted only when it is what it claims to be. `pass otp` is handed this
+// verbatim, and a line that merely looks like a field would be stored as one.
+function validOtpUri(uri) {
+  var value = sanitizeValue(uri)
+  if (!value) return true
+  return /^otpauth:\/\/[a-z]+\/\S*$/i.test(value)
+}
+
 // Turns the editor's field rows back into the body pass stores: password on
 // line one, "key: value" after it.
 function composeBody(password, fields, otpUri) {
-  var lines = [password || ""]
+  // The password keeps its own line and is never sanitized beyond newlines:
+  // punctuation is exactly what a good password is made of.
+  var lines = [sanitizeValue(password).length ? String(password).replace(/[\r\n]+/g, "") : ""]
+
   for (var i = 0; i < (fields || []).length; i++) {
     var f = fields[i]
-    if (!f || !f.key) continue
-    var key = String(f.key).trim()
-    var value = String(f.value === undefined ? "" : f.value).trim()
+    if (!f) continue
+    var key = sanitizeKey(f.key)
+    var value = sanitizeValue(f.value)
     if (!key || !value) continue
     lines.push(key + ": " + value)
   }
-  if (otpUri) lines.push(otpUri)
+
+  var otp = sanitizeValue(otpUri)
+  if (otp && validOtpUri(otp)) lines.push(otp)
   return lines.join("\n") + "\n"
 }

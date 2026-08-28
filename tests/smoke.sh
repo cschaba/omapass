@@ -101,6 +101,20 @@ check "rejects path traversal" \
   "$("$OMAPASS" reveal ../escape 2>&1 | grep -c "may not contain")" "1"
 check "rejects an absolute path" \
   "$("$OMAPASS" reveal /etc/passwd 2>&1 | grep -c "must be relative")" "1"
+check "rejects writing into the store's .git" \
+  "$("$OMAPASS" reveal ".git/hooks/pre-commit" 2>&1 | grep -c "may not start with")" "1"
+check "rejects a dotfile entry" \
+  "$("$OMAPASS" reveal ".gpg-id" 2>&1 | grep -c "may not start with")" "1"
+check "rejects a control character in a name" \
+  "$("$OMAPASS" reveal "$(printf 'tab\there')" 2>&1 | grep -c "control characters")" "1"
+check "rejects an empty path segment" \
+  "$("$OMAPASS" reveal "a//b" 2>&1 | grep -c "empty path segment")" "1"
+check "rejects a trailing dot" \
+  "$("$OMAPASS" reveal "trailing." 2>&1 | grep -c "space or dot")" "1"
+check "still accepts folders" \
+  "$("$OMAPASS" reveal "github.com/nobody" 2>&1 | grep -c "no such entry")" "1"
+check "still accepts a dollar sign" \
+  "$("$OMAPASS" reveal 'dollar$sign' 2>&1 | grep -c "no such entry")" "1"
 check "rejects an over-long name segment" \
   "$("$OMAPASS" reveal "$(printf 'a%.0s' $(seq 1 300))" 2>&1 | grep -c "too long")" "1"
 check "accepts a 255-byte segment" \
@@ -121,6 +135,33 @@ check "fingerprint-retries has a default" \
   "$("$OMAPASS" config 2>/dev/null | python3 -c 'import sys,json;print(json.load(sys.stdin)["fingerprintRetries"])')" "1"
 check "environment beats the file" \
   "$(OMAPASS_CLIP_TIME=99 "$OMAPASS" config 2>/dev/null | python3 -c 'import sys,json;print(json.load(sys.stdin)["clipTime"])')" "99"
+echo
+
+echo "field sanitation"
+if command -v node >/dev/null 2>&1; then
+  js_check() {
+    local label="$1" expr="$2" want="$3"
+    check "$label" "$(node -e "
+      let src = require('fs').readFileSync('$ROOT/PassStore.js','utf8').replace('.pragma library','');
+      eval(src);
+      // String(): node colourises bare numbers and booleans, which the
+      // comparison below would then never match.
+      process.stdout.write(String($expr));
+    " 2>/dev/null)" "$want"
+  }
+  js_check "a newline cannot inject a line" \
+    "composeBody('pw',[{key:'login',value:'bob\notpauth://totp/EVIL'}],'').trim().split('\n').length" "2"
+  js_check "a bogus otp value is dropped" \
+    "composeBody('pw',[],'not-a-uri').trim().split('\n').length" "1"
+  js_check "password punctuation survives" \
+    "JSON.stringify(composeBody('a\$b#c',[],'').split('\n')[0])" '"a$b#c"'
+  js_check "dotted folder rejected" \
+    "nameProblem('.git/x') !== ''" "true"
+  js_check "ordinary folder accepted" \
+    "nameProblem('github.com/me') === ''" "true"
+else
+  ok "node unavailable — skipped the PassStore.js checks"
+fi
 echo
 
 echo "release plumbing"

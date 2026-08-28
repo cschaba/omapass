@@ -39,7 +39,9 @@ validate_entry() {
   [[ -n $entry ]] || die "empty entry name"
   [[ $entry != /* ]] || die "entry must be relative: $entry"
   [[ $entry != *..* ]] || die "entry may not contain '..': $entry"
-  [[ $entry != *$'\n'* ]] || die "entry may not contain newlines"
+  # Any control character, not just newline: a tab or carriage return in a name
+  # produces a file nobody can refer to again.
+  LC_ALL=C grep -q '[[:cntrl:]]' <<<"$entry" && die "entry may not contain control characters"
   # A leading dash makes pass read the name as an option. The read paths happen
   # to be covered by the file-existence check, but insert/generate/mv have no
   # such guard, so reject it here and terminate options at every call site too.
@@ -50,7 +52,19 @@ validate_entry() {
   # error nobody can connect back to the name they typed. (#9)
   local component
   while IFS= read -r component; do
-    [[ -n $component ]] || continue
+    # An empty segment means a doubled or trailing slash: "a//b", "a/".
+    [[ -n $component ]] || die "entry name has an empty path segment: $entry"
+
+    # A leading dot would put the entry among the store's own dotfiles — and
+    # ".git/..." writes inside the store's git repository, which is nobody's
+    # idea of a password. This also covers "." and ".." on its own.
+    [[ $component != .* ]] || die "entry name may not start with '.': $component"
+
+    # Trailing space or dot round-trips badly across filesystems and is
+    # invisible when reading the name back.
+    [[ $component != *[[:space:]] && $component != *. ]] \
+      || die "entry name may not end with a space or dot: $component"
+
     if [[ $(printf '%s' "$component" | wc -c) -gt 255 ]]; then
       die "entry name segment is too long (255 bytes max): ${component:0:40}…"
     fi
@@ -524,6 +538,7 @@ scan_otp_uri() {
 
   [[ -n $uri ]] || die "no QR code found in that region"
   [[ $uri == otpauth://* ]] || die "that QR code is not an otpauth:// URI"
+  LC_ALL=C grep -q '[[:cntrl:]]' <<<"$uri" && die "that QR code contains control characters"
 
   printf '%s' "$uri"
 }

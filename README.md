@@ -407,11 +407,26 @@ None of this defends against someone who is already running code as you. It
 defends against the ordinary ways a password leaks sideways: clipboard history,
 process listings, and a long-lived GUI process holding your vault in memory.
 
-### Entry names
+### Entry names and fields
 
-Names may not start with `-`, contain `..`, or begin with `/`. Each part of the
-path is limited to 255 characters, because it becomes a file on disk. Anything
-else is fine, including spaces and folders.
+An entry name becomes a path inside your store, so it is checked before anything
+is written. Rejected: a leading `/` or `-`, `..`, a control character, an empty
+folder (`a//b`), any part starting with `.`, a part ending in a space or dot, and
+anything over 255 bytes per part.
+
+The dot rule matters more than it looks: without it an entry called
+`.git/hooks/pre-commit` would write inside your store's own git repository.
+
+Slashes and punctuation are **not** filtered. `/` is how `pass` makes folders,
+and `$`, `&` and the rest are ordinary characters in a password — omapass never
+passes anything through a shell, so shell metacharacters have no meaning here.
+
+Field values are stripped of newlines and control characters before an entry is
+written. A `pass` entry is a line-oriented format, so a newline pasted into the
+username box would otherwise become a *new line in the file* — enough to attach
+an unwanted `otpauth://` secret to your entry without it showing in the field
+you pasted into. The OTP box accepts an `otpauth://` URI or nothing, and says so
+rather than quietly dropping what you typed.
 
 ## Starting over
 

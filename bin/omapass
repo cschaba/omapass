@@ -1,0 +1,436 @@
+#!/bin/bash
+
+# omapass — pass(1) backend for the omapass Omarchy shell plugin.
+#
+# The shell plugin never handles a decrypted password itself: every action that
+# touches a secret happens in here, and the secret goes straight from gpg to the
+# clipboard or to wtype. The only exception is `reveal`, which the user has to
+# ask for explicitly.
+#
+# Secrets are passed between functions in bash variables, never in argv, so they
+# never appear in /proc/*/cmdline.
+
+set -euo pipefail
+
+STORE="${PASSWORD_STORE_DIR:-$HOME/.password-store}"
+CLIP_TIME="${OMAPASS_CLIP_TIME:-45}"
+TYPE_DELAY="${OMAPASS_TYPE_DELAY:-12}"
+
+die() {
+  echo "omapass: $*" >&2
+  exit 1
+}
+
+notify() {
+  local title="$1" body="${2:-}" glyph="${3:-󰌾}"
+  command -v omarchy-notification-send >/dev/null 2>&1 || return 0
+  omarchy-notification-send --app-name omapass -g "$glyph" -t 3000 "$title" "$body" >/dev/null 2>&1 || true
+}
+
+require_pass() {
+  command -v pass >/dev/null 2>&1 || die "pass is not installed"
+  [[ -d $STORE ]] || die "no password store at $STORE"
+}
+
+# Reject anything that could climb out of the store or hit a shell.
+validate_entry() {
+  local entry="$1"
+  [[ -n $entry ]] || die "empty entry name"
+  [[ $entry != /* ]] || die "entry must be relative: $entry"
+  [[ $entry != *..* ]] || die "entry may not contain '..': $entry"
+  [[ $entry != *$'\n'* ]] || die "entry may not contain newlines"
+}
+
+entry_exists() {
+  [[ -f "$STORE/$1.gpg" ]]
+}
+
+# --- JSON helpers -----------------------------------------------------------
+# jq is a hard dependency of the Omarchy shell already (capture.sh uses it).
+
+json_str() { jq -Rn --arg s "$1" '$s'; }
+
+# --- status -----------------------------------------------------------------
+
+cmd_status() {
+  local has_pass=false has_otp=false has_gpg=false has_store=false has_git=false
+  local entries=0 keys='[]'
+
+  command -v pass >/dev/null 2>&1 && has_pass=true
+  command -v gpg >/dev/null 2>&1 && has_gpg=true
+  [[ -f $STORE/.gpg-id ]] && has_store=true
+  [[ -d $STORE/.git ]] && has_git=true
+  $has_pass && pass otp --help >/dev/null 2>&1 && has_otp=true
+
+  if $has_store; then
+    entries=$(find "$STORE" -name '*.gpg' -type f -not -path '*/.git/*' 2>/dev/null | wc -l)
+  fi
+
+  if $has_gpg; then
+    keys=$(gpg --list-secret-keys --with-colons 2>/dev/null | awk -F: '
+      $1 == "sec" { fpr = ""; uid = "" }
+      $1 == "fpr" && fpr == "" { fpr = $10 }
+      $1 == "uid" && uid == "" && fpr != "" { uid = $10; print fpr "\t" uid; fpr = "" }
+    ' | jq -Rn '[inputs | split("\t") | {id: .[0], uid: .[1]}]')
+    [[ -n $keys ]] || keys='[]'
+  fi
+
+  jq -n \
+    --argjson pass "$has_pass" \
+    --argjson otp "$has_otp" \
+    --argjson gpg "$has_gpg" \
+    --argjson store "$has_store" \
+    --argjson git "$has_git" \
+    --argjson entries "$entries" \
+    --argjson keys "$keys" \
+    --arg storePath "$STORE" \
+    '{pass: $pass, otp: $otp, gpg: $gpg, store: $store, git: $git,
+      entries: $entries, keys: $keys, storePath: $storePath,
+      ready: ($pass and $gpg and $store)}'
+}
+
+# Whether gpg-agent still has a key cached, i.e. whether decrypting right now
+# would pop a pinentry prompt. Best-effort: false is always the safe answer.
+cmd_unlocked() {
+  local cached=false out
+  out=$(gpg-connect-agent 'keyinfo --list' /bye 2>/dev/null) || true
+  if awk '$1 == "S" && $2 == "KEYINFO" && $7 == "1" { found = 1 } END { exit !found }' <<<"$out"; then
+    cached=true
+  fi
+  jq -n --argjson unlocked "$cached" '{unlocked: $unlocked}'
+}
+
+# --- list -------------------------------------------------------------------
+
+cmd_list() {
+  require_pass
+  find "$STORE" -name '*.gpg' -type f -not -path '*/.git/*' -printf '%P\n' 2>/dev/null |
+    sed 's/\.gpg$//' |
+    LC_ALL=C sort |
+    jq -Rn '[inputs | select(length > 0) | {
+      path: .,
+      name: (split("/") | last),
+      folder: (if (index("/")) then (split("/")[:-1] | join("/")) else "" end)
+    }]'
+}
+
+# --- decrypt ----------------------------------------------------------------
+
+# Echoes the full decrypted entry. Callers must keep it in a variable.
+decrypt() {
+  local entry="$1"
+  validate_entry "$entry"
+  entry_exists "$entry" || die "no such entry: $entry"
+  pass show "$entry" 2>/dev/null || die "could not decrypt $entry"
+}
+
+# Everything after the first line, as key: value pairs. The password line is
+# dropped before anything is printed, so it cannot leak into the shell process.
+cmd_fields() {
+  local entry="$1" body rest
+  body=$(decrypt "$entry")
+  rest=$(printf '%s\n' "$body" | tail -n +2)
+
+  local has_otp=false
+  printf '%s\n' "$rest" | grep -qi '^otpauth://' && has_otp=true
+
+  printf '%s\n' "$rest" |
+    grep -v -i '^otpauth://' |
+    jq -Rn --argjson otp "$has_otp" '
+      [inputs
+       | select(test("^[A-Za-z0-9 _-]+[:=]"))
+       | capture("^(?<key>[^:=]+)[:=]\\s*(?<value>.*)$")
+       | {key: (.key | ascii_downcase | sub("^\\s+";"") | sub("\\s+$";"")), value: .value}
+       | select(.value != "")]
+      | {fields: ., otp: $otp}'
+}
+
+# The password only. Deliberately separate from `fields` so a caller has to opt in.
+cmd_reveal() {
+  local body
+  body=$(decrypt "$1")
+  printf '%s\n' "${body%%$'\n'*}"
+}
+
+# --- secret extraction ------------------------------------------------------
+
+# Pulls one value out of a decrypted entry. field="" means the password.
+# The key is compared literally rather than as a regex, so a field name is
+# never able to act as a pattern.
+extract() {
+  local body="$1" field="${2:-}"
+  if [[ -z $field ]]; then
+    printf '%s\n' "${body%%$'\n'*}"
+    return
+  fi
+  printf '%s\n' "$body" | tail -n +2 | awk -v want="$field" '
+    BEGIN { want = tolower(want) }
+    {
+      sep = index($0, ":")
+      eq = index($0, "=")
+      if (sep == 0 || (eq > 0 && eq < sep)) sep = eq
+      if (sep == 0) next
+      key = substr($0, 1, sep - 1)
+      gsub(/^[ \t]+|[ \t]+$/, "", key)
+      if (tolower(key) != want) next
+      value = substr($0, sep + 1)
+      sub(/^[ \t]+/, "", value)
+      print value
+      exit
+    }'
+}
+
+# The first field that exists, from a list of candidates. Used so "username"
+# works whether the entry calls it login, user, username, or email.
+extract_user() {
+  local body="$1" value=""
+  local candidate
+  for candidate in login username user email account; do
+    value=$(extract "$body" "$candidate")
+    [[ -n $value ]] && { printf '%s\n' "$value"; return; }
+  done
+  return 1
+}
+
+# --- clipboard --------------------------------------------------------------
+
+# Copies with the sensitive hint set, so Omarchy's own clipboard manager (and
+# any other well-behaved one) refuses to record it — capture.sh bails out on
+# x-kde-passwordManagerHint. The offer is served by a detached wl-copy that
+# `timeout` kills after CLIP_TIME, which drops the selection entirely rather
+# than leaving a cleared-but-remembered entry behind.
+copy_secret() {
+  local secret="$1" label="${2:-Password}"
+  [[ -n $secret ]] || die "nothing to copy"
+  command -v wl-copy >/dev/null 2>&1 || die "wl-copy is not installed"
+
+  printf '%s' "$secret" |
+    setsid timeout "$CLIP_TIME" wl-copy --type text/plain --sensitive --foreground \
+      >/dev/null 2>&1 &
+  disown
+
+  notify "$label copied" "Clipboard clears in ${CLIP_TIME}s"
+}
+
+# --- typing -----------------------------------------------------------------
+
+type_secret() {
+  local secret="$1"
+  [[ -n $secret ]] || die "nothing to type"
+  command -v wtype >/dev/null 2>&1 || die "wtype is not installed"
+  # The overlay only closes as we start, so wait for focus to land back on the
+  # window the user actually wants typed into.
+  sleep "${OMAPASS_TYPE_FOCUS_DELAY:-0.2}"
+  # --  stops wtype parsing a secret that starts with a dash as a flag.
+  printf '%s' "$secret" | wtype -d "$TYPE_DELAY" -- -
+}
+
+# --- commands that touch secrets -------------------------------------------
+
+cmd_copy() {
+  local entry="$1" field="${2:-}" body secret
+  body=$(decrypt "$entry")
+  secret=$(extract "$body" "$field")
+  copy_secret "$secret" "${field:-Password}"
+}
+
+cmd_copy_user() {
+  local body secret
+  body=$(decrypt "$1")
+  secret=$(extract_user "$body") || die "no username field in $1"
+  copy_secret "$secret" "Username"
+}
+
+cmd_type() {
+  local entry="$1" field="${2:-}" body secret
+  body=$(decrypt "$entry")
+  secret=$(extract "$body" "$field")
+  type_secret "$secret"
+}
+
+cmd_type_user() {
+  local body secret
+  body=$(decrypt "$1")
+  secret=$(extract_user "$body") || die "no username field in $1"
+  type_secret "$secret"
+}
+
+# username <Tab> password <Enter> — the usual "fill this login form" macro.
+cmd_login() {
+  local body user secret
+  body=$(decrypt "$1")
+  user=$(extract_user "$body") || die "no username field in $1"
+  secret=$(extract "$body" "")
+  type_secret "$user"
+  wtype -k Tab
+  type_secret "$secret"
+  wtype -k Return
+}
+
+cmd_otp() {
+  local entry="$1" action="${2:-copy}" code
+  validate_entry "$entry"
+  pass otp --help >/dev/null 2>&1 || die "pass-otp is not installed"
+  code=$(pass otp "$entry" 2>/dev/null) || die "no OTP in $entry"
+  case "$action" in
+  copy) copy_secret "$code" "One-time code" ;;
+  type) type_secret "$code" ;;
+  *) die "unknown otp action: $action" ;;
+  esac
+}
+
+# --- mutations --------------------------------------------------------------
+
+# Same character set pass(1) generates from, so entries made here and entries
+# made with `pass generate` are indistinguishable.
+gen_password() {
+  local length="$1" symbols="$2" charset='[:alnum:]' out=""
+  [[ $symbols == "no" ]] || charset='[:punct:][:alnum:]'
+  # Oversample, because most random bytes fall outside the character set. The
+  # loop covers the unlucky draw where one pass still comes up short.
+  while [[ ${#out} -lt $length ]]; do
+    out+=$(LC_ALL=C head -c $((length * 8)) /dev/urandom | tr -dc "$charset")
+  done
+  printf '%s' "${out:0:length}"
+}
+
+# Reads the whole entry body (password on line 1, fields after) from stdin, so
+# the password never lands in argv.
+#
+# With --generate, line 1 of the body is discarded and replaced with a fresh
+# password. Going through the same write path as a normal save is what keeps
+# the other lines — username, url, otp — intact when you regenerate, which
+# `pass generate` on its own would throw away.
+cmd_insert() {
+  local entry="$1" generate="no" length=24 symbols="yes"
+  shift
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+    --generate)
+      generate="yes"
+      length="${2:-24}"
+      symbols="${3:-yes}"
+      shift 3 || shift $#
+      ;;
+    *) die "unknown insert option: $1" ;;
+    esac
+  done
+
+  require_pass
+  validate_entry "$entry"
+  [[ $length =~ ^[0-9]+$ ]] || die "length must be a number"
+
+  local body password rest
+  body=$(cat)
+
+  if [[ $generate == "yes" ]]; then
+    password=$(gen_password "$length" "$symbols")
+    [[ ${#password} -eq $length ]] || die "could not generate a password"
+    rest=$(printf '%s\n' "$body" | tail -n +2)
+    body=$(printf '%s\n%s' "$password" "$rest")
+  fi
+
+  printf '%s\n' "$body" | pass insert -m -f "$entry" >/dev/null
+
+  if [[ $generate == "yes" ]]; then
+    notify "Generated" "$entry" "󰌆"
+    copy_secret "$password" "Password"
+  else
+    notify "Saved" "$entry" "󰆓"
+  fi
+}
+
+# Convenience wrapper for the command line; the overlay uses `insert --generate`
+# so that it can carry the other fields through in the same write.
+cmd_generate() {
+  local entry="$1" length="${2:-24}" symbols="${3:-yes}" rest=""
+  require_pass
+  validate_entry "$entry"
+
+  # Keep whatever else the entry already held.
+  if entry_exists "$entry"; then
+    rest=$(pass show "$entry" 2>/dev/null | tail -n +2) || rest=""
+  fi
+
+  printf 'placeholder\n%s\n' "$rest" | cmd_insert "$entry" --generate "$length" "$symbols"
+}
+
+cmd_rename() {
+  require_pass
+  validate_entry "$1"
+  validate_entry "$2"
+  entry_exists "$1" || die "no such entry: $1"
+  pass mv -f "$1" "$2" >/dev/null 2>&1 || die "could not rename $1"
+  notify "Renamed" "$1 → $2" "󰑕"
+}
+
+cmd_remove() {
+  require_pass
+  validate_entry "$1"
+  entry_exists "$1" || die "no such entry: $1"
+  pass rm -r -f "$1" >/dev/null 2>&1 || die "could not remove $1"
+  notify "Deleted" "$1" "󰩹"
+}
+
+cmd_sync() {
+  require_pass
+  [[ -d $STORE/.git ]] || die "password store is not a git repository"
+  pass git pull --rebase --quiet 2>/dev/null || die "pull failed"
+  pass git push --quiet 2>/dev/null || die "push failed"
+  notify "Store synced" "" "󰊢"
+}
+
+# --- entry point ------------------------------------------------------------
+
+usage() {
+  cat <<'USAGE'
+omapass — pass(1) backend for the omapass Omarchy plugin
+
+  status                     JSON: what is installed and set up
+  unlocked                   JSON: whether gpg-agent has a key cached
+  list                       JSON: every entry in the store
+  fields <entry>             JSON: non-password fields (never the password)
+  reveal <entry>             print the password to stdout
+  copy <entry> [field]       copy password (or field) to the clipboard
+  copy-user <entry>          copy the username field
+  type <entry> [field]       type password (or field) into the focused window
+  type-user <entry>          type the username field
+  login <entry>              type username, Tab, password, Enter
+  otp <entry> [copy|type]    one-time code, via pass-otp
+  insert <entry> [--generate <len> <yes|no>]
+                             create/replace an entry, body read from stdin
+  generate <entry> [len] [yes|no]   generate a password (symbols yes/no)
+  rename <old> <new>
+  remove <entry>
+  sync                       git pull --rebase && git push
+USAGE
+}
+
+main() {
+  local cmd="${1:-}"
+  [[ $# -gt 0 ]] && shift || true
+
+  case "$cmd" in
+  status) cmd_status ;;
+  unlocked) cmd_unlocked ;;
+  list) cmd_list ;;
+  fields) cmd_fields "${1:?entry required}" ;;
+  reveal) cmd_reveal "${1:?entry required}" ;;
+  copy) cmd_copy "${1:?entry required}" "${2:-}" ;;
+  copy-user) cmd_copy_user "${1:?entry required}" ;;
+  type) cmd_type "${1:?entry required}" "${2:-}" ;;
+  type-user) cmd_type_user "${1:?entry required}" ;;
+  login) cmd_login "${1:?entry required}" ;;
+  otp) cmd_otp "${1:?entry required}" "${2:-copy}" ;;
+  insert) cmd_insert "${1:?entry required}" "${@:2}" ;;
+  generate) cmd_generate "${1:?entry required}" "${2:-24}" "${3:-yes}" ;;
+  rename) cmd_rename "${1:?old required}" "${2:?new required}" ;;
+  remove) cmd_remove "${1:?entry required}" ;;
+  sync) cmd_sync ;;
+  -h | --help | help | "") usage ;;
+  *) die "unknown command: $cmd" ;;
+  esac
+}
+
+main "$@"

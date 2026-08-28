@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "id": "omapass",
+  "name": "omapass",
+  "version": "1.0.0",
+  "author": "omapass",
+  "license": "MIT",
+  "description": "Password manager overlay for Omarchy, backed by the pass CLI",
+  "kinds": [
+    "overlay"
+  ],
+  "keepLoaded": true,
+  "entryPoints": {
+    "overlay": "Omapass.qml"
+  }
+}

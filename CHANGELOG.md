@@ -6,6 +6,12 @@ the CLI surface, or the entry format bump the major.
 
 ## [Unreleased]
 
+### Added
+
+- A welcome screen on first run, showing the version, what the three keys worth
+  knowing do, and a link to the project. The same panel is the About screen
+  afterwards, on `F1`. ([#14])
+
 ## [0.1.10] — 2026-08-28
 
 ### Changed
@@ -154,3 +160,4 @@ top of the README.
 [0.1.9]: https://github.com/cschaba/omapass/releases/tag/v0.1.9
 [#13]: https://github.com/cschaba/omapass/issues/13
 [0.1.10]: https://github.com/cschaba/omapass/releases/tag/v0.1.10
+[#14]: https://github.com/cschaba/omapass/issues/14

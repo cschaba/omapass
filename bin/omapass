@@ -163,6 +163,24 @@ TEMPLATE
   echo "omapass: wrote $CONFIG_FILE"
 }
 
+# Whether the welcome screen has been shown. A marker file rather than a config
+# key: it is state, not a preference, and the user should not have to unset
+# something to be rid of it.
+WELCOME_MARKER="${XDG_STATE_HOME:-$HOME/.local/state}/omapass/welcomed"
+
+cmd_welcomed() {
+  case "${1:-}" in
+  --mark)
+    mkdir -p "$(dirname "$WELCOME_MARKER")"
+    : >"$WELCOME_MARKER"
+    ;;
+  --reset) rm -f "$WELCOME_MARKER" ;;
+  "") ;;
+  *) die "unknown welcomed option: $1" ;;
+  esac
+  [[ -e $WELCOME_MARKER ]] && echo '{"welcomed":true}' || echo '{"welcomed":false}'
+}
+
 # --- requirements -----------------------------------------------------------
 
 # Everything omapass needs at runtime, in the order a person would fix them.
@@ -276,8 +294,11 @@ cmd_status() {
     sep=","
   done <<<"$keys_raw"
 
-  printf '{"version":"%s","pass":%s,"otp":%s,"gpg":%s,"key":%s,"store":%s,"git":%s,"fingerprint":%s,"passwordAuth":%s,' \
+  printf '{"version":"%s","name":"%s","homepage":"%s","welcomed":%s,"pass":%s,"otp":%s,"gpg":%s,"key":%s,"store":%s,"git":%s,"fingerprint":%s,"passwordAuth":%s,' \
     "$(json_escape "$(omapass_version)")" \
+    "$(json_escape "$(manifest_field name)")" \
+    "$(json_escape "$(manifest_field homepage)")" \
+    "$([[ -e $WELCOME_MARKER ]] && echo true || echo false)" \
     "$has_pass" "$has_otp" "$has_gpg" "$has_key" "$has_store" "$has_git" "$has_fingerprint" \
     "$has_password_auth"
   printf '"entries":%s,"storePath":"%s","keys":[%s],' \
@@ -645,6 +666,7 @@ usage() {
 omapass — pass(1) backend for the omapass Omarchy plugin
 
   version                    print the omapass version
+  welcomed [--mark|--reset]  whether the welcome screen has been shown
   status                     JSON: what is installed and set up
   unlocked                   JSON: whether gpg-agent has a key cached
   fingerprint                JSON: whether fingerprint unlock is required
@@ -677,6 +699,7 @@ main() {
 
   case "$cmd" in
   version | --version | -V) printf 'omapass %s\n' "$(omapass_version)" ;;
+  welcomed) cmd_welcomed "${1:-}" ;;
   status) cmd_status ;;
   config) cmd_config "${1:-}" ;;
   fingerprint) fingerprint_available && echo '{"fingerprint":true}' || echo '{"fingerprint":false}' ;;

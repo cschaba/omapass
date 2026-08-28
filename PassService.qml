@@ -28,6 +28,9 @@ Item {
   readonly property bool hasGit: status !== null && status.git === true
   readonly property bool fingerprintRequired: status !== null && status.fingerprint === true
   readonly property bool passwordAuthAvailable: status !== null && status.passwordAuth === true
+  readonly property bool welcomed: status !== null && status.welcomed === true
+
+  function markWelcomed() { run(["welcomed", "--mark"]) }
 
   // The effective configuration, already resolved by bin/omapass — file,
   // environment and defaults folded together. The UI never parses the file.
@@ -35,6 +38,7 @@ Item {
 
   function setting(name, fallback) {
     var value = root.config[name]
+    if (value === undefined || value === null) value = root.status ? root.status[name] : undefined
     return value === undefined || value === null ? fallback : value
   }
   readonly property var requirements: PassStore.setupSteps(status)

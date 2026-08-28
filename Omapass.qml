@@ -43,6 +43,27 @@ Item {
   property bool fingerprintPassed: false
   readonly property int fingerprintGraceMs: pass.setting("fingerprintGrace", 120) * 1000
   readonly property bool vaultLocked: root.ready && root.fingerprintRequired && !root.fingerprintPassed
+
+  // Shown once on first run, and on demand with F1 after that. Waits until the
+  // vault is open, so it never sits between the user and an unlock prompt.
+  property bool aboutOpen: false
+  // Marking the welcome as seen writes a file, and the flag that hides this
+  // panel is read back from that file with the rest of the status — which does
+  // not happen until the next open. Without a local latch the panel stays up
+  // and the button does nothing.
+  property bool aboutDismissed: false
+  readonly property bool firstRunAbout: root.ready && !root.vaultLocked
+    && !pass.welcomed && !root.aboutDismissed
+  readonly property bool aboutVisible: root.ready && !root.vaultLocked && (root.aboutOpen || root.firstRunAbout)
+
+  function dismissAbout() {
+    if (root.firstRunAbout) {
+      pass.markWelcomed()
+      root.aboutDismissed = true
+    }
+    root.aboutOpen = false
+    Qt.callLater(function () { keyCatcher.forceActiveFocus() })
+  }
   readonly property var entries: pass.entries
   readonly property bool loading: pass.loading
   readonly property string errorText: pass.errorText
@@ -381,6 +402,14 @@ Item {
             return
           }
 
+          if (root.aboutVisible) {
+            if (event.key === Qt.Key_Escape || event.key === Qt.Key_Return
+                || event.key === Qt.Key_Enter || event.key === Qt.Key_F1)
+              root.dismissAbout()
+            event.accepted = true
+            return
+          }
+
           if (root.vaultLocked) {
             // Esc leaves, Tab swaps between the reader and a password. Every
             // other key is swallowed so the picker underneath cannot be driven
@@ -437,6 +466,8 @@ Item {
             if (shift) root.typeOtp()
             else root.copyOtp()
             event.accepted = true
+          } else if (event.key === Qt.Key_F1) {
+            root.aboutOpen = true; event.accepted = true
           } else if (ctrl && event.key === Qt.Key_Q) {
             root.scanOtp(); event.accepted = true
           } else if (ctrl && event.key === Qt.Key_S) {
@@ -479,6 +510,22 @@ Item {
         }
       }
 
+      AboutPanel {
+        anchors.fill: parent
+        anchors.topMargin: card.contentTopInset
+        anchors.rightMargin: card.contentRightInset
+        anchors.bottomMargin: card.contentBottomInset
+        anchors.leftMargin: card.contentLeftInset
+        visible: root.aboutVisible
+        service: pass
+        firstRun: root.firstRunAbout
+        foreground: root.foreground
+        accent: root.selectedText
+        selectedBackground: root.selectedBackground
+        fontFamily: root.fontFamily
+        onDismissed: root.dismissAbout()
+      }
+
       SetupNotice {
         id: setupNotice
         anchors.fill: parent
@@ -504,7 +551,7 @@ Item {
         anchors.bottomMargin: card.contentBottomInset
         anchors.leftMargin: card.contentLeftInset
         spacing: root.contentSpacing
-        visible: root.ready && !root.vaultLocked
+        visible: root.ready && !root.vaultLocked && !root.aboutVisible
 
         // header: search line
         Item {
@@ -807,7 +854,8 @@ Item {
               { key: "^E", label: "edit",       action: function () { root.editEntry() } },
               { key: "⌦",  label: "delete",     action: function () { root.requestDelete() } },
               { key: "^S", label: "sync",       action: function () { root.sync() },
-                visible: root.hasGit }
+                visible: root.hasGit },
+              { key: "F1", label: "about",      action: function () { root.aboutOpen = true } }
             ]
           }
         }

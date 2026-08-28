@@ -125,6 +125,10 @@ echo
 
 echo "release plumbing"
 MANIFEST_VERSION=$(python3 -c "import json;print(json.load(open('$ROOT/manifest.json'))['version'])")
+check "welcomed reports json" \
+  "$("$OMAPASS" welcomed | grep -c welcomed)" "1"
+check "status carries name and homepage" \
+  "$("$OMAPASS" status | python3 -c 'import sys,json;d=json.load(sys.stdin);print(bool(d["name"] and d["homepage"]))')" "True"
 check "version command matches the manifest" \
   "$("$OMAPASS" version)" "omapass $MANIFEST_VERSION"
 check "status reports the same version" \

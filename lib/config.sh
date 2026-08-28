@@ -14,6 +14,14 @@
 # requires it there, so a second copy in a shell variable could only ever drift.
 OMAPASS_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
+# One-line values read straight out of the manifest, so the app never carries a
+# second copy of anything Omarchy already requires it to declare.
+manifest_field() {
+  local field="$1" manifest="$OMAPASS_ROOT/manifest.json"
+  [[ -r $manifest ]] || return 0
+  sed -n "s/.*\"$field\"[[:space:]]*:[[:space:]]*\"\([^\"]*\)\".*/\1/p" "$manifest" | head -1
+}
+
 omapass_version() {
   local manifest="$OMAPASS_ROOT/manifest.json"
   [[ -r $manifest ]] || { printf 'unknown'; return; }

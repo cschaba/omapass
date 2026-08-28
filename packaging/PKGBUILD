@@ -1,0 +1,41 @@
+# Maintainer: Carsten <carsten@s10r.de>
+#
+# Installs the plugin tree system-wide. Omarchy only discovers plugins in
+# ~/.config/omarchy/plugins, which a package cannot write to, so this ships the
+# files to /usr/share and leaves `omapass-install` to link them into the user's
+# config — a per-user step by nature.
+
+pkgname=omapass
+pkgver=1.0.0
+pkgrel=1
+pkgdesc="Password manager for Omarchy, backed by the pass CLI"
+arch=('any')
+url="https://github.com/cschaba/omapass"
+license=('MIT')
+depends=('pass' 'gnupg' 'wl-clipboard' 'wtype' 'jq')
+optdepends=(
+  'pass-otp: one-time codes'
+  'zbar: enrolling a TOTP secret from a QR code'
+  'fprintd: fingerprint unlock'
+)
+source=("$pkgname-$pkgver.tar.gz::$url/releases/download/v$pkgver/$pkgname-$pkgver.tar.gz")
+sha256sums=('SKIP')
+
+package() {
+  cd "$srcdir/$pkgname-$pkgver"
+
+  install -dm755 "$pkgdir/usr/share/$pkgname"
+  cp -a manifest.json ./*.qml ./*.js bin lib install.sh "$pkgdir/usr/share/$pkgname/"
+
+  install -dm755 "$pkgdir/usr/bin"
+  local tool
+  for tool in omapass omapass-setup omapass-reset; do
+    ln -s "/usr/share/$pkgname/bin/$tool" "$pkgdir/usr/bin/$tool"
+  done
+  # Links the plugin into ~/.config/omarchy/plugins and adds the keybinding.
+  ln -s "/usr/share/$pkgname/install.sh" "$pkgdir/usr/bin/omapass-install"
+
+  install -Dm644 README.md "$pkgdir/usr/share/doc/$pkgname/README.md"
+  install -Dm644 CHANGELOG.md "$pkgdir/usr/share/doc/$pkgname/CHANGELOG.md"
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

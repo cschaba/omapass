@@ -1,0 +1,138 @@
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing tag to build a release for
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: build and publish
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+          fetch-depth: 0
+
+      - name: Work out the version
+        id: version
+        run: |
+          tag="${{ github.event.inputs.tag || github.ref_name }}"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "version=${tag#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Refuse to publish a tag that disagrees with the manifest
+        run: |
+          manifest=$(python3 -c 'import json;print(json.load(open("manifest.json"))["version"])')
+          if [[ "$manifest" != "${{ steps.version.outputs.version }}" ]]; then
+            echo "::error::tag says ${{ steps.version.outputs.version }} but manifest.json says $manifest"
+            exit 1
+          fi
+          echo "manifest and tag agree on $manifest"
+
+      - name: Install test dependencies
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq pass jq
+
+      - name: Test before publishing
+        run: ./tests/smoke.sh
+
+      - name: Build the package
+        id: package
+        run: |
+          set -euo pipefail
+          version="${{ steps.version.outputs.version }}"
+          name="omapass-$version"
+          mkdir -p "dist/$name"
+
+          # Everything needed at runtime, and nothing that only matters in the
+          # repository. A plugin directory has to be droppable into
+          # ~/.config/omarchy/plugins/omapass as-is.
+          cp -a manifest.json ./*.qml ./*.js README.md CHANGELOG.md LICENSE \
+                install.sh bin lib "dist/$name/"
+
+          tar -czf "dist/$name.tar.gz" -C dist "$name"
+          (cd dist && sha256sum "$name.tar.gz" > "$name.tar.gz.sha256")
+
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+          echo "sha=$(cut -d' ' -f1 < "dist/$name.tar.gz.sha256")" >> "$GITHUB_OUTPUT"
+          ls -la dist/
+
+      - name: Check the package installs standalone
+        run: |
+          set -euo pipefail
+          version="${{ steps.version.outputs.version }}"
+          tmp=$(mktemp -d)
+          tar -xzf "dist/omapass-$version.tar.gz" -C "$tmp"
+          cd "$tmp/omapass-$version"
+          test -x bin/omapass
+          test -f manifest.json
+          [[ "$(bin/omapass version)" == "omapass $version" ]]
+          bin/omapass config >/dev/null
+          echo "package is self-contained"
+
+      - name: Build a PKGBUILD with the real version and checksum
+        run: |
+          set -euo pipefail
+          sed -e "s/^pkgver=.*/pkgver=${{ steps.version.outputs.version }}/" \
+              -e "s/^sha256sums=.*/sha256sums=('${{ steps.package.outputs.sha }}')/" \
+              packaging/PKGBUILD > dist/PKGBUILD
+          grep -E '^(pkgver|sha256sums)=' dist/PKGBUILD
+
+      - name: Pull the notes out of the changelog
+        id: notes
+        run: |
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import os, re
+          version = os.environ["VERSION"]
+          text = open("CHANGELOG.md").read()
+          match = re.search(
+              rf"^## \[{re.escape(version)}\][^\n]*\n(.*?)(?=^## \[|\Z)",
+              text, re.S | re.M)
+          body = (match.group(1).strip() if match else "See CHANGELOG.md.")
+          print("body<<CHANGELOG_EOF")
+          print(body)
+          print("CHANGELOG_EOF")
+          PY
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+
+      - name: Publish
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: omapass ${{ steps.version.outputs.version }}
+          body: |
+            ${{ steps.notes.outputs.body }}
+
+            ---
+
+            ### Install
+
+            ```bash
+            omarchy plugin add https://github.com/cschaba/omapass.git --enable --yes
+            ```
+
+            Or from the tarball below:
+
+            ```bash
+            tar -xzf omapass-${{ steps.version.outputs.version }}.tar.gz
+            cd omapass-${{ steps.version.outputs.version }} && ./install.sh
+            ```
+
+            `sha256: ${{ steps.package.outputs.sha }}`
+
+            > Under development and largely untested — see the warning at the top
+            > of the README before trusting it with anything.
+          files: |
+            dist/omapass-${{ steps.version.outputs.version }}.tar.gz
+            dist/omapass-${{ steps.version.outputs.version }}.tar.gz.sha256
+            dist/PKGBUILD
+          fail_on_unmatched_files: true

@@ -117,5 +117,22 @@ check "environment beats the file" \
   "$(OMAPASS_CLIP_TIME=99 "$OMAPASS" config 2>/dev/null | python3 -c 'import sys,json;print(json.load(sys.stdin)["clipTime"])')" "99"
 echo
 
+echo "release plumbing"
+MANIFEST_VERSION=$(python3 -c "import json;print(json.load(open('$ROOT/manifest.json'))['version'])")
+check "version command matches the manifest" \
+  "$("$OMAPASS" version)" "omapass $MANIFEST_VERSION"
+check "status reports the same version" \
+  "$("$OMAPASS" status | python3 -c 'import sys,json;print(json.load(sys.stdin)["version"])')" "$MANIFEST_VERSION"
+check "manifest version is semver" \
+  "$(python3 -c "import re;print(bool(re.fullmatch(r'\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?', '$MANIFEST_VERSION')))")" "True"
+check "changelog has a section for it" \
+  "$(grep -c "^## \[$MANIFEST_VERSION\]" "$ROOT/CHANGELOG.md")" "1"
+check "changelog keeps an Unreleased section" \
+  "$(grep -c '^## \[Unreleased\]' "$ROOT/CHANGELOG.md")" "1"
+for ep in $(python3 -c "import json;print(' '.join(json.load(open('$ROOT/manifest.json'))['entryPoints'].values()))"); do
+  [[ -f "$ROOT/$ep" ]] && ok "entry point $ep exists" || bad "entry point $ep is missing"
+done
+echo
+
 echo "$PASS passed, $FAIL failed"
 [[ $FAIL -eq 0 ]]

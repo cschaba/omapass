@@ -10,6 +10,18 @@
 # Precedence is environment > config file > default, so a one-off run can
 # override without editing anything.
 
+# manifest.json is the single source of truth for the version: Omarchy already
+# requires it there, so a second copy in a shell variable could only ever drift.
+OMAPASS_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+omapass_version() {
+  local manifest="$OMAPASS_ROOT/manifest.json"
+  [[ -r $manifest ]] || { printf 'unknown'; return; }
+  local v
+  v=$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$manifest" | head -1)
+  printf '%s' "${v:-unknown}"
+}
+
 CONFIG_FILE="${OMAPASS_CONFIG:-${XDG_CONFIG_HOME:-$HOME/.config}/omapass/config}"
 
 # --- config -----------------------------------------------------------------
@@ -38,11 +50,16 @@ config_warn() { echo "omapass: $CONFIG_FILE: $*" >&2; }
 
 expand_tilde() {
   local value="$1"
-  case "$value" in
-  "~") printf '%s' "$HOME" ;;
-  "~/"*) printf '%s' "$HOME/${value#\~/}" ;;
-  *) printf '%s' "$value" ;;
-  esac
+  # SC2088 warns about a tilde that will not expand — which is the point here.
+  # These compare against a literal ~ the user typed; nothing should expand.
+  # shellcheck disable=SC2088
+  if [[ $value == "~" ]]; then
+    printf '%s' "$HOME"
+  elif [[ ${value:0:2} == "~/" ]]; then
+    printf '%s' "$HOME/${value:2}"
+  else
+    printf '%s' "$value"
+  fi
 }
 
 read_config() {
@@ -97,7 +114,10 @@ read_config
 # Environment still wins, so a one-off run can override without editing a file.
 STORE="${PASSWORD_STORE_DIR:-$(expand_tilde "${CONFIG[store]}")}"
 STORE="${STORE:-$HOME/.password-store}"
+# Read by the scripts that source this file, not here.
+# shellcheck disable=SC2034
 CLIP_TIME="${OMAPASS_CLIP_TIME:-$(config_number clip-time 45)}"
+# shellcheck disable=SC2034
 TYPE_DELAY="${OMAPASS_TYPE_DELAY:-$(config_number type-delay 12)}"
 
 # pass reads this itself, for the git subcommands and anything we shell out to.

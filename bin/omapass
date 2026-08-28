@@ -241,7 +241,8 @@ cmd_status() {
     sep=","
   done <<<"$keys_raw"
 
-  printf '{"pass":%s,"otp":%s,"gpg":%s,"key":%s,"store":%s,"git":%s,"fingerprint":%s,' \
+  printf '{"version":"%s","pass":%s,"otp":%s,"gpg":%s,"key":%s,"store":%s,"git":%s,"fingerprint":%s,' \
+    "$(json_escape "$(omapass_version)")" \
     "$has_pass" "$has_otp" "$has_gpg" "$has_key" "$has_store" "$has_git" "$has_fingerprint"
   printf '"entries":%s,"storePath":"%s","keys":[%s],' \
     "$entries" "$(json_escape "$STORE")" "$keys"
@@ -607,6 +608,7 @@ usage() {
   cat <<'USAGE'
 omapass — pass(1) backend for the omapass Omarchy plugin
 
+  version                    print the omapass version
   status                     JSON: what is installed and set up
   unlocked                   JSON: whether gpg-agent has a key cached
   fingerprint                JSON: whether fingerprint unlock is required
@@ -638,6 +640,7 @@ main() {
   [[ $# -gt 0 ]] && shift || true
 
   case "$cmd" in
+  version | --version | -V) printf 'omapass %s\n' "$(omapass_version)" ;;
   status) cmd_status ;;
   config) cmd_config "${1:-}" ;;
   fingerprint) fingerprint_available && echo '{"fingerprint":true}' || echo '{"fingerprint":false}' ;;

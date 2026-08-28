@@ -1,0 +1,95 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  shell:
+    name: shell
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install shellcheck
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq shellcheck
+
+      - name: Parse
+        run: |
+          for f in bin/omapass bin/omapass-setup bin/omapass-reset \
+                   lib/config.sh install.sh scripts/release.sh tests/smoke.sh; do
+            bash -n "$f"
+          done
+
+      - name: Shellcheck
+        run: |
+          shellcheck --severity=warning \
+            bin/omapass bin/omapass-setup bin/omapass-reset \
+            lib/config.sh install.sh scripts/release.sh tests/smoke.sh
+
+  smoke:
+    name: smoke test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pass and gnupg
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq pass jq
+
+      - name: Run the smoke test
+        run: ./tests/smoke.sh
+
+  qml:
+    name: qml
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Qt tooling
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq qt6-declarative-dev-tools
+
+      - name: Parse every QML file
+        # qs.Commons and qs.Ui only resolve inside the Omarchy shell, so the
+        # imports will not be found here. Only syntax is being checked, and
+        # qmllint signals that with its exit code.
+        run: |
+          status=0
+          for f in *.qml; do
+            if ! qmllint "$f" >/dev/null 2>&1; then
+              echo "::error file=$f::does not parse"
+              qmllint "$f" || true
+              status=1
+            fi
+          done
+          exit $status
+
+  manifest:
+    name: manifest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate manifest.json
+        run: |
+          python3 - <<'PY'
+          import json, os, sys
+
+          manifest = json.load(open("manifest.json"))
+
+          required = ["schemaVersion", "id", "name", "version", "kinds", "entryPoints"]
+          missing = [k for k in required if k not in manifest]
+          assert not missing, f"manifest.json is missing {missing}"
+          assert manifest["schemaVersion"] == 1, "unsupported schemaVersion"
+
+          for kind, path in manifest["entryPoints"].items():
+              assert os.path.isfile(path), f"entryPoint {kind} -> {path} does not exist"
+              assert not path.startswith("/") and ".." not in path, f"unsafe entryPoint {path}"
+
+          import re
+          assert re.fullmatch(r"\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?", manifest["version"]), \
+              f"version {manifest['version']!r} is not semver"
+
+          print("manifest.json ok:", manifest["id"], manifest["version"])
+          PY

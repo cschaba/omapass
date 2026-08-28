@@ -132,7 +132,9 @@ make_backup() {
           return 1
         }
       done <<<"$keys"
-      gpg --armor --export $(cut -f1 <<<"$keys" | tr '\n' ' ') \
+      local -a fingerprints=()
+      mapfile -t fingerprints < <(cut -f1 <<<"$keys")
+      gpg --armor --export "${fingerprints[@]}" \
         >"$staging/public-keys.asc" 2>/dev/null || true
       gpg --export-ownertrust >"$staging/ownertrust.txt" 2>/dev/null || true
     fi

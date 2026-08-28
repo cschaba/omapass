@@ -389,6 +389,47 @@ report cleanly. `Esc` and the `pass` CLI still get you past it either way.
 The bar pulldown's row count can also be set per-widget in `shell.json`
 (Setup → Plugins), which wins over `pulldown-rows`.
 
+## Releasing
+
+`manifest.json` holds the version — Omarchy requires it there, so a second copy
+anywhere else could only drift out of step. `bin/omapass version` and the
+`version` field of `omapass status` both read it.
+
+```bash
+scripts/release.sh patch --dry-run   # see what it would do
+scripts/release.sh minor             # or major, or an explicit 1.4.0
+```
+
+The script refuses before it writes anything: dirty tree, not on `main`, behind
+the remote, tag already present, failing tests, unparseable shell or QML, invalid
+`manifest.json`, or a `CHANGELOG.md` with no `[Unreleased]` section. Then it
+bumps the manifest, moves the `[Unreleased]` entries under the new version with
+today's date, commits, tags `vX.Y.Z`, and pushes.
+
+Pushing the tag is what starts the release workflow. It re-checks that the tag
+and the manifest agree, runs the tests again, and publishes:
+
+| Asset | |
+|-------|--|
+| `omapass-X.Y.Z.tar.gz` | the plugin directory, droppable into `~/.config/omarchy/plugins/omapass` |
+| `omapass-X.Y.Z.tar.gz.sha256` | its checksum |
+| `PKGBUILD` | Arch package, with the version and checksum already filled in |
+
+The tarball is unpacked and exercised in CI before publishing, so a release that
+cannot run `omapass version` from a clean extract never reaches the releases
+page.
+
+Most people will not use any of it — `omarchy plugin add` clones the repository,
+so a tag is only a marker. The tarball matters for offline installs and for
+packaging.
+
+### CI
+
+Every push and pull request runs four jobs: `shellcheck --severity=warning` over
+every script, `tests/smoke.sh` against a throwaway store, `qmllint` over every
+QML file, and a `manifest.json` check that its entry points exist and its version
+is semver.
+
 ## Tests
 
 ```bash

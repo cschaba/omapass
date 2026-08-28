@@ -39,6 +39,9 @@ Panel {
   readonly property int visibleRows: Math.max(1, setting("rows", pass.setting("pulldownRows", 7)))
   readonly property int rowHeight: Math.max(Style.space(26), Style.font.body + Style.spacing.controlPaddingY)
 
+  property bool selectedHasOtp: false
+  property string fieldsForPath: ""
+
   readonly property var currentRow: resultModel.count > 0 && selectedIndex >= 0 && selectedIndex < resultModel.count
     ? resultModel.get(selectedIndex) : null
   readonly property string currentPath: currentRow ? currentRow.path : ""
@@ -109,12 +112,44 @@ Panel {
     else pass.copyPassword(path)
   }
 
+  onCurrentPathChanged: {
+    if (root.currentPath !== root.fieldsForPath) root.selectedHasOtp = false
+    fieldsDebounce.restart()
+  }
+
+  // The unlock probe usually finishes after the list does, so the first
+  // selection is decided while still locked. Retry when the answer arrives,
+  // or the hint never appears for the row that was picked first.
+  Connections {
+    target: pass
+    function onUnlockedChanged() { if (pass.unlocked) fieldsDebounce.restart() }
+  }
+
+  // Same rule as the overlay: never decrypt just to draw a hint. Until
+  // gpg-agent is warm the OTP action simply is not offered.
+  function loadFields() {
+    if (!root.opened || !pass.unlocked || root.vaultLocked) return
+    if (!root.currentPath || root.currentPath === root.fieldsForPath) return
+    pass.loadFields(root.currentPath)
+  }
+
+  Timer {
+    id: fieldsDebounce
+    interval: 180
+    onTriggered: root.loadFields()
+  }
+
   ListModel { id: resultModel }
 
   PassService {
     id: pass
     bin: root.bin
     onListReloaded: root.rebuild()
+    onFieldsLoaded: function (path, fields, otp) {
+      if (path !== root.currentPath) return
+      root.selectedHasOtp = otp
+      root.fieldsForPath = path
+    }
   }
 
   Component.onCompleted: pass.refresh()
@@ -354,7 +389,11 @@ Panel {
             spacing: Style.space(10)
             actions: [
               { key: "⏎",  label: "copy", action: function () { root.activate("copy") } },
-              { key: "⇧⏎", label: "type", action: function () { root.activate("type") } }
+              { key: "⇧⏎", label: "type", action: function () { root.activate("type") } },
+              // Only when this entry actually has one — an action that usually
+              // fails is worse than one that is not offered. (#5)
+              { key: "^O", label: "otp",  action: function () { root.activate("otp") },
+                visible: pass.hasOtpSupport && root.selectedHasOtp }
             ]
           }
 

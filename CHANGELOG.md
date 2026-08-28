@@ -6,6 +6,13 @@ the CLI surface, or the entry format bump the major.
 
 ## [Unreleased]
 
+### Added
+
+- The pulldown offers `^O otp` when the selected entry actually carries a TOTP
+  secret. It only knows that once gpg-agent is already warm — the same rule the
+  overlay follows, so arrowing through a list never triggers a pinentry prompt
+  just to draw a hint. ([#5])
+
 ## [0.1.4] — 2026-08-28
 
 ### Added
@@ -81,3 +88,4 @@ top of the README.
 [0.1.3]: https://github.com/cschaba/omapass/releases/tag/v0.1.3
 [#3]: https://github.com/cschaba/omapass/issues/3
 [0.1.4]: https://github.com/cschaba/omapass/releases/tag/v0.1.4
+[#5]: https://github.com/cschaba/omapass/issues/5

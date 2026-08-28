@@ -47,7 +47,7 @@ SUPER + CTRL + K
 ## Install
 
 ```bash
-git clone https://github.com/you/omapass.git
+git clone https://github.com/cschaba/omapass.git
 cd omapass
 ./install.sh
 ```
@@ -64,7 +64,7 @@ OMAPASS_KEYBIND="SUPER, P" ./install.sh
 If you would rather use Omarchy's own plugin installer:
 
 ```bash
-omarchy plugin add https://github.com/you/omapass.git --enable --yes
+omarchy plugin add https://github.com/cschaba/omapass.git --enable --yes
 ```
 
 Then place the bar widget and add the binding yourself. Note that

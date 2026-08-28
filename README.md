@@ -426,9 +426,15 @@ packaging.
 ### CI
 
 Every push and pull request runs four jobs: `shellcheck --severity=warning` over
-every script, `tests/smoke.sh` against a throwaway store, `qmllint` over every
-QML file, and a `manifest.json` check that its entry points exist and its version
-is semver.
+every script, `tests/smoke.sh` against a throwaway store, a `qmlformat` parse of
+every QML file, and a `manifest.json` check that its entry points exist and its
+version is semver.
+
+The QML job parses rather than lints. `qs.Commons` and `qs.Ui` only resolve
+inside the Omarchy shell, and older `qmllint` treats an unresolved import as an
+error, so it rejects every file regardless of syntax. `qmlformat` ignores imports
+and still catches real syntax errors. Run `qmllint -I /usr/share/omarchy/shell`
+locally for the type checking CI cannot do.
 
 ## Tests
 

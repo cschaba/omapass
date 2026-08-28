@@ -42,7 +42,7 @@ jobs:
         run: ./tests/smoke.sh
 
   qml:
-    name: qml
+    name: qml syntax
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -52,37 +52,41 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y -qq qt6-declarative-dev-tools
 
-      - name: Locate qmllint
-        id: qmllint
-        # Ubuntu keeps the Qt 6 tools out of PATH, so resolve it rather than
-        # assuming. Failing loudly beats a check that quietly never runs.
+      - name: Locate qmlformat
+        id: tool
+        # Ubuntu keeps the Qt 6 tools out of PATH, so resolve rather than assume.
+        # Failing loudly beats a check that quietly never runs.
         run: |
-          for candidate in qmllint qmllint6 /usr/lib/qt6/bin/qmllint \
-                           /usr/lib/x86_64-linux-gnu/qt6/bin/qmllint; do
+          for candidate in qmlformat qmlformat6 /usr/lib/qt6/bin/qmlformat \
+                           /usr/lib/x86_64-linux-gnu/qt6/bin/qmlformat; do
             if command -v "$candidate" >/dev/null 2>&1 || [[ -x $candidate ]]; then
               echo "bin=$candidate" >> "$GITHUB_OUTPUT"
               echo "found: $candidate"
               exit 0
             fi
           done
-          echo "::error::qmllint not found after installing qt6-declarative-dev-tools"
+          echo "::error::qmlformat not found after installing qt6-declarative-dev-tools"
           dpkg -L qt6-declarative-dev-tools 2>/dev/null | grep -iE 'bin/' || true
           exit 1
 
       - name: Parse every QML file
-        # qs.Commons and qs.Ui only resolve inside the Omarchy shell, so those
-        # imports will not be found here. That is fine: unresolved imports do not
-        # change the exit code, which is what syntax errors move.
+        # qmlformat, not qmllint: qs.Commons and qs.Ui only resolve inside the
+        # Omarchy shell, and older qmllint treats an unresolved import as an
+        # error, so it fails every file here regardless of syntax. qmlformat is
+        # a pure parser — it ignores imports and still rejects real syntax
+        # errors, which is the part CI can meaningfully check.
         run: |
           status=0
           for f in *.qml; do
-            if ! "${{ steps.qmllint.outputs.bin }}" "$f" >/dev/null 2>&1; then
+            if ! "${{ steps.tool.outputs.bin }}" "$f" >/dev/null 2>&1; then
               echo "::error file=$f::does not parse"
-              "${{ steps.qmllint.outputs.bin }}" "$f" || true
+              "${{ steps.tool.outputs.bin }}" "$f" || true
               status=1
             fi
           done
-          [[ $status -eq 0 ]] && echo "all $(ls -1 ./*.qml | wc -l) QML files parse"
+          if [[ $status -eq 0 ]]; then
+            echo "all $(ls -1 ./*.qml | wc -l) QML files parse"
+          fi
           exit $status
 
   manifest:

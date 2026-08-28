@@ -6,6 +6,8 @@ the CLI surface, or the entry format bump the major.
 
 ## [Unreleased]
 
+## [0.1.18] — 2026-08-28
+
 ### Fixed
 
 - A new entry was filed under the folder of whichever entry happened to be
@@ -228,7 +230,7 @@ top of the README.
 - The clipboard is marked sensitive, so Omarchy's clipboard manager will not
   record it, and the selection is dropped after a timeout.
 
-[Unreleased]: https://github.com/cschaba/omapass/compare/v0.1.17...HEAD
+[Unreleased]: https://github.com/cschaba/omapass/compare/v0.1.18...HEAD
 [0.1.0]: https://github.com/cschaba/omapass/releases/tag/v0.1.0
 [#2]: https://github.com/cschaba/omapass/issues/2
 [0.1.1]: https://github.com/cschaba/omapass/releases/tag/v0.1.1
@@ -264,3 +266,4 @@ top of the README.
 [#19]: https://github.com/cschaba/omapass/issues/19
 [0.1.17]: https://github.com/cschaba/omapass/releases/tag/v0.1.17
 [#21]: https://github.com/cschaba/omapass/issues/21
+[0.1.18]: https://github.com/cschaba/omapass/releases/tag/v0.1.18

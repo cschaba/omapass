@@ -56,7 +56,7 @@ jobs:
           # repository. A plugin directory has to be droppable into
           # ~/.config/omarchy/plugins/omapass as-is.
           cp -a manifest.json ./*.qml ./*.js README.md CHANGELOG.md LICENSE \
-                install.sh bin lib "dist/$name/"
+                install.sh uninstall.sh bin lib "dist/$name/"
 
           tar -czf "dist/$name.tar.gz" -C dist "$name"
           (cd dist && sha256sum "$name.tar.gz" > "$name.tar.gz.sha256")

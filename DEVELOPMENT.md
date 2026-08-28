@@ -30,13 +30,13 @@ ever one parser and one place where secrets are handled.
 
 ## Working on it
 
-`install.sh` symlinks your checkout into `~/.config/omarchy/plugins/omapass`,
+`install.sh` symlinks your checkout into `~/.config/omarchy/plugins/cschaba.omapass`,
 so edits are picked up without reinstalling — but you have to ask for a reload:
 
 ```bash
 omarchy restart shell                      # the reliable reload
-omarchy-shell shell toggle omapass         # open the overlay
-omarchy-shell omapass.widget toggle        # open the bar pulldown
+omarchy-shell shell toggle cschaba.omapass         # open the overlay
+omarchy-shell cschaba.omapass.widget toggle        # open the bar pulldown
 journalctl --user -f | grep omarchy-shell  # QML errors land here
 ```
 
@@ -195,7 +195,7 @@ and the manifest agree, runs the tests again, and publishes:
 
 | Asset | |
 |-------|--|
-| `omapass-X.Y.Z.tar.gz` | the plugin directory, droppable into `~/.config/omarchy/plugins/omapass` |
+| `omapass-X.Y.Z.tar.gz` | the plugin directory, droppable into `~/.config/omarchy/plugins/cschaba.omapass` |
 | `omapass-X.Y.Z.tar.gz.sha256` | its checksum |
 | `PKGBUILD` | Arch package, with the version and checksum already filled in |
 

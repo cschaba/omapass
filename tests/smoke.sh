@@ -133,6 +133,16 @@ check "version command matches the manifest" \
   "$("$OMAPASS" version)" "omapass $MANIFEST_VERSION"
 check "status reports the same version" \
   "$("$OMAPASS" status | python3 -c 'import sys,json;print(json.load(sys.stdin)["version"])')" "$MANIFEST_VERSION"
+check "plugin id is namespaced" \
+  "$(python3 -c "import json;print('.' in json.load(open('$ROOT/manifest.json'))['id'])")" "True"
+check "manifest has the marketplace fields" \
+  "$(python3 -c "
+import json
+m = json.load(open('$ROOT/manifest.json'))
+need = ['schemaVersion','id','name','version','author','description','kinds','entryPoints']
+print(all(m.get(k) for k in need))")" "True"
+check "uninstall script is executable" \
+  "$([[ -x "$ROOT/uninstall.sh" ]] && echo yes || echo no)" "yes"
 check "manifest version is semver" \
   "$(python3 -c "import re;print(bool(re.fullmatch(r'\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?', '$MANIFEST_VERSION')))")" "True"
 check "changelog has a section for it" \

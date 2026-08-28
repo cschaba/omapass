@@ -6,6 +6,19 @@ the CLI surface, or the entry format bump the major.
 
 ## [Unreleased]
 
+### Changed
+
+- The plugin id is now `cschaba.omapass`. The Omarchy plugin marketplace expects
+  a namespaced id, and a bare one risks colliding with anybody else's. Running
+  `./install.sh` migrates an existing install — the plugin directory, the bar
+  entry, the enabled-plugins list and the keybinding all move across. ([#12])
+
+### Added
+
+- `uninstall.sh`, which removes the plugin, its bar widget and its keybinding,
+  and leaves your password store and GPG key alone. `--purge` also removes
+  omapass's own config and state. ([#12])
+
 ## [0.1.11] — 2026-08-28
 
 ### Added
@@ -164,3 +177,4 @@ top of the README.
 [0.1.10]: https://github.com/cschaba/omapass/releases/tag/v0.1.10
 [#14]: https://github.com/cschaba/omapass/issues/14
 [0.1.11]: https://github.com/cschaba/omapass/releases/tag/v0.1.11
+[#12]: https://github.com/cschaba/omapass/issues/12

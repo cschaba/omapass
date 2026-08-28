@@ -20,7 +20,7 @@ Item {
   property var manifest: null
 
   // Resolved from this file's own location, so the plugin works wherever it
-  // is installed (~/.config/omarchy/plugins/omapass, a git worktree, ...).
+  // is installed (~/.config/omarchy/plugins/cschaba.omapass, a worktree, ...).
   readonly property string pluginDir: String(Qt.resolvedUrl(".")).replace(/^file:\/\//, "")
   readonly property string bin: pluginDir + "bin/omapass"
   readonly property string setupBin: pluginDir + "bin/omapass-setup"
@@ -131,7 +131,7 @@ Item {
   function dismiss() {
     root.close()
     if (root.shell && typeof root.shell.hide === "function")
-      root.shell.hide((root.manifest && root.manifest.id) || "omapass")
+      root.shell.hide((root.manifest && root.manifest.id) || "cschaba.omapass")
   }
 
   function toggle() {

@@ -74,7 +74,7 @@ cd omapass
 ./install.sh
 ```
 
-`install.sh` links the plugin into `~/.config/omarchy/plugins/omapass`, enables
+`install.sh` links the plugin into `~/.config/omarchy/plugins/cschaba.omapass`, enables
 it in the running shell, puts the widget on your bar, and adds a
 `SUPER + SHIFT + K` binding to `~/.config/hypr/bindings.conf`.
 
@@ -110,7 +110,7 @@ enabled through `plugins[]` and never writes a layout entry. Add it to
 and the binding:
 
 ```
-bindd = SUPER SHIFT, K, Passwords, exec, omarchy-shell shell toggle omapass
+bindd = SUPER SHIFT, K, Passwords, exec, omarchy-shell shell toggle cschaba.omapass
 ```
 
 To reach it from the Omarchy menu too, add a row to
@@ -118,8 +118,19 @@ To reach it from the Omarchy menu too, add a row to
 
 ```jsonc
 "passwords": {"icon":"󰌾","label":"Passwords","aliases":["pass","omapass"],
-              "action":"omarchy-shell shell toggle omapass"},
+              "action":"omarchy-shell shell toggle cschaba.omapass"},
 ```
+
+### Removing it
+
+```bash
+./uninstall.sh            # take it off the bar, drop the plugin and the keybinding
+./uninstall.sh --purge    # also remove omapass's own config and state
+```
+
+Your password store and GPG key are never touched. The store is a plain `pass`
+store — the `pass` command carries on reading it whether omapass is installed or
+not.
 
 ### First run
 

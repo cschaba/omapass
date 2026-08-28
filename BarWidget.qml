@@ -11,8 +11,8 @@ import "PassStore.js" as PassStore
 // the full overlay, so there is one editor rather than two.
 Panel {
   id: root
-  moduleName: "omapass"
-  ipcTarget: "omapass.widget"
+  moduleName: "cschaba.omapass"
+  ipcTarget: "cschaba.omapass.widget"
 
   readonly property string pluginDir: String(Qt.resolvedUrl(".")).replace(/^file:\/\//, "")
   readonly property string bin: pluginDir + "bin/omapass"
@@ -97,7 +97,7 @@ Panel {
   // Managing entries belongs to the overlay; the pulldown just hands over.
   function openManager() {
     root.close()
-    Util.execArgv(["omarchy-shell", "shell", "summon", "omapass", "{}"])
+    Util.execArgv(["omarchy-shell", "shell", "summon", "cschaba.omapass", "{}"])
   }
 
   function activate(action) {

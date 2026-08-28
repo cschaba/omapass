@@ -23,8 +23,17 @@ Item {
   readonly property string homepage: service ? service.setting("homepage", "") : ""
   readonly property int entryCount: service && service.status ? (service.status.entries || 0) : 0
 
+  // Only offered while logging is on. A link to a file that does not exist is
+  // worse than no link.
+  readonly property bool logging: service ? service.setting("log", false) === true : false
+  readonly property string logPath: service ? service.setting("logPath", "") : ""
+
   function openHomepage() {
     if (root.homepage) Util.execArgv(["xdg-open", root.homepage])
+  }
+
+  function openLog() {
+    if (root.logPath) Util.execArgv(["xdg-open", root.logPath])
   }
 
   Column {
@@ -121,6 +130,42 @@ Item {
       font.family: root.fontFamily
       font.pixelSize: Style.font.caption
       horizontalAlignment: Text.AlignHCenter
+    }
+
+    // Debug log, when the user has turned it on.
+    Column {
+      width: parent.width
+      visible: root.logging
+      spacing: Style.space(2)
+
+      Text {
+        width: parent.width
+        text: "󰈙  Open debug log"
+        color: logArea.containsMouse ? root.accent : root.foreground
+        opacity: logArea.containsMouse ? 1 : 0.75
+        font.family: root.fontFamily
+        font.pixelSize: Style.font.caption
+        horizontalAlignment: Text.AlignHCenter
+
+        MouseArea {
+          id: logArea
+          anchors.fill: parent
+          anchors.margins: -Style.space(4)
+          hoverEnabled: true
+          cursorShape: Qt.PointingHandCursor
+          onClicked: root.openLog()
+        }
+      }
+
+      Text {
+        width: parent.width
+        text: "no passwords or entry names are written to it"
+        color: root.foreground
+        opacity: 0.4
+        font.family: root.fontFamily
+        font.pixelSize: Style.font.caption
+        horizontalAlignment: Text.AlignHCenter
+      }
     }
 
     Rectangle {

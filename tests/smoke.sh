@@ -47,6 +47,9 @@ echo
 export GNUPGHOME="$TMP/gnupg"
 export PASSWORD_STORE_DIR="$TMP/store"
 export OMAPASS_CONFIG="$TMP/config"
+# Without this the log lands in the real ~/.local/state and the assertions
+# below read whatever happens to be there.
+export XDG_STATE_HOME="$TMP/state"
 mkdir -p "$GNUPGHOME"; chmod 700 "$GNUPGHOME"
 
 echo "fixture"
@@ -162,6 +165,30 @@ if command -v node >/dev/null 2>&1; then
 else
   ok "node unavailable — skipped the PassStore.js checks"
 fi
+echo
+
+echo "logging"
+check "logging is off by default" \
+  "$("$OMAPASS" config | python3 -c 'import sys,json;print(json.load(sys.stdin)["log"])')" "False"
+check "no log file when off" \
+  "$("$OMAPASS" list >/dev/null 2>&1; [[ -f "$XDG_STATE_HOME/omapass/omapass.log" ]] && echo yes || echo no)" "no"
+
+printf 'log = on\n' >"$OMAPASS_CONFIG"
+"$OMAPASS" list >/dev/null 2>&1
+"$OMAPASS" reveal "smoke/full" >/dev/null 2>&1
+"$OMAPASS" reveal "no/such/entry-xyzzy" >/dev/null 2>&1
+LOG="$XDG_STATE_HOME/omapass/omapass.log"
+
+check "a log file appears when on" "$([[ -f $LOG ]] && echo yes || echo no)" "yes"
+check "the log is private" "$(stat -c %a "$LOG" 2>/dev/null)" "600"
+check "entry names never reach the log" \
+  "$(grep -cE 'smoke/full|xyzzy' "$LOG" 2>/dev/null)" "0"
+check "passwords never reach the log" \
+  "$(grep -c 'hunter2' "$LOG" 2>/dev/null)" "0"
+check "failures are recorded" "$(grep -c 'exit=1' "$LOG" 2>/dev/null)" "1"
+check "a failing command still exits non-zero" \
+  "$("$OMAPASS" reveal 'no/such/entry-xyzzy' >/dev/null 2>&1; echo $?)" "1"
+: >"$OMAPASS_CONFIG"
 echo
 
 echo "release plumbing"

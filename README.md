@@ -232,6 +232,8 @@ hyphens are interchangeable, so `clip_time` and `clip-time` both work.
 | `fingerprint-retries` | `1` | Failed fingerprint attempts before falling back to the password prompt. One attempt is a whole `fprintd` conversation, and it retries about three times inside each — so `1` is roughly three touches. |
 | `pulldown-rows` | `7` | Rows shown in the bar pulldown. |
 | `backup-dir` | `~/.local/state/omapass/backups` | Where `omapass-reset` writes its backups. |
+| `log` | `off` | `on` writes a debug log to `~/.local/state/omapass/omapass.log`. See below. |
+| `log-max-kb` | `256` | Size cap for that log. Past it the file rotates once and starts again. |
 | `keybind` | `SUPER SHIFT, K` | The hotkey that opens omapass, in Hyprland's syntax. Run `./install.sh` again after changing it. |
 
 ### An example
@@ -280,6 +282,39 @@ understands.
 
 The bar pulldown's row count can also be set per-widget in Omarchy's own
 `shell.json` (Setup → Plugins), and that wins over `pulldown-rows`.
+
+## Debug log
+
+Off unless you turn it on:
+
+```ini
+# ~/.config/omapass/config
+log = on
+```
+
+With it on, every operation appends a line saying what ran and how it ended. The
+About screen (`F1`) grows an **Open debug log** link while it is on, and
+`bin/omapass log --path`, `--status` and `--clear` work from a terminal.
+
+```
+2026-08-28T17:22:53Z error: no such entry: <redacted>
+2026-08-28T17:22:53Z reveal     exit=1 entry=6379ab0a dur=21ms
+2026-08-28T17:22:53Z list       exit=0 entry=- dur=6ms
+```
+
+**It is written so you can paste it into a bug report without reading it first.**
+No passwords, usernames, URLs, OTP secrets — and no entry names either. An entry
+name is itself disclosure: a log saying `bank/deutsche-bank` tells anyone who
+reads it which bank you use.
+
+Entries appear as the short digest in the `entry=` column, salted freshly on
+every run. That is enough to see that three lines concern the same entry without
+saying which, and it means nothing once the run has ended. Error messages have
+the arguments the command was given substituted out, which is why the line above
+reads `<redacted>` where the name would have been.
+
+The file is created `0600`, and rotates once at `log-max-kb` so it cannot grow
+without bound.
 
 ## Fingerprint unlock
 

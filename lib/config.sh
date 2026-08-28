@@ -51,6 +51,8 @@ declare -A CONFIG=(
   [fingerprint]="auto"
   [fingerprint-grace]="120"
   [fingerprint-retries]="1"
+  [log]="off"
+  [log-max-kb]="256"
   [pulldown-rows]="7"
   [keybind]="SUPER SHIFT, K"
   [backup-dir]=""
@@ -135,6 +137,14 @@ export PASSWORD_STORE_DIR="$STORE"
 
 BACKUP_DIR="${OMAPASS_BACKUP_DIR:-$(expand_tilde "${CONFIG[backup-dir]}")}"
 BACKUP_DIR="${BACKUP_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/omapass/backups}"
+
+STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/omapass"
+# Read by the scripts that source this file, not here.
+# shellcheck disable=SC2034
+LOG_FILE="${OMAPASS_LOG_FILE:-$STATE_DIR/omapass.log}"
+LOG_ENABLED=false
+# shellcheck disable=SC2034
+[[ ${OMAPASS_LOG:-${CONFIG[log]}} == "on" ]] && LOG_ENABLED=true
 
 json_escape() {
   local s="$1"

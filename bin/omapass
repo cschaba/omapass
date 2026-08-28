@@ -17,8 +17,84 @@ OMAPASS_LIB="$(cd "$(dirname "${BASH_SOURCE[0]}")/../lib" && pwd)"
 # shellcheck source=../lib/config.sh
 source "$OMAPASS_LIB/config.sh"
 
+# --- logging ----------------------------------------------------------------
+#
+# Off unless asked for. The rule is that this file can be pasted into a bug
+# report without a second thought, so it records what happened and never what
+# it happened to: no passwords, no usernames, no URLs, and no entry names.
+#
+# Entry names are omitted because they are themselves disclosure — a log
+# listing "bank/deutsche-bank" says which bank you use. They appear as a short
+# digest salted per run, which is enough to see that three lines concern the
+# same entry without saying which entry that is, and is meaningless once the
+# run ends.
+
+LOG_SALT=""
+
+log_digest() {
+  local value="$1"
+  [[ -n $value ]] || { printf -- '-'; return; }
+  [[ -n $LOG_SALT ]] || LOG_SALT=$(head -c 16 /dev/urandom | od -An -tx1 | tr -d ' \n')
+  printf '%s' "$LOG_SALT$value" | sha256sum | cut -c1-8
+}
+
+# Keeps the file bounded: past the limit the current log becomes .1, replacing
+# any previous .1, so a long-running session cannot fill a disk.
+log_rotate() {
+  local max_kb size
+  max_kb=$(config_number log-max-kb 256)
+  [[ -f $LOG_FILE ]] || return 0
+  size=$(du -k "$LOG_FILE" 2>/dev/null | cut -f1)
+  [[ ${size:-0} -ge $max_kb ]] || return 0
+  mv -f "$LOG_FILE" "$LOG_FILE.1" 2>/dev/null || true
+  : >"$LOG_FILE"
+  chmod 600 "$LOG_FILE" 2>/dev/null || true
+}
+
+log_line() {
+  $LOG_ENABLED || return 0
+  mkdir -p "$(dirname "$LOG_FILE")" 2>/dev/null || return 0
+  if [[ ! -e $LOG_FILE ]]; then
+    : >"$LOG_FILE"
+    chmod 600 "$LOG_FILE" 2>/dev/null || true
+  fi
+  log_rotate
+  printf '%s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*" >>"$LOG_FILE" 2>/dev/null || true
+}
+
+cmd_log() {
+  case "${1:-}" in
+  --path) printf '%s\n' "$LOG_FILE" ;;
+  --clear)
+    rm -f "$LOG_FILE" "$LOG_FILE.1"
+    echo "omapass: log cleared"
+    ;;
+  --status | "")
+    printf '{"enabled":%s,"path":"%s","exists":%s,"bytes":%s,"maxKb":%s}\n' \
+      "$($LOG_ENABLED && echo true || echo false)" \
+      "$(json_escape "$LOG_FILE")" \
+      "$([[ -f $LOG_FILE ]] && echo true || echo false)" \
+      "$([[ -f $LOG_FILE ]] && stat -c %s "$LOG_FILE" 2>/dev/null || echo 0)" \
+      "$(config_number log-max-kb 256)"
+    ;;
+  *) die "unknown log option: $1" ;;
+  esac
+}
+
 die() {
-  echo "omapass: $*" >&2
+  local message="$*"
+  echo "omapass: $message" >&2
+
+  # The terminal gets the real message; the log gets it with every argument
+  # this command was given substituted out. Redacting the actual values beats
+  # trying to keep names out of die() strings by hand — "no such entry: $entry"
+  # is exactly the message worth having, and exactly the one that would leak.
+  local arg
+  for arg in "${LOG_ARGS[@]}"; do
+    [[ -n $arg ]] || continue
+    message="${message//"$arg"/<redacted>}"
+  done
+  log_line "error: $message"
   exit 1
 }
 
@@ -99,9 +175,11 @@ config_json() {
     "$(config_number fingerprint-grace 120)" \
     "$(config_number fingerprint-retries 1)" \
     "$(config_number pulldown-rows 7)"
-  printf '"backupDir":"%s","keybind":"%s"}' \
+  printf '"backupDir":"%s","keybind":"%s","log":%s,"logPath":"%s"}' \
     "$(json_escape "$BACKUP_DIR")" \
-    "$(json_escape "${OMAPASS_KEYBIND:-${CONFIG[keybind]}}")"
+    "$(json_escape "${OMAPASS_KEYBIND:-${CONFIG[keybind]}}")" \
+    "$($LOG_ENABLED && echo true || echo false)" \
+    "$(json_escape "$LOG_FILE")"
 }
 
 cmd_config() {
@@ -166,6 +244,14 @@ write_config_template() {
 
 # Where omapass-reset writes its backups.
 # backup-dir = ~/.local/state/omapass/backups
+
+# Write a debug log to ~/.local/state/omapass/omapass.log. Off by default.
+# The log records which operation ran and how it ended — never passwords,
+# usernames, URLs, or entry names, so it is safe to attach to a bug report.
+# log = off
+
+# Size cap for that log. Past it the file is rotated once and started again.
+# log-max-kb = 256
 
 # The hotkey install.sh binds to open the overlay, in Hyprland's own syntax:
 # modifiers, then the key. Re-run ./install.sh after changing it — the old
@@ -681,6 +767,7 @@ usage() {
 omapass — pass(1) backend for the omapass Omarchy plugin
 
   version                    print the omapass version
+  log [--path|--clear]       debug log location, or clear it
   welcomed [--mark|--reset]  whether the welcome screen has been shown
   status                     JSON: what is installed and set up
   unlocked                   JSON: whether gpg-agent has a key cached
@@ -708,15 +795,48 @@ omapass — pass(1) backend for the omapass Omarchy plugin
 USAGE
 }
 
+# Recorded through an EXIT trap rather than around the call. Wrapping dispatch
+# in `|| status=$?` looked tidier but put every command inside a `||` list,
+# which switches `set -e` off for the whole of it — failures stopped aborting
+# and started returning 0. The trap sees the real exit status and leaves
+# errexit alone.
+LOG_CMD=""
+LOG_ARGS=()
+LOG_START=0
+MAIN_PID=$$
+
+now_ms() { date +%s%3N 2>/dev/null || echo 0; }
+
+# Command substitution subshells inherit the EXIT trap, so without the PID
+# guard a `body=$(decrypt ...)` that fails would log a line of its own.
+log_finish() {
+  local status=$?
+  [[ $BASHPID == "$MAIN_PID" ]] || return 0
+  log_line "$(printf '%-10s exit=%s entry=%s dur=%sms' \
+    "$LOG_CMD" "$status" "$(log_digest "${LOG_ARGS[0]:-}")" "$(($(now_ms) - LOG_START))")"
+}
+
 main() {
   local cmd="${1:-}"
   [[ $# -gt 0 ]] && shift || true
+
+  LOG_CMD="$cmd"
+  LOG_ARGS=("$@")
+  LOG_START=$(now_ms)
+  trap log_finish EXIT
+
+  dispatch "$cmd" "$@"
+}
+
+dispatch() {
+  local cmd="$1"; shift
 
   case "$cmd" in
   version | --version | -V) printf 'omapass %s\n' "$(omapass_version)" ;;
   welcomed) cmd_welcomed "${1:-}" ;;
   status) cmd_status ;;
   config) cmd_config "${1:-}" ;;
+  log) cmd_log "${1:-}" ;;
   fingerprint) fingerprint_available && echo '{"fingerprint":true}' || echo '{"fingerprint":false}' ;;
   unlocked) cmd_unlocked ;;
   list) cmd_list ;;

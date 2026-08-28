@@ -6,6 +6,15 @@ the CLI surface, or the entry format bump the major.
 
 ## [Unreleased]
 
+### Added
+
+- An opt-in debug log (`log = on`), written so it can be pasted into a bug
+  report unread: it records which operation ran and how it ended, and never
+  passwords, usernames, URLs or entry names. Entries appear as a per-run salted
+  digest, so lines can be correlated without disclosing what they refer to. The
+  file is `0600` and rotates at `log-max-kb`. The About screen offers a link to
+  it while logging is on. ([#19])
+
 ## [0.1.16] — 2026-08-28
 
 ### Security
@@ -237,3 +246,4 @@ top of the README.
 [0.1.15]: https://github.com/cschaba/omapass/releases/tag/v0.1.15
 [#17]: https://github.com/cschaba/omapass/issues/17
 [0.1.16]: https://github.com/cschaba/omapass/releases/tag/v0.1.16
+[#19]: https://github.com/cschaba/omapass/issues/19

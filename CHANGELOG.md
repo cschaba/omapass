@@ -6,6 +6,8 @@ the CLI surface, or the entry format bump the major.
 
 ## [Unreleased]
 
+## [0.1.5] — 2026-08-28
+
 ### Added
 
 - The pulldown offers `^O otp` when the selected entry actually carries a TOTP
@@ -78,7 +80,7 @@ top of the README.
 - The clipboard is marked sensitive, so Omarchy's clipboard manager will not
   record it, and the selection is dropped after a timeout.
 
-[Unreleased]: https://github.com/cschaba/omapass/compare/v0.1.4...HEAD
+[Unreleased]: https://github.com/cschaba/omapass/compare/v0.1.5...HEAD
 [0.1.0]: https://github.com/cschaba/omapass/releases/tag/v0.1.0
 [#2]: https://github.com/cschaba/omapass/issues/2
 [0.1.1]: https://github.com/cschaba/omapass/releases/tag/v0.1.1
@@ -89,3 +91,4 @@ top of the README.
 [#3]: https://github.com/cschaba/omapass/issues/3
 [0.1.4]: https://github.com/cschaba/omapass/releases/tag/v0.1.4
 [#5]: https://github.com/cschaba/omapass/issues/5
+[0.1.5]: https://github.com/cschaba/omapass/releases/tag/v0.1.5

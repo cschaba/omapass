@@ -6,6 +6,8 @@ the CLI surface, or the entry format bump the major.
 
 ## [Unreleased]
 
+## [0.1.1] — 2026-08-28
+
 ### Fixed
 
 - Setup printed `probe: unbound variable` after a successful run. A `RETURN`
@@ -43,6 +45,7 @@ top of the README.
 - The clipboard is marked sensitive, so Omarchy's clipboard manager will not
   record it, and the selection is dropped after a timeout.
 
-[Unreleased]: https://github.com/cschaba/omapass/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/cschaba/omapass/compare/v0.1.1...HEAD
 [0.1.0]: https://github.com/cschaba/omapass/releases/tag/v0.1.0
 [#2]: https://github.com/cschaba/omapass/issues/2
+[0.1.1]: https://github.com/cschaba/omapass/releases/tag/v0.1.1

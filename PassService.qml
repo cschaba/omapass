@@ -27,6 +27,7 @@ Item {
   readonly property bool hasOtpSupport: status !== null && status.otp === true
   readonly property bool hasGit: status !== null && status.git === true
   readonly property bool fingerprintRequired: status !== null && status.fingerprint === true
+  readonly property bool passwordAuthAvailable: status !== null && status.passwordAuth === true
 
   // The effective configuration, already resolved by bin/omapass — file,
   // environment and defaults folded together. The UI never parses the file.

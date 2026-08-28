@@ -6,6 +6,15 @@ the CLI surface, or the entry format bump the major.
 
 ## [Unreleased]
 
+### Fixed
+
+- An unreachable fingerprint reader trapped you at the gate. It retried forever
+  and the only way out was noticing a link. The gate now gives up on its own —
+  after two device errors, or three unrecognised fingers — and hands over to the
+  password prompt saying why. Switching back to the reader resets that, and when
+  no password service exists it says so rather than offering a door onto a wall.
+  ([#8])
+
 ## [0.1.5] — 2026-08-28
 
 ### Added
@@ -92,3 +101,4 @@ top of the README.
 [0.1.4]: https://github.com/cschaba/omapass/releases/tag/v0.1.4
 [#5]: https://github.com/cschaba/omapass/issues/5
 [0.1.5]: https://github.com/cschaba/omapass/releases/tag/v0.1.5
+[#8]: https://github.com/cschaba/omapass/issues/8

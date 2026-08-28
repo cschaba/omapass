@@ -211,6 +211,12 @@ cmd_status() {
   local has_fingerprint=false
   fingerprint_available && has_fingerprint=true
 
+  # Whether the password fallback behind the fingerprint gate can work at all.
+  # Without this service there is nothing to fall back to, and the UI has to say
+  # so rather than offering a door that opens onto a wall.
+  local has_password_auth=false
+  [[ -f /etc/pam.d/omarchy-lock-password ]] && has_password_auth=true
+
   local has_store=false has_git=false entries=0
   [[ -f $STORE/.gpg-id ]] && has_store=true
   [[ -d $STORE/.git ]] && has_git=true
@@ -249,9 +255,10 @@ cmd_status() {
     sep=","
   done <<<"$keys_raw"
 
-  printf '{"version":"%s","pass":%s,"otp":%s,"gpg":%s,"key":%s,"store":%s,"git":%s,"fingerprint":%s,' \
+  printf '{"version":"%s","pass":%s,"otp":%s,"gpg":%s,"key":%s,"store":%s,"git":%s,"fingerprint":%s,"passwordAuth":%s,' \
     "$(json_escape "$(omapass_version)")" \
-    "$has_pass" "$has_otp" "$has_gpg" "$has_key" "$has_store" "$has_git" "$has_fingerprint"
+    "$has_pass" "$has_otp" "$has_gpg" "$has_key" "$has_store" "$has_git" "$has_fingerprint" \
+    "$has_password_auth"
   printf '"entries":%s,"storePath":"%s","keys":[%s],' \
     "$entries" "$(json_escape "$STORE")" "$keys"
   printf '"requirements":[%s],"config":%s,"ready":%s}\n' \

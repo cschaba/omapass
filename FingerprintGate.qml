@@ -32,6 +32,18 @@ Item {
   property string mode: "fingerprint"
   property bool checkingPassword: false
 
+  // Whether omarchy-lock-password exists. Without it there is nothing to fall
+  // back to, and pretending otherwise would send the user to a dead end.
+  property bool passwordAvailable: true
+
+  // A reader that errors is not the same as a finger that does not match: the
+  // first means the device is unreachable, and no amount of touching it will
+  // help. Both give up eventually rather than looping forever. (#8)
+  property int readerErrors: 0
+  readonly property int maxScanFailures: 3
+  readonly property int maxReaderErrors: 2
+  property bool fellBack: false
+
   signal authenticated()
 
   function toggleMode() {
@@ -48,10 +60,25 @@ Item {
 
   function start() {
     root.attempts = 0
+    root.readerErrors = 0
+    root.fellBack = false
     root.statusText = ""
     root.mode = "fingerprint"
     passwordField.text = ""
     beginScan()
+  }
+
+  // Hand over to the password prompt without the user having to notice a link.
+  // `reason` is shown so it is clear why the reader stopped being asked.
+  function fallBackToPassword(reason) {
+    if (!root.passwordAvailable) {
+      // Nothing to fall back to. Say what will actually get them in.
+      root.statusText = reason + " — no password service to fall back on"
+      return
+    }
+    root.fellBack = true
+    root.usePassword()
+    root.statusText = reason
   }
 
   function usePassword() {
@@ -68,6 +95,11 @@ Item {
   function useFingerprint() {
     root.mode = "fingerprint"
     root.statusText = ""
+    // An explicit switch back is a request to try the reader again, so the
+    // counters that gave up on it start over.
+    root.attempts = 0
+    root.readerErrors = 0
+    root.fellBack = false
     passwordField.text = ""
     if (passwordPam.active) passwordPam.abort()
     beginScan()
@@ -88,6 +120,11 @@ Item {
     root.scanning = true
     if (!pam.start()) {
       root.scanning = false
+      root.readerErrors += 1
+      if (root.readerErrors >= root.maxReaderErrors) {
+        root.fallBackToPassword("Fingerprint reader is not available")
+        return
+      }
       root.statusText = "Could not reach the fingerprint reader"
       retry.restart()
     }
@@ -119,6 +156,10 @@ Item {
       }
 
       root.attempts += 1
+      if (root.attempts >= root.maxScanFailures) {
+        root.fallBackToPassword("Fingerprint not recognised")
+        return
+      }
       root.statusText = "Not recognised — try again"
       retry.restart()
     }
@@ -126,8 +167,12 @@ Item {
     onError: function (error) {
       root.scanning = false
       if (!root.armed || root.mode !== "fingerprint") return
-      root.attempts += 1
-      root.statusText = "Reader error — try again"
+      root.readerErrors += 1
+      if (root.readerErrors >= root.maxReaderErrors) {
+        root.fallBackToPassword("Fingerprint reader is not available")
+        return
+      }
+      root.statusText = "Reader error — retrying"
       retry.restart()
     }
   }
@@ -234,6 +279,7 @@ Item {
     // will not read you is a locked one. (#6)
     Text {
       width: parent.width
+      visible: root.passwordAvailable
       text: (root.mode === "password" ? "Use fingerprint instead" : "Use password instead")
             + "   (Tab)"
       color: switchArea.containsMouse ? root.accent : root.foreground
@@ -266,7 +312,7 @@ Item {
     // After a few bad reads, say how to get past a reader that is not working.
     Text {
       width: parent.width
-      visible: root.attempts >= 3 && root.mode === "fingerprint"
+      visible: root.fellBack || (root.attempts >= 3 && root.mode === "fingerprint")
       text: "Reader not cooperating? Create " + root.optOutPath + " to turn this off.\nYour passwords stay reachable with the pass command either way."
       color: root.foreground
       opacity: 0.5

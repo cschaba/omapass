@@ -468,6 +468,7 @@ Item {
         anchors.leftMargin: card.contentLeftInset
         visible: root.vaultLocked
         armed: root.opened && root.vaultLocked
+        passwordAvailable: pass.passwordAuthAvailable
         foreground: root.foreground
         accent: root.selectedText
         fontFamily: root.fontFamily

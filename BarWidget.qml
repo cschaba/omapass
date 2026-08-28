@@ -359,6 +359,7 @@ Panel {
           height: visible ? Style.space(110) : 0
           visible: root.vaultLocked
           armed: root.opened && root.vaultLocked
+          passwordAvailable: pass.passwordAuthAvailable
           compact: true
           foreground: root.foreground
           accent: Color.accent

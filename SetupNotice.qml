@@ -156,6 +156,16 @@ Item {
 
     Text {
       width: parent.width
+      text: "Esc to close"
+      color: root.foreground
+      opacity: 0.45
+      font.family: root.fontFamily
+      font.pixelSize: Style.font.caption
+      horizontalAlignment: Text.AlignHCenter
+    }
+
+    Text {
+      width: parent.width
       text: "Opens a terminal and walks through the steps above — or run the commands yourself; click one to copy it."
       color: root.foreground
       opacity: 0.5

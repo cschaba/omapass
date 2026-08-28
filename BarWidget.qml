@@ -140,7 +140,10 @@ Panel {
     owner: root
     bar: root.bar
     open: root.opened
-    focusTarget: searchField
+    // Focus whatever is actually on screen: forceActiveFocus() on a hidden item
+    // quietly does nothing, which left Esc dead on the setup and locked screens
+    // — the two states with nothing else to press. (#1)
+    focusTarget: (pass.ready && !root.vaultLocked) ? searchField : keyCatcher
     contentWidth: panel.fittedContentWidth(Style.space(320))
     contentHeight: panel.fittedContentHeight(column.implicitHeight)
 
@@ -337,12 +340,36 @@ Panel {
           height: Style.font.caption + Style.space(4)
 
           Text {
+            id: hintLabel
             anchors.left: parent.left
             anchors.verticalCenter: parent.verticalCenter
-            text: root.vaultLocked ? "" : (pass.ready ? "⏎ copy   ⇧⏎ type" : "")
+            visible: pass.ready && !root.vaultLocked
+            text: "⏎ copy   ⇧⏎ type"
             color: root.dim
             font.family: root.fontFamily
             font.pixelSize: Style.font.caption
+          }
+
+          // A way out that does not depend on knowing about Esc. Without this
+          // the setup screen is a dead end for anyone reaching for the mouse.
+          Text {
+            id: closeLabel
+            anchors.left: parent.left
+            anchors.verticalCenter: parent.verticalCenter
+            visible: !hintLabel.visible
+            text: "Close"
+            color: closeArea.containsMouse ? Color.accent : root.dim
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.caption
+
+            MouseArea {
+              id: closeArea
+              anchors.fill: parent
+              anchors.margins: -Style.space(4)
+              hoverEnabled: true
+              cursorShape: Qt.PointingHandCursor
+              onClicked: root.close()
+            }
           }
 
           Text {

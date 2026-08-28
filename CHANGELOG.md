@@ -6,6 +6,12 @@ the CLI surface, or the entry format bump the major.
 
 ## [Unreleased]
 
+### Fixed
+
+- Setup printed `probe: unbound variable` after a successful run. A `RETURN`
+  trap set inside a function stays armed for its caller, so cleanup fired a
+  second time once the variable was out of scope. ([#2])
+
 ## [0.1.0] — 2026-08-28
 
 First release. Under development and largely untested — see the warning at the
@@ -39,3 +45,4 @@ top of the README.
 
 [Unreleased]: https://github.com/cschaba/omapass/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/cschaba/omapass/releases/tag/v0.1.0
+[#2]: https://github.com/cschaba/omapass/issues/2

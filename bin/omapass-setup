@@ -152,14 +152,13 @@ init_store() {
 verify() {
   heading "5/5  Check"
 
-  local probe="omapass/setup-check"
+  local probe="omapass/setup-check" status=0
 
-  # Clean up on every path out of here. Without this a cancelled passphrase
-  # prompt leaves a stray entry sitting in the user's store.
-  cleanup_probe() { pass rm -f "$probe" >/dev/null 2>&1 || true; }
-  trap cleanup_probe RETURN
-
-  if pass generate -f "$probe" 12 >/dev/null 2>&1 && pass show "$probe" >/dev/null 2>&1; then
+  # Cleanup runs on both paths out of here, spelled out rather than hung off a
+  # RETURN trap: a trap set inside a function stays armed for the caller too, so
+  # it fired a second time once `probe` was out of scope and `set -u` turned
+  # that into an error message at the end of a successful setup. (#2)
+  if pass generate -f -- "$probe" 12 >/dev/null 2>&1 && pass show -- "$probe" >/dev/null 2>&1; then
     ok "encrypt and decrypt both work"
   else
     fail "could not round-trip a test entry"
@@ -167,9 +166,12 @@ verify() {
     warn "reachable from the desktop session. Try:"
     gum style --faint "    echo 'pinentry-program /usr/bin/pinentry-gnome3' >> ~/.gnupg/gpg-agent.conf"
     gum style --faint "    gpgconf --kill gpg-agent"
-    return 1
+    status=1
   fi
-  echo
+
+  pass rm -f -- "$probe" >/dev/null 2>&1 || true
+  [[ $status -eq 0 ]] && echo
+  return $status
 }
 
 # --- run --------------------------------------------------------------------

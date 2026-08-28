@@ -27,6 +27,15 @@ Item {
   readonly property bool hasOtpSupport: status !== null && status.otp === true
   readonly property bool hasGit: status !== null && status.git === true
   readonly property bool fingerprintRequired: status !== null && status.fingerprint === true
+
+  // The effective configuration, already resolved by bin/omapass — file,
+  // environment and defaults folded together. The UI never parses the file.
+  readonly property var config: status !== null && status.config ? status.config : ({})
+
+  function setting(name, fallback) {
+    var value = root.config[name]
+    return value === undefined || value === null ? fallback : value
+  }
   readonly property var requirements: PassStore.setupSteps(status)
 
   signal listReloaded()

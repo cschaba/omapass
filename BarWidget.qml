@@ -34,7 +34,9 @@ Panel {
   property bool fingerprintPassed: false
   readonly property bool vaultLocked: pass.ready && root.fingerprintRequired && !root.fingerprintPassed
 
-  readonly property int visibleRows: Math.max(1, setting("rows", 7))
+  // A per-widget setting in shell.json wins; the config file supplies the
+  // default so both surfaces can be tuned from one place.
+  readonly property int visibleRows: Math.max(1, setting("rows", pass.setting("pulldownRows", 7)))
   readonly property int rowHeight: Math.max(Style.space(26), Style.font.body + Style.spacing.controlPaddingY)
 
   readonly property var currentRow: resultModel.count > 0 && selectedIndex >= 0 && selectedIndex < resultModel.count
@@ -57,7 +59,7 @@ Panel {
 
   Timer {
     id: graceTimer
-    interval: 120000
+    interval: pass.setting("fingerprintGrace", 120) * 1000
     onTriggered: root.fingerprintPassed = false
   }
 

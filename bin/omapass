@@ -12,9 +12,10 @@
 
 set -euo pipefail
 
-STORE="${PASSWORD_STORE_DIR:-$HOME/.password-store}"
-CLIP_TIME="${OMAPASS_CLIP_TIME:-45}"
-TYPE_DELAY="${OMAPASS_TYPE_DELAY:-12}"
+# Config, shared with the other scripts in bin/.
+OMAPASS_LIB="$(cd "$(dirname "${BASH_SOURCE[0]}")/../lib" && pwd)"
+# shellcheck source=../lib/config.sh
+source "$OMAPASS_LIB/config.sh"
 
 die() {
   echo "omapass: $*" >&2
@@ -54,20 +55,84 @@ entry_exists() {
 # `status` is the one command that has to work when the dependencies do not,
 # since reporting a missing jq through jq would be a poor joke. Everything it
 # emits is hand-rolled; the commands that genuinely need jq say so.
-json_escape() {
-  local s="$1"
-  s=${s//\\/\\\\}
-  s=${s//\"/\\\"}
-  s=${s//$'\n'/\\n}
-  s=${s//$'\r'/\\r}
-  s=${s//$'\t'/\\t}
-  # Anything else in C0 produces JSON the reader cannot parse. A control
-  # character in a GPG uid should not take the whole status payload down.
-  s=$(printf '%s' "$s" | tr -d '\000-\010\013\014\016-\037')
-  printf '%s' "$s"
+
+# The values actually in force, after file, environment and defaults have been
+# resolved. The UI reads this rather than parsing the file itself.
+config_json() {
+  printf '{"path":"%s","exists":%s,' \
+    "$(json_escape "$CONFIG_FILE")" \
+    "$([[ -r $CONFIG_FILE ]] && echo true || echo false)"
+  printf '"store":"%s","clipTime":%s,"typeDelay":%s,"typeFocusDelay":%s,' \
+    "$(json_escape "$STORE")" \
+    "$CLIP_TIME" "$TYPE_DELAY" \
+    "${OMAPASS_TYPE_FOCUS_DELAY:-$(config_number type-focus-delay 0.2)}"
+  printf '"revealTimeout":%s,"fingerprint":"%s","fingerprintGrace":%s,"pulldownRows":%s,' \
+    "$(config_number reveal-timeout 15)" \
+    "$(json_escape "${CONFIG[fingerprint]}")" \
+    "$(config_number fingerprint-grace 120)" \
+    "$(config_number pulldown-rows 7)"
+  printf '"backupDir":"%s"}' \
+    "$(json_escape "$BACKUP_DIR")"
 }
 
-json_bool() { [[ $1 == "true" || $1 == "yes" || $1 == 0 ]] && printf 'true' || printf 'false'; }
+cmd_config() {
+  case "${1:-}" in
+  --path) printf '%s\n' "$CONFIG_FILE" ;;
+  --init) write_config_template ;;
+  "") config_json; echo ;;
+  *) die "unknown config option: $1" ;;
+  esac
+}
+
+write_config_template() {
+  if [[ -e $CONFIG_FILE ]]; then
+    echo "omapass: $CONFIG_FILE already exists, leaving it alone" >&2
+    return 1
+  fi
+  mkdir -p "$(dirname "$CONFIG_FILE")"
+  cat >"$CONFIG_FILE" <<'TEMPLATE'
+# omapass configuration
+#
+# Every setting is commented out at its default. Uncomment to change one.
+# An environment variable of the same name still wins over this file, so a
+# one-off run can override without editing anything.
+
+# Where the password store lives. ~ is expanded.
+# store = ~/.password-store
+
+# Seconds a copied password stays on the clipboard before it is dropped.
+# clip-time = 45
+
+# Milliseconds between simulated keystrokes when typing into a window.
+# type-delay = 12
+
+# Seconds to wait for focus to land back on the target window before typing.
+# Raise this if the first characters of a typed password go missing.
+# type-focus-delay = 0.2
+
+# Seconds a revealed password stays on screen before it re-hides.
+# reveal-timeout = 15
+
+# Fingerprint unlock in front of the vault.
+#   auto    require it when a finger is enrolled  (default)
+#   always  require it whenever the PAM service exists, even if enrolment
+#           cannot be confirmed
+#   off     never require it
+# Esc and the pass CLI always get you past the prompt, whatever this says.
+# fingerprint = auto
+
+# Seconds a successful fingerprint scan stays valid before it is asked for again.
+# fingerprint-grace = 120
+
+# Rows shown in the bar pulldown. A per-widget setting in shell.json,
+# if you have one, wins over this.
+# pulldown-rows = 7
+
+# Where omapass-reset writes its backups.
+# backup-dir = ~/.local/state/omapass/backups
+TEMPLATE
+  echo "omapass: wrote $CONFIG_FILE"
+}
 
 # --- requirements -----------------------------------------------------------
 
@@ -96,12 +161,29 @@ secret_key_lines() {
 # Touching a reader that has nothing enrolled would lock the user out of their
 # own vault, so both halves are required.
 fingerprint_available() {
+  local mode="${CONFIG[fingerprint]}"
+
+  # The marker file predates the config setting and still works, because it is
+  # the easiest thing to create when a reader is refusing you entry.
+  [[ ! -e ${XDG_CONFIG_HOME:-$HOME/.config}/omapass/no-fingerprint ]] || return 1
+
+  case "$mode" in
+  off) return 1 ;;
+  auto | always) ;;
+  *)
+    config_warn "fingerprint: '$mode' is not auto, always or off — using auto"
+    mode="auto"
+    ;;
+  esac
+
   [[ -f /etc/pam.d/omarchy-lock-fingerprint ]] || return 1
+
+  # `always` trusts the PAM service alone, for readers fprintd-list does not
+  # report cleanly. Esc and the pass CLI still get you past it.
+  [[ $mode == "always" ]] && return 0
+
   command -v fprintd-list >/dev/null 2>&1 || return 1
   fprintd-list "$USER" 2>/dev/null | grep -qi finger || return 1
-  # Deliberate opt-out, for a reader that works badly or a user who does not
-  # want the extra step.
-  [[ ! -e ${XDG_CONFIG_HOME:-$HOME/.config}/omapass/no-fingerprint ]] || return 1
   return 0
 }
 
@@ -163,7 +245,20 @@ cmd_status() {
     "$has_pass" "$has_otp" "$has_gpg" "$has_key" "$has_store" "$has_git" "$has_fingerprint"
   printf '"entries":%s,"storePath":"%s","keys":[%s],' \
     "$entries" "$(json_escape "$STORE")" "$keys"
-  printf '"requirements":[%s],"ready":%s}\n' "$requirements" "$ready"
+  printf '"requirements":[%s],"config":%s,"ready":%s}\n' \
+    "$requirements" "$(config_json)" "$ready"
+}
+
+# Whether gpg-agent still holds a key, i.e. whether decrypting right now would
+# raise a pinentry prompt. Best-effort: false is always the safe answer, and the
+# detail pane simply stays closed until the user asks for it.
+cmd_unlocked() {
+  local cached=false out
+  out=$(gpg-connect-agent 'keyinfo --list' /bye 2>/dev/null) || true
+  if awk '$1 == "S" && $2 == "KEYINFO" && $7 == "1" { found = 1 } END { exit !found }' <<<"$out"; then
+    cached=true
+  fi
+  printf '{"unlocked":%s}\n' "$cached"
 }
 
 # --- list -------------------------------------------------------------------
@@ -293,7 +388,7 @@ type_secret() {
   command -v wtype >/dev/null 2>&1 || die "wtype is not installed"
   # The overlay only closes as we start, so wait for focus to land back on the
   # window the user actually wants typed into.
-  sleep "${OMAPASS_TYPE_FOCUS_DELAY:-0.2}"
+  sleep "${OMAPASS_TYPE_FOCUS_DELAY:-$(config_number type-focus-delay 0.2)}"
   # --  stops wtype parsing a secret that starts with a dash as a flag.
   printf '%s' "$secret" | wtype -d "$TYPE_DELAY" -- -
 }
@@ -515,6 +610,8 @@ omapass — pass(1) backend for the omapass Omarchy plugin
   status                     JSON: what is installed and set up
   unlocked                   JSON: whether gpg-agent has a key cached
   fingerprint                JSON: whether fingerprint unlock is required
+  config [--path|--init]     effective configuration as JSON; --init writes a
+                             commented template to the config file
   list                       JSON: every entry in the store
   fields <entry>             JSON: non-password fields (never the password)
   reveal <entry>             print the password to stdout
@@ -542,6 +639,7 @@ main() {
 
   case "$cmd" in
   status) cmd_status ;;
+  config) cmd_config "${1:-}" ;;
   fingerprint) fingerprint_available && echo '{"fingerprint":true}' || echo '{"fingerprint":false}' ;;
   unlocked) cmd_unlocked ;;
   list) cmd_list ;;

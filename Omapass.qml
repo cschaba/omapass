@@ -41,7 +41,7 @@ Item {
   // second touch; closing the surface does not by itself re-lock.
   readonly property bool fingerprintRequired: pass.fingerprintRequired
   property bool fingerprintPassed: false
-  property int fingerprintGraceMs: 120000
+  readonly property int fingerprintGraceMs: pass.setting("fingerprintGrace", 120) * 1000
   readonly property bool vaultLocked: root.ready && root.fingerprintRequired && !root.fingerprintPassed
   readonly property var entries: pass.entries
   readonly property bool loading: pass.loading
@@ -305,7 +305,7 @@ Item {
 
   Timer {
     id: revealTimer
-    interval: 15000
+    interval: pass.setting("revealTimeout", 15) * 1000
     onTriggered: root.revealedPassword = ""
   }
 

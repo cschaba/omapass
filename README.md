@@ -345,13 +345,61 @@ state the setup flow is meant to be tested from.
 
 ## Configuration
 
-| Variable | Default | Meaning |
-|----------|---------|---------|
-| `PASSWORD_STORE_DIR` | `~/.password-store` | where the store lives |
-| `OMAPASS_CLIP_TIME` | `45` | seconds before the clipboard is dropped |
-| `OMAPASS_TYPE_DELAY` | `12` | ms between simulated keystrokes |
-| `OMAPASS_TYPE_FOCUS_DELAY` | `0.2` | seconds to wait for focus before typing |
-| `OMAPASS_KEYBIND` | `SUPER CTRL, K` | binding added by `install.sh` |
+One file: `~/.config/omapass/config`. Write a commented template with every
+default spelled out:
+
+```bash
+bin/omapass config --init
+bin/omapass config          # the values actually in force, as JSON
+bin/omapass config --path
+```
+
+```ini
+store             = ~/.password-store   # ~ is expanded
+clip-time         = 45                  # seconds before the clipboard is dropped
+type-delay        = 12                  # ms between simulated keystrokes
+type-focus-delay  = 0.2                 # seconds to wait for focus before typing
+reveal-timeout    = 15                  # seconds a revealed password stays up
+fingerprint       = auto                # auto | always | off
+fingerprint-grace = 120                 # seconds a successful scan stays valid
+pulldown-rows     = 7                   # rows in the bar pulldown
+backup-dir        = ~/.local/state/omapass/backups
+```
+
+`key = value`, `#` comments, and `key_name` works as well as `key-name`.
+Precedence is **environment > config file > default**, so a one-off run can
+override without editing anything:
+
+```bash
+OMAPASS_CLIP_TIME=5 bin/omapass copy some/entry
+PASSWORD_STORE_DIR=/tmp/scratch bin/omapass list
+```
+
+The file is parsed, never sourced — a config file that can run code is a config
+file that can be turned into a payload. Unknown keys and unparseable numbers
+produce a warning on stderr and fall back to the default rather than failing.
+
+The overlay and the pulldown do not read this file. `bin/omapass status` resolves
+everything and hands the result over as JSON, so there is only ever one parser.
+
+`fingerprint = always` requires a scan whenever the PAM service exists, even
+when enrolment cannot be confirmed — useful for a reader `fprintd-list` does not
+report cleanly. `Esc` and the `pass` CLI still get you past it either way.
+
+The bar pulldown's row count can also be set per-widget in `shell.json`
+(Setup → Plugins), which wins over `pulldown-rows`.
+
+## Tests
+
+```bash
+tests/smoke.sh
+```
+
+Builds a throwaway GPG home and password store, exercises the CLI against it,
+and cleans up after itself — it never touches a real store. It also checks that
+every subcommand the dispatcher can reach is actually defined, which is not
+paranoia: `unlocked` was dispatched to a function that had been deleted, and
+bash only complains when that branch is taken, so it shipped twice.
 
 ## Requirements
 

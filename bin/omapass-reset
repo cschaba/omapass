@@ -10,8 +10,10 @@
 
 set -euo pipefail
 
-STORE="${PASSWORD_STORE_DIR:-$HOME/.password-store}"
-BACKUP_DIR="${OMAPASS_BACKUP_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/omapass/backups}"
+# Same config file, same parser as bin/omapass — this sets STORE and BACKUP_DIR.
+OMAPASS_LIB="$(cd "$(dirname "${BASH_SOURCE[0]}")/../lib" && pwd)"
+# shellcheck source=../lib/config.sh
+source "$OMAPASS_LIB/config.sh"
 
 ASSUME_YES=0
 DO_STORE=0

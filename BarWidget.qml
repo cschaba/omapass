@@ -152,8 +152,11 @@ Panel {
       anchors.fill: parent
       // The search field is always focused, so it owns the keyboard; this
       // catcher would otherwise eat every letter as a navigation shortcut.
-      blocked: searchField.activeFocus
+      // Also blocked while the password field is up, or typing a password would
+      // be read as navigation.
+      blocked: searchField.activeFocus || fingerprintGate.mode === "password"
       onCloseRequested: root.close()
+      onTabRequested: if (root.vaultLocked) fingerprintGate.toggleMode()
 
       Column {
         id: column
@@ -316,6 +319,7 @@ Panel {
         }
 
         FingerprintGate {
+          id: fingerprintGate
           width: parent.width
           height: visible ? Style.space(110) : 0
           visible: root.vaultLocked

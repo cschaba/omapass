@@ -382,7 +382,11 @@ Item {
           }
 
           if (root.vaultLocked) {
+            // Esc leaves, Tab swaps between the reader and a password. Every
+            // other key is swallowed so the picker underneath cannot be driven
+            // blind through the gate.
             if (event.key === Qt.Key_Escape) { root.dismiss(); event.accepted = true }
+            else if (event.key === Qt.Key_Tab) { fingerprintGate.toggleMode(); event.accepted = true }
             else event.accepted = true
             return
           }
@@ -456,6 +460,7 @@ Item {
       // --- setup gate --------------------------------------------------------
 
       FingerprintGate {
+        id: fingerprintGate
         anchors.fill: parent
         anchors.topMargin: card.contentTopInset
         anchors.rightMargin: card.contentRightInset

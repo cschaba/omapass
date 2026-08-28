@@ -6,6 +6,13 @@ the CLI surface, or the entry format bump the major.
 
 ## [Unreleased]
 
+### Added
+
+- The fingerprint gate offers "Use password instead", switchable with `Tab`.
+  It authenticates against `omarchy-lock-password`, the same PAM service the
+  Omarchy lock screen uses — a real check rather than a way around the gate,
+  which would have made it decoration. ([#6])
+
 ## [0.1.2] — 2026-08-28
 
 ### Changed
@@ -60,3 +67,4 @@ top of the README.
 [0.1.1]: https://github.com/cschaba/omapass/releases/tag/v0.1.1
 [#4]: https://github.com/cschaba/omapass/issues/4
 [0.1.2]: https://github.com/cschaba/omapass/releases/tag/v0.1.2
+[#6]: https://github.com/cschaba/omapass/issues/6

@@ -26,7 +26,18 @@ Item {
   property bool scanning: false
   property string statusText: ""
 
+  // "fingerprint" or "password". The password path is a real check against the
+  // same PAM service Omarchy's lock screen uses, not a way around the gate — a
+  // gate with a skip button is decoration.
+  property string mode: "fingerprint"
+  property bool checkingPassword: false
+
   signal authenticated()
+
+  function toggleMode() {
+    if (root.mode === "password") root.useFingerprint()
+    else root.usePassword()
+  }
 
   readonly property string optOutPath: "~/.config/omapass/no-fingerprint"
 
@@ -38,11 +49,42 @@ Item {
   function start() {
     root.attempts = 0
     root.statusText = ""
+    root.mode = "fingerprint"
+    passwordField.text = ""
     beginScan()
   }
 
+  function usePassword() {
+    root.mode = "password"
+    root.statusText = ""
+    // fprintd holds the reader for the length of a conversation; let it go
+    // rather than leaving a scan running behind a password prompt.
+    retry.stop()
+    root.scanning = false
+    if (pam.active) pam.abort()
+    Qt.callLater(function () { passwordField.forceActiveFocus() })
+  }
+
+  function useFingerprint() {
+    root.mode = "fingerprint"
+    root.statusText = ""
+    passwordField.text = ""
+    if (passwordPam.active) passwordPam.abort()
+    beginScan()
+  }
+
+  function submitPassword() {
+    if (root.checkingPassword || !passwordField.text) return
+    root.checkingPassword = true
+    root.statusText = ""
+    if (!passwordPam.start()) {
+      root.checkingPassword = false
+      root.statusText = "Could not start the password check"
+    }
+  }
+
   function beginScan() {
-    if (!root.armed || pam.active) return
+    if (!root.armed || pam.active || root.mode !== "fingerprint") return
     root.scanning = true
     if (!pam.start()) {
       root.scanning = false
@@ -54,7 +96,10 @@ Item {
   function stop() {
     retry.stop()
     root.scanning = false
+    root.checkingPassword = false
+    passwordField.text = ""
     if (pam.active) pam.abort()
+    if (passwordPam.active) passwordPam.abort()
   }
 
   PamContext {
@@ -64,7 +109,7 @@ Item {
 
     onCompleted: function (result) {
       root.scanning = false
-      if (!root.armed) return
+      if (!root.armed || root.mode !== "fingerprint") return
 
       if (result === PamResult.Success) {
         root.statusText = ""
@@ -80,10 +125,42 @@ Item {
 
     onError: function (error) {
       root.scanning = false
-      if (!root.armed) return
+      if (!root.armed || root.mode !== "fingerprint") return
       root.attempts += 1
       root.statusText = "Reader error — try again"
       retry.restart()
+    }
+  }
+
+  PamContext {
+    id: passwordPam
+    config: "omarchy-lock-password"
+    user: root.userName
+
+    // PAM asks for the password through the conversation rather than up front,
+    // so the answer is handed over when it is requested.
+    onResponseRequiredChanged: if (responseRequired && root.checkingPassword) respond(passwordField.text)
+    onPamMessage: if (responseRequired && root.checkingPassword) respond(passwordField.text)
+
+    onCompleted: function (result) {
+      root.checkingPassword = false
+      if (!root.armed) return
+
+      if (result === PamResult.Success) {
+        passwordField.text = ""
+        root.statusText = ""
+        root.authenticated()
+        return
+      }
+      passwordField.text = ""
+      root.attempts += 1
+      root.statusText = "Wrong password"
+    }
+
+    onError: function (error) {
+      root.checkingPassword = false
+      passwordField.text = ""
+      if (root.armed) root.statusText = "Password check failed"
     }
   }
 
@@ -102,6 +179,7 @@ Item {
 
     Text {
       width: parent.width
+      visible: root.mode === "fingerprint"
       text: "󰈷"
       color: root.accent
       opacity: root.scanning ? 1 : 0.55
@@ -120,11 +198,25 @@ Item {
 
     Text {
       width: parent.width
-      text: "Touch the fingerprint reader"
+      text: root.mode === "password"
+        ? (root.checkingPassword ? "Checking…" : "Enter your password")
+        : "Touch the fingerprint reader"
       color: root.foreground
       font.family: root.fontFamily
       font.pixelSize: root.compact ? Style.font.body : Style.font.heading
       horizontalAlignment: Text.AlignHCenter
+    }
+
+    TextField {
+      id: passwordField
+      width: parent.width
+      visible: root.mode === "password"
+      enabled: !root.checkingPassword
+      password: true
+      placeholderText: "Password"
+      foreground: root.foreground
+      accent: root.accent
+      onAccepted: root.submitPassword()
     }
 
     Text {
@@ -136,6 +228,28 @@ Item {
       font.pixelSize: Style.font.caption
       horizontalAlignment: Text.AlignHCenter
       wrapMode: Text.WordWrap
+    }
+
+    // The way out. Without it the reader is the only door, and a reader that
+    // will not read you is a locked one. (#6)
+    Text {
+      width: parent.width
+      text: (root.mode === "password" ? "Use fingerprint instead" : "Use password instead")
+            + "   (Tab)"
+      color: switchArea.containsMouse ? root.accent : root.foreground
+      opacity: switchArea.containsMouse ? 1 : 0.7
+      font.family: root.fontFamily
+      font.pixelSize: Style.font.caption
+      horizontalAlignment: Text.AlignHCenter
+
+      MouseArea {
+        id: switchArea
+        anchors.fill: parent
+        anchors.margins: -Style.space(4)
+        hoverEnabled: true
+        cursorShape: Qt.PointingHandCursor
+        onClicked: root.mode === "password" ? root.useFingerprint() : root.usePassword()
+      }
     }
 
     Text {
@@ -152,7 +266,7 @@ Item {
     // After a few bad reads, say how to get past a reader that is not working.
     Text {
       width: parent.width
-      visible: root.attempts >= 3
+      visible: root.attempts >= 3 && root.mode === "fingerprint"
       text: "Reader not cooperating? Create " + root.optOutPath + " to turn this off.\nYour passwords stay reachable with the pass command either way."
       color: root.foreground
       opacity: 0.5

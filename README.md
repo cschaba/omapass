@@ -1,5 +1,20 @@
 # omapass
 
+> [!WARNING]
+> **Under development. Not tested. Do not trust it with passwords you cannot
+> afford to lose.**
+>
+> This is early work on an alpha version of Omarchy 4. It has not been used in
+> anger by anyone, on any machine, for any length of time. In particular the
+> paths that decrypt — copy, type, reveal, edit, and QR enrolment — have never
+> been driven through the GUI by a human; they have only been exercised from the
+> command line against a throwaway store.
+>
+> Everything is written to your real `pass` store, and delete and edit are real
+> deletes and real overwrites. If you try it, back the store up first
+> (`tar -czf pass-backup.tar.gz ~/.password-store`) or point it somewhere
+> disposable with `PASSWORD_STORE_DIR`.
+
 A password manager for [Omarchy 4](https://omarchy.org), built as a shell
 plugin and backed by [`pass`](https://www.passwordstore.org/).
 

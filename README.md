@@ -1,21 +1,5 @@
 # omapass
 
-> [!WARNING]
-> **Early software. Back up your password store before you use it.**
->
-> omapass is new, targets an alpha release of Omarchy 4, and has very few users.
-> Expect rough edges.
->
-> It works on your real `pass` store, and editing and deleting entries really
-> does edit and delete them. Back the store up before you start:
->
-> ```bash
-> tar -czf pass-backup.tar.gz ~/.password-store
-> ```
->
-> Or point omapass at a throwaway store while you try it, with
-> `store = ~/test-store` in its config.
-
 A password manager for [Omarchy 4](https://omarchy.org), built as a shell
 plugin and backed by [`pass`](https://www.passwordstore.org/).
 
@@ -153,6 +137,17 @@ omarchy plugin enable cschaba.omapass
 **Reset** to keep omapass but start over with a new key or an empty store. Your
 password store is a plain `pass` store and survives all three — only reset
 touches it, and only after making a backup.
+
+### Trying it on something other than your real store
+
+omapass edits and deletes entries in the store it is pointed at, so if you
+would rather not aim it at the real one straight away, put
+`store = ~/test-store` in its config and point it somewhere else. A backup is
+a tarball either way:
+
+```bash
+tar -czf pass-backup.tar.gz ~/.password-store
+```
 
 ### First run
 

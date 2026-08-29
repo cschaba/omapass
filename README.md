@@ -76,6 +76,22 @@ cd omapass
 ./install.sh
 ```
 
+Or through Omarchy's own installer, which asks where to put the bar widget:
+
+```bash
+omarchy plugin add https://github.com/cschaba/omapass.git --enable
+```
+
+```
+Place cschaba.omapass in which bar section?
+  left
+  center
+> right
+```
+
+Do not add `--yes` if you want that prompt — it answers every question for you,
+including this one.
+
 `install.sh` links the plugin into `~/.config/omarchy/plugins/cschaba.omapass`
 and enables it with `omarchy plugin enable`, which also puts the widget on your
 bar.
@@ -100,6 +116,25 @@ the updated line:
 # ~/.config/omapass/config
 keybind = SUPER ALT, P
 ```
+
+### Where the bar icon sits
+
+Choose it at the prompt above, or set it before the first install:
+
+```ini
+# ~/.config/omapass/config
+bar-section = left        # left, center or right
+```
+
+That is an **initial placement only**. Once the widget is on your bar, where it
+sits is Omarchy's to remember — re-running the installer will not move it back.
+To move it afterwards, use Omarchy:
+
+```bash
+omarchy bar move cschaba.omapass --section left
+```
+
+or drag it in Setup → Plugins.
 
 ### Removing it
 
@@ -225,6 +260,7 @@ hyphens are interchangeable, so `clip_time` and `clip-time` both work.
 | `fingerprint-grace` | `120` | Seconds a successful scan stays valid before you are asked again. Each surface keeps its own window. |
 | `fingerprint-retries` | `1` | Failed fingerprint attempts before falling back to the password prompt. One attempt is a whole `fprintd` conversation, and it retries about three times inside each — so `1` is roughly three touches. |
 | `pulldown-rows` | `7` | Rows shown in the bar pulldown. |
+| `bar-section` | *(unset)* | Where the bar icon goes on the **first** install: `left`, `center` or `right`. Afterwards Omarchy owns it — see [Where the bar icon sits](#where-the-bar-icon-sits). |
 | `backup-dir` | `~/.local/state/omapass/backups` | Where `omapass-reset` writes its backups. |
 | `log` | `off` | `on` writes a debug log to `~/.local/state/omapass/omapass.log`. See below. |
 | `log-max-kb` | `256` | Size cap for that log. Past it the file rotates once and starts again. |

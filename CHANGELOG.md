@@ -6,6 +6,18 @@ the CLI surface, or the entry format bump the major.
 
 ## [Unreleased]
 
+### Added
+
+- `bar-section` in the config chooses where the bar icon is placed on the first
+  install — `left`, `center` or `right`. It is an initial placement only: once
+  the widget is on the bar, Omarchy owns where it sits, and re-running the
+  installer no longer moves it. ([#26])
+
+### Changed
+
+- The README shows `omarchy plugin add … --enable` without `--yes`, since
+  `--yes` answers Omarchy's "which bar section?" prompt for you. ([#26])
+
 ## [0.1.28] — 2026-08-29
 
 ### Changed
@@ -402,3 +414,4 @@ top of the README.
 [0.1.27]: https://github.com/cschaba/omapass/releases/tag/v0.1.27
 [#27]: https://github.com/cschaba/omapass/issues/27
 [0.1.28]: https://github.com/cschaba/omapass/releases/tag/v0.1.28
+[#26]: https://github.com/cschaba/omapass/issues/26

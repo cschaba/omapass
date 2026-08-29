@@ -66,6 +66,47 @@ land in its history.
 **Revert temporary overrides.** Forcing `fingerprint_available()` to return true
 is the usual one. `grep -rn TEMPORARY` before committing.
 
+## Use the Omarchy API
+
+**Omarchy already does most of this. Look before building.**
+
+Reinventing a piece of it is how omapass ended up editing `shell.json` by hand
+(#27) when `omarchy plugin enable` does the same job, correctly, including
+placing the bar widget. The homemade version was more code, and wrong.
+
+Where to look first:
+
+| Need | Use |
+|------|-----|
+| Enable, disable, list, add or remove a plugin | `omarchy plugin …` |
+| Put a widget on the bar, move it, set an option | `omarchy bar …` |
+| Open, close or toggle a plugin surface | `omarchy-shell shell summon\|hide\|toggle <id> [payload]` |
+| Call into a loaded plugin | `omarchy-shell shell call <id> <method> <arg>` |
+| A plugin's own IPC | `IpcHandler` with an `ipcTarget`, as `Ui/Panel.qml` does |
+| Desktop notification | `omarchy-notification-send` |
+| Run something in a terminal | `omarchy-launch-floating-terminal-with-presentation` |
+| Reload the shell after a QML change | `omarchy restart shell` |
+
+And in QML, from `qs.Commons` and `qs.Ui`:
+
+| Need | Use |
+|------|-----|
+| Colours, fonts, spacing, radii | `Color`, `Style`, `Border` — never a literal |
+| A bar button with a popup | `Ui/Panel.qml`, `BarIconButton`, `KeyboardPanel` |
+| Keyboard handling in a panel | `PanelKeyCatcher` |
+| Text input, confirmation, dropdown | `TextField`, `ConfirmDialog`, `Dropdown` |
+| Running a process | `Quickshell.Io.Process`, or `Util.execArgv` for a detached one |
+| Authentication | `PamContext`, with the same services the lock screen uses |
+
+`~/.local/share/omarchy/shell/plugins/README.md` documents the plugin contract,
+and the first-party plugins beside it are worked examples — the clipboard picker
+for an overlay, `panels/power` for a bar widget, `lock` for PAM.
+
+Two habits follow from this. Read the first-party plugin that already solves
+your problem before writing a line. And when something Omarchy provides does not
+quite fit, say so in the commit — that is a much more interesting claim than it
+looks, and usually wrong.
+
 ## Stay inside the plugin
 
 **omapass never creates, edits or deletes a file outside its own directories.**

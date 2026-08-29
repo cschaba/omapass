@@ -6,6 +6,8 @@ the CLI surface, or the entry format bump the major.
 
 ## [Unreleased]
 
+## [0.1.27] — 2026-08-29
+
 ### Fixed
 
 - The keybinding never worked. `install.sh` wrote it to
@@ -338,7 +340,7 @@ top of the README.
 - The clipboard is marked sensitive, so Omarchy's clipboard manager will not
   record it, and the selection is dropped after a timeout.
 
-[Unreleased]: https://github.com/cschaba/omapass/compare/v0.1.26...HEAD
+[Unreleased]: https://github.com/cschaba/omapass/compare/v0.1.27...HEAD
 [0.1.0]: https://github.com/cschaba/omapass/releases/tag/v0.1.0
 [#2]: https://github.com/cschaba/omapass/issues/2
 [0.1.1]: https://github.com/cschaba/omapass/releases/tag/v0.1.1
@@ -386,3 +388,4 @@ top of the README.
 [#22]: https://github.com/cschaba/omapass/issues/22
 [0.1.26]: https://github.com/cschaba/omapass/releases/tag/v0.1.26
 [#24]: https://github.com/cschaba/omapass/issues/24
+[0.1.27]: https://github.com/cschaba/omapass/releases/tag/v0.1.27

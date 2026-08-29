@@ -570,12 +570,13 @@ Item {
           } else if (ctrl && event.key === Qt.Key_L) {
             root.typeLogin(); event.accepted = true
           } else if (ctrl && event.key === Qt.Key_U) {
-            // Shift copies it instead of opening it, the way Shift turns copy
-            // into type on the other actions.
-            if (shift) root.copyUrl()
-            else root.openUrl()
-            event.accepted = true
-          } else if (ctrl && shift && event.key === Qt.Key_C) {
+            root.openUrl(); event.accepted = true
+          // Alt copies a field, Ctrl does something with it. Both of these
+          // were on Ctrl+Shift until an input method ate Ctrl+Shift+U before
+          // Qt ever saw it; Alt is left alone by IBus and fcitx alike. (#31)
+          } else if (alt && event.key === Qt.Key_U) {
+            root.copyUrl(); event.accepted = true
+          } else if (alt && event.key === Qt.Key_N) {
             root.copyName(); event.accepted = true
           } else if (ctrl && event.key === Qt.Key_O) {
             if (shift) root.typeOtp()
@@ -965,7 +966,7 @@ Item {
               { key: "⏎",  label: "copy",       action: function () { root.copyPassword() } },
               { key: "⇧⏎", label: "type",       action: function () { root.typePassword() } },
               { key: "⌥⏎", label: "user",       action: function () { root.copyUser() } },
-              { key: "^⇧C", label: "name",      action: function () { root.copyName() } },
+              { key: "⌥N", label: "name",       action: function () { root.copyName() } },
               { key: "^U", label: "open url",   action: function () { root.openUrl() },
                 visible: root.hasUrlSupport && root.selectedHasUrl },
               { key: "^L", label: "fill login", action: function () { root.typeLogin() } },

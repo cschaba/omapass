@@ -171,9 +171,22 @@ cmd_log() {
   esac
 }
 
+# A detached action has nowhere to put an error. Nothing reads its stderr, and
+# by the time it runs the surface that started it has already closed — so a
+# failure looks exactly like a key that did nothing, which is how "copy user is
+# broken" gets reported for an entry that simply has no username field. Only
+# the fire-and-forget commands set this; the editor's writes already surface
+# their stderr in the UI and would otherwise say everything twice. (#31)
+NOTIFY_ERRORS=false
+
 die() {
   local message="$*"
   echo "omapass: $message" >&2
+  # The log redacts; a notification is on the user's own screen, about their
+  # own entry, and is useless without the detail.
+  # An if, not `$NOTIFY_ERRORS && notify`: under errexit the false branch of an
+  # and-list fails the whole list, which would leave die() before it logged.
+  if $NOTIFY_ERRORS; then notify "omapass" "$message" "󰀦"; fi
 
   # The terminal gets the real message; the log gets it with every argument
   # this command was given substituted out. Redacting the actual values beats
@@ -1050,6 +1063,11 @@ main() {
 
   LOG_CMD="$cmd"
   LOG_ARGS=("$@")
+  case "$cmd" in
+  copy | copy-user | copy-name | copy-url | type | type-user | login | otp | otp-scan | open | sync)
+    NOTIFY_ERRORS=true
+    ;;
+  esac
   LOG_START=$(now_ms)
   trap log_finish EXIT
 

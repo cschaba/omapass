@@ -6,6 +6,20 @@ the CLI surface, or the entry format bump the major.
 
 ## [Unreleased]
 
+### Fixed
+
+- `Ctrl+Shift+U` never reached omapass: it is Unicode entry in IBus and fcitx,
+  which claim it before the application sees it — it typed `U+` into the search
+  field instead. Copying a field has moved to `Alt`, which input methods leave
+  alone: `Alt+U` copies the URL and `Alt+N` copies the name, replacing
+  `Ctrl+Shift+U` and `Ctrl+Shift+C`. `Ctrl+U` still opens the URL, so `Alt`
+  copies a field and `Ctrl` acts on one. ([#31])
+- Actions that fail now say so. A detached action had nowhere to put an error —
+  nothing reads its stderr, and the surface that started it has already closed
+  — so copying the username of an entry that has no username field looked
+  exactly like a key that did nothing. Those failures raise a notification.
+  ([#31])
+
 ## [0.1.36] — 2026-08-29
 
 ### Fixed
@@ -494,6 +508,7 @@ top of the README.
 [#25]: https://github.com/cschaba/omapass/issues/25
 [#29]: https://github.com/cschaba/omapass/issues/29
 [#30]: https://github.com/cschaba/omapass/issues/30
+[#31]: https://github.com/cschaba/omapass/issues/31
 [0.1.29]: https://github.com/cschaba/omapass/releases/tag/v0.1.29
 [0.1.30]: https://github.com/cschaba/omapass/releases/tag/v0.1.30
 [0.1.31]: https://github.com/cschaba/omapass/releases/tag/v0.1.31

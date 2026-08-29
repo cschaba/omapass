@@ -6,6 +6,15 @@ the CLI surface, or the entry format bump the major.
 
 ## [Unreleased]
 
+### Changed
+
+- omapass no longer writes anything outside its own directories. `install.sh`
+  registers the plugin with `omarchy plugin enable`, which places the bar widget
+  too, and **prints** the keybinding line for you to add rather than editing
+  `bindings.lua`. `uninstall.sh` prints the line to remove. Neither touches
+  `shell.json` directly any more, and the `.omapass-backup` copies are no longer
+  needed — nothing of yours is written to back up. ([#27])
+
 ## [0.1.27] — 2026-08-29
 
 ### Fixed
@@ -389,3 +398,4 @@ top of the README.
 [0.1.26]: https://github.com/cschaba/omapass/releases/tag/v0.1.26
 [#24]: https://github.com/cschaba/omapass/issues/24
 [0.1.27]: https://github.com/cschaba/omapass/releases/tag/v0.1.27
+[#27]: https://github.com/cschaba/omapass/issues/27

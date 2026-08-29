@@ -76,68 +76,40 @@ cd omapass
 ./install.sh
 ```
 
-`install.sh` links the plugin into `~/.config/omarchy/plugins/cschaba.omapass`, enables
-it in the running shell, puts the widget on your bar, and adds a
-`SUPER + SHIFT + K` binding to `~/.config/hypr/bindings.lua`.
+`install.sh` links the plugin into `~/.config/omarchy/plugins/cschaba.omapass`
+and enables it with `omarchy plugin enable`, which also puts the widget on your
+bar.
 
-It edits two files that belong to you — `~/.config/omarchy/shell.json` and
-`~/.config/hypr/bindings.lua` — and says so before it does. It only ever adds
-or removes its own entries, leaves a `.omapass-backup` copy of each beside the
-original, and refuses to touch a `shell.json` it cannot parse rather than
-rewriting it. `./uninstall.sh` takes the same entries back out.
+It then **prints** the keybinding for you to add, rather than editing your
+config:
 
-To use a different hotkey, set it in the config and run the installer again:
+```lua
+-- in ~/.config/hypr/bindings.lua
+o.bind("SUPER + SHIFT + K", "omapass", "omarchy-shell shell toggle cschaba.omapass")
+```
+
+followed by `hyprctl reload`. omapass writes nothing outside its own directories
+— not your Hyprland config, not `shell.json`. If the chord you chose is already
+taken it says so and names what holds it, reading Hyprland's live binding list
+so it sees other tools' bindings too.
+
+To use a different hotkey, set it in the config and re-run the installer to see
+the updated line:
 
 ```ini
 # ~/.config/omapass/config
 keybind = SUPER ALT, P
 ```
 
-```bash
-./install.sh
-```
-
-If the chord is already taken, `install.sh` says so and names what holds it —
-it reads Hyprland's live binding list, so it sees other tools' bindings too, not
-just Omarchy's.
-
-If you would rather use Omarchy's own plugin installer:
-
-```bash
-omarchy plugin add https://github.com/cschaba/omapass.git --enable --yes
-```
-
-Then place the bar widget and add the binding yourself, in
-`~/.config/hypr/bindings.lua` (Omarchy 4 does not read `bindings.conf`). Note that
-`omarchy bar put omapass` reports success but does nothing here: omapass
-declares both `overlay` and `bar-widget`, so the shell already considers it
-enabled through `plugins[]` and never writes a layout entry. Add it to
-`~/.config/omarchy/shell.json` by hand instead:
-
-```jsonc
-"bar": { "layout": { "right": [ /* … */ { "id": "omapass" }, { "id": "omarchy.power" } ] } }
-```
-
-and the binding:
-
-```
-o.bind("SUPER + SHIFT + K", "omapass", "omarchy-shell shell toggle cschaba.omapass")
-```
-
-To reach it from the Omarchy menu too, add a row to
-`~/.config/omarchy/extensions/omarchy-menu.jsonc`:
-
-```jsonc
-"passwords": {"icon":"󰌾","label":"Passwords","aliases":["pass","omapass"],
-              "action":"omarchy-shell shell toggle cschaba.omapass"},
-```
-
 ### Removing it
 
 ```bash
-./uninstall.sh            # take it off the bar, drop the plugin and the keybinding
+./uninstall.sh            # take it off the bar and drop the plugin
 ./uninstall.sh --purge    # also remove omapass's own config and state
 ```
+
+It prints the keybinding line for you to delete, for the same reason it asked
+you to add it.
 
 Your password store and GPG key are never touched. The store is a plain `pass`
 store — the `pass` command carries on reading it whether omapass is installed or

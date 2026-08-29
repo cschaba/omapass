@@ -387,7 +387,10 @@ Panel {
         FingerprintGate {
           id: fingerprintGate
           width: parent.width
-          height: visible ? Style.space(110) : 0
+          // Ask the gate rather than guessing: its height changes with what it
+          // has to say, and a fixed number cannot be right for both "touch the
+          // reader" and a password prompt carrying a failure and a way out.
+          height: visible ? fingerprintGate.implicitHeight : 0
           visible: root.vaultLocked
           armed: root.opened && root.vaultLocked
           passwordAvailable: pass.passwordAuthAvailable

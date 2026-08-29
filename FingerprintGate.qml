@@ -53,6 +53,13 @@ Item {
 
   signal authenticated()
 
+  // The caller decides how much room this gets, so it has to be able to ask
+  // how much is needed. Without this the bar pulldown had to guess a fixed
+  // height, and the guess was made before the escape hatch and a status line
+  // could be on screen at once — so the very state that needs this panel most,
+  // a reader that will not read you, was the state that spilled out of it. (#30)
+  implicitHeight: column.implicitHeight
+
   function toggleMode() {
     if (root.mode === "password") root.useFingerprint()
     else root.usePassword()
@@ -226,6 +233,7 @@ Item {
   }
 
   Column {
+    id: column
     anchors.centerIn: parent
     width: Math.min(parent.width, Style.space(400))
     spacing: root.compact ? Style.space(6) : Style.space(12)
@@ -321,7 +329,9 @@ Item {
     Text {
       width: parent.width
       visible: root.fellBack || root.scanFailures > 0 || root.passwordFailures >= 3
-      text: "Reader not cooperating? Create " + root.optOutPath + " to turn this off.\nYour passwords stay reachable with the pass command either way."
+      text: root.compact
+        ? "Reader not cooperating? Create\n" + root.optOutPath
+        : "Reader not cooperating? Create " + root.optOutPath + " to turn this off.\nYour passwords stay reachable with the pass command either way."
       color: root.foreground
       opacity: 0.5
       font.family: root.fontFamily

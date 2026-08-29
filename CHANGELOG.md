@@ -6,6 +6,17 @@ the CLI surface, or the entry format bump the major.
 
 ## [Unreleased]
 
+### Fixed
+
+- The fingerprint gate no longer spills out of the bar pulldown when the
+  reader fails. The pulldown was giving it a fixed height, which could not be
+  right for both "touch the reader" and a password prompt carrying a failure
+  message and the way past it — so the state that needs the panel most was the
+  one where the title sat above the panel edge and the escape hatch ran into
+  the footer. The gate now reports how tall it needs to be, and its opt-out
+  hint is shortened on compact surfaces instead of wrapping into four lines.
+  ([#30])
+
 ## [0.1.35] — 2026-08-29
 
 ### Changed
@@ -480,6 +491,7 @@ top of the README.
 [#28]: https://github.com/cschaba/omapass/issues/28
 [#25]: https://github.com/cschaba/omapass/issues/25
 [#29]: https://github.com/cschaba/omapass/issues/29
+[#30]: https://github.com/cschaba/omapass/issues/30
 [0.1.29]: https://github.com/cschaba/omapass/releases/tag/v0.1.29
 [0.1.30]: https://github.com/cschaba/omapass/releases/tag/v0.1.30
 [0.1.31]: https://github.com/cschaba/omapass/releases/tag/v0.1.31

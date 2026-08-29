@@ -282,6 +282,16 @@ check "welcomed --reset clears it" \
 # marker stops it after the first time, and the latch stops it twice in one
 # session. Lose either and omapass opens on your desktop uninvited — which is
 # the complaint that started #14 in the first place.
+# A surface that fixes the gate's height has to guess how tall it will be, and
+# the guess is wrong exactly when it matters: the failure state carries a
+# status line and an escape hatch the working state does not. Half the prompt
+# ended up outside the pulldown. (#30)
+check "the fingerprint gate publishes its height" \
+  "$(grep -c 'implicitHeight: column.implicitHeight' "$ROOT/FingerprintGate.qml")" "1"
+check "and the pulldown sizes itself from it" \
+  "$(grep -c 'fingerprintGate.implicitHeight' "$ROOT/BarWidget.qml")" "1"
+check "no fixed height is left in the pulldown gate" \
+  "$(grep -A6 'FingerprintGate {' "$ROOT/BarWidget.qml" | grep -c 'height: visible ? Style.space')" "0"
 check "the welcome waits on the marker" \
   "$(python3 -c "
 import re

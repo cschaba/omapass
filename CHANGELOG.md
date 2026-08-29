@@ -6,6 +6,12 @@ the CLI surface, or the entry format bump the major.
 
 ## [Unreleased]
 
+### Changed
+
+- `Ctrl+N` in the bar pulldown opens the new-entry form directly, and `Ctrl+E`
+  opens the editor on the selected entry. Both used to land on the manager's
+  list, leaving the thing you asked for another keystroke away. ([#22])
+
 ## [0.1.25] — 2026-08-29
 
 ### Fixed
@@ -360,3 +366,4 @@ top of the README.
 [0.1.23]: https://github.com/cschaba/omapass/releases/tag/v0.1.23
 [0.1.24]: https://github.com/cschaba/omapass/releases/tag/v0.1.24
 [0.1.25]: https://github.com/cschaba/omapass/releases/tag/v0.1.25
+[#22]: https://github.com/cschaba/omapass/issues/22

@@ -103,6 +103,12 @@ Item {
 
   // --- lifecycle ------------------------------------------------------------
 
+  // What the caller asked for, held until the store has actually loaded. The
+  // summon arrives before the entry list does, and before the vault is
+  // unlocked, so the action cannot simply be run here.
+  property string pendingAction: ""
+  property string pendingActionEntry: ""
+
   function open(payloadJson) {
     root.opened = true
     root.mode = "list"
@@ -111,8 +117,33 @@ Item {
     root.cursorActive = true
     graceTimer.stop()
     pass.clearError()
+
+    var payload = null
+    try { payload = JSON.parse(payloadJson || "{}") } catch (e) { payload = null }
+    root.pendingAction = payload && payload.action ? String(payload.action) : ""
+    root.pendingActionEntry = payload && payload.entry ? String(payload.entry) : ""
+
     root.refresh()
     Qt.callLater(function () { keyCatcher.forceActiveFocus() })
+  }
+
+  // Run once the list is in and the vault is open — never before, or a summon
+  // would walk straight past the fingerprint gate.
+  function runPendingAction() {
+    if (!root.pendingAction || !root.ready || root.vaultLocked) return
+
+    var action = root.pendingAction
+    var entry = root.pendingActionEntry
+    root.pendingAction = ""
+    root.pendingActionEntry = ""
+
+    pass.logEvent("summon: action=" + action)
+
+    if (action === "new") {
+      root.newEntry()
+    } else if (action === "edit" && entry) {
+      if (root.selectPath(entry)) root.editEntry()
+    }
   }
 
   function close() {
@@ -356,6 +387,7 @@ Item {
 
     onListReloaded: {
       root.rebuildDisplay()
+      Qt.callLater(root.runPendingAction)
       if (root.pendingSelect) {
         var wanted = root.pendingSelect
         root.pendingSelect = ""
@@ -534,6 +566,7 @@ Item {
         onAuthenticated: {
           root.fingerprintPassed = true
           Qt.callLater(function () { keyCatcher.forceActiveFocus() })
+          Qt.callLater(root.runPendingAction)
         }
       }
 

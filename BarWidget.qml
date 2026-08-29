@@ -95,9 +95,18 @@ Panel {
   }
 
   // Managing entries belongs to the overlay; the pulldown just hands over.
-  function openManager() {
+  // The payload says what to do on arrival, so Ctrl+N from here lands on the
+  // new-entry form rather than the list with the form one more keystroke away.
+  function openManager(action) {
+    var payload = { }
+    if (action === "new") payload.action = "new"
+    else if (action === "edit" && root.currentPath) {
+      payload.action = "edit"
+      payload.entry = root.currentPath
+    }
     root.close()
-    Util.execArgv(["omarchy-shell", "shell", "summon", "cschaba.omapass", "{}"])
+    Util.execArgv(["omarchy-shell", "shell", "summon", "cschaba.omapass",
+                   JSON.stringify(payload)])
   }
 
   function activate(action) {
@@ -168,7 +177,7 @@ Panel {
     // Right-click goes straight to the full manager, so the editor is one
     // gesture away from the bar rather than a pulldown and then a link. (#7)
     onPressed: function (b) {
-      if (b === Qt.RightButton) root.openManager()
+      if (b === Qt.RightButton) root.openManager("")
       else root.toggle()
     }
   }
@@ -243,8 +252,10 @@ Panel {
               root.activate(shift ? "otp-type" : "otp"); event.accepted = true
             } else if (ctrl && event.key === Qt.Key_L) {
               root.activate("login"); event.accepted = true
-            } else if (ctrl && (event.key === Qt.Key_N || event.key === Qt.Key_E)) {
-              root.openManager(); event.accepted = true
+            } else if (ctrl && event.key === Qt.Key_N) {
+              root.openManager("new"); event.accepted = true
+            } else if (ctrl && event.key === Qt.Key_E) {
+              root.openManager("edit"); event.accepted = true
             } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
               root.activate(alt ? "user" : (shift ? "type" : "copy"))
               event.accepted = true
@@ -442,7 +453,7 @@ Panel {
               anchors.margins: -Style.space(4)
               hoverEnabled: true
               cursorShape: Qt.PointingHandCursor
-              onClicked: root.openManager()
+              onClicked: root.openManager("")
             }
           }
         }

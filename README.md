@@ -194,7 +194,8 @@ The search field is focused the moment it opens, so just type.
 | `Ctrl+L` | fill a login form |
 | `Ctrl+O` | copy the one-time code |
 | `Ctrl+Shift+O` | type the one-time code |
-| `Ctrl+N` / `Ctrl+E` | open the full manager |
+| `Ctrl+N` | open the manager on a new entry |
+| `Ctrl+E` | open the manager editing the selected entry |
 | `Esc` | clear the search, then close |
 
 ### Full overlay

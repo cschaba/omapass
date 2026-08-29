@@ -66,6 +66,70 @@ land in its history.
 **Revert temporary overrides.** Forcing `fingerprint_available()` to return true
 is the usual one. `grep -rn TEMPORARY` before committing.
 
+## Publishing
+
+omapass is listed on the [Omarchy plugin marketplace][mp]. The listing points at
+**the repository, not a release**, so a reviewer sees whatever is on `main` at
+the moment they look. That is the sharper reason for the branch rule above:
+`main` is the public face, not a workspace.
+
+[mp]: https://github.com/HANCORE-linux/omarchy-plugin-marketplace/issues/3086
+
+### Promises already made
+
+The submission form has a checklist, and it was ticked. Each item is a claim
+about how omapass behaves, so a change that breaks one silently makes the
+listing untrue:
+
+- **"Does not overwrite user configuration without explicit consent."**
+  Of files belonging to the user, `install.sh` edits exactly two —
+  `~/.config/omarchy/shell.json` and `~/.config/hypr/bindings.conf` — plus its
+  own plugin directory. It names both before touching either, adds or removes
+  only its own entries, keeps a `.omapass-backup` copy, and refuses to rewrite a
+  `shell.json` it cannot parse. Teach the installer to touch a third file and it
+  has to meet the same bar: announced, reversible, and only its own entries.
+- **"The repository is public and contains installation and removal
+  instructions."** `uninstall.sh` has to keep working, and keep leaving the
+  password store alone.
+- **"Documented the licence and any external dependencies."** A new runtime
+  dependency belongs in the README's Requirements table and in the startup
+  requirements check, not only in the code that calls it.
+
+### What the static scan reads
+
+Every `.sh`, `.js`, `.mjs`, `.qml`, `.py`, `.rb`, `.pl`, `.lua`, `.yml`,
+`.yaml`, `.toml`, `.desktop`, `.service`, `.sudoers`, `.bash`, `.fish`, `.zsh`
+in the repository, plus extensionless files under `bin/` and `scripts/`, plus
+the root README.
+
+**Excluded:** anything under `tests/`, `docs/`, `.github/`, `spec/`, `specs/`,
+`fixtures/`, `coverage/`, `node_modules/`.
+
+So `bin/*`, `lib/config.sh`, `install.sh`, `uninstall.sh` and all the QML are
+read; `tests/` and `docs/` are not. Worth knowing before adding anything that
+shells out, invokes a package manager, or asks for `sudo`.
+
+### Capabilities it will flag
+
+These are detected and reported to the reviewer, and all of them are ours
+already: `privilege` and `package-manager` (the guided setup offers to
+`pacman -S` the dependencies), `installer` (the three scripts), and
+`remote-build` (the `git clone` in the README). They are expected. A **new**
+one appearing in a diff means the plugin started doing something categorically
+different, and deserves a second look before it ships.
+
+### One accepted finding
+
+`remote-git-execution-unpinned` on `scripts/release.sh`. The analyser tracks
+whether a git source is pinned to a 40-character SHA or is the plugin's own
+repository; `git fetch --quiet "$REMOTE" main` uses a variable, so it cannot
+tell, and the later `./tests/smoke.sh` reads as an execution sink.
+
+It is a modelling gap rather than a risk — `scripts/` is not in the release
+tarball, and nothing fetched is ever checked out or executed. The finding is
+non-blocking and a maintainer can accept it. Do not contort `release.sh` to
+silence it; the reasoning is recorded on the submission.
+
 ## Secrets
 
 Two rules the whole design rests on, worth keeping when you extend it:

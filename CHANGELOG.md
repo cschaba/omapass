@@ -6,6 +6,8 @@ the CLI surface, or the entry format bump the major.
 
 ## [Unreleased]
 
+## [0.1.36] — 2026-08-29
+
 ### Fixed
 
 - The fingerprint gate no longer spills out of the bar pulldown when the
@@ -436,7 +438,7 @@ top of the README.
 - The clipboard is marked sensitive, so Omarchy's clipboard manager will not
   record it, and the selection is dropped after a timeout.
 
-[Unreleased]: https://github.com/cschaba/omapass/compare/v0.1.35...HEAD
+[Unreleased]: https://github.com/cschaba/omapass/compare/v0.1.36...HEAD
 [0.1.0]: https://github.com/cschaba/omapass/releases/tag/v0.1.0
 [#2]: https://github.com/cschaba/omapass/issues/2
 [0.1.1]: https://github.com/cschaba/omapass/releases/tag/v0.1.1
@@ -499,3 +501,4 @@ top of the README.
 [0.1.33]: https://github.com/cschaba/omapass/releases/tag/v0.1.33
 [0.1.34]: https://github.com/cschaba/omapass/releases/tag/v0.1.34
 [0.1.35]: https://github.com/cschaba/omapass/releases/tag/v0.1.35
+[0.1.36]: https://github.com/cschaba/omapass/releases/tag/v0.1.36

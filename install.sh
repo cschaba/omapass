@@ -74,9 +74,15 @@ for b in binds:
 ' "$mask" "$(echo "$key" | xargs)" 2>/dev/null
 }
 
-KEYBIND="$("$SOURCE_DIR/bin/omapass" config 2>/dev/null |
-  python3 -c 'import json,sys; print(json.load(sys.stdin)["keybind"])' 2>/dev/null)"
+CONFIG_JSON="$("$SOURCE_DIR/bin/omapass" config 2>/dev/null || echo '{}')"
+config_value() {
+  printf '%s' "$CONFIG_JSON" |
+    python3 -c "import json,sys; print(json.load(sys.stdin).get('$1',''))" 2>/dev/null
+}
+
+KEYBIND="$(config_value keybind)"
 KEYBIND="${KEYBIND:-SUPER SHIFT, K}"
+BAR_SECTION="$(config_value barSection)"
 CHORD="$(lua_chord "$KEYBIND")"
 
 # --- 1. the plugin itself ---------------------------------------------------
@@ -103,11 +109,36 @@ fi
 
 # --- 2. registration, through omarchy's own command -------------------------
 
+# Whether the widget is already on the bar, asked of omarchy rather than read
+# out of shell.json.
+on_bar() {
+  omarchy-shell shell listPlugins 2>/dev/null |
+    python3 -c '
+import json, sys
+try:
+    plugins = json.load(sys.stdin)
+except Exception:
+    sys.exit(1)
+sys.exit(0 if any(p.get("id") == sys.argv[1] and p.get("enabled") for p in plugins) else 1)
+' "$PLUGIN_ID" 2>/dev/null
+}
+
 if command -v omarchy >/dev/null 2>&1; then
-  if omarchy plugin enable "$PLUGIN_ID" >/dev/null 2>&1; then
-    say "✓ enabled, and the bar widget placed"
+  if on_bar; then
+    # Already placed: where it sits is Omarchy's to remember, and moving it
+    # back on every re-run would undo whatever the user last chose.
+    say "✓ already enabled and on the bar"
+    [[ -n $BAR_SECTION ]] &&
+      say "  (bar-section is only used for the first placement — move it with" &&
+      say "   omarchy bar move $PLUGIN_ID --section $BAR_SECTION)"
   else
-    say "! could not enable it — run:  omarchy plugin enable $PLUGIN_ID"
+    placement=()
+    [[ -n $BAR_SECTION ]] && placement=(--section "$BAR_SECTION")
+    if omarchy plugin enable "$PLUGIN_ID" "${placement[@]}" >/dev/null 2>&1; then
+      say "✓ enabled, and the bar widget placed${BAR_SECTION:+ on the $BAR_SECTION}"
+    else
+      say "! could not enable it — run:  omarchy plugin enable $PLUGIN_ID"
+    fi
   fi
 else
   say "! omarchy not found — run:  omarchy plugin enable $PLUGIN_ID"

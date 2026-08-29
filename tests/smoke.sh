@@ -238,6 +238,19 @@ for script in install.sh uninstall.sh; do
   check "$script never edits shell.json itself" \
     "$(grep -cE 'json\.dump|shell\.json"?[[:space:]]*<<|>[[:space:]]*"?\$SHELL_JSON' "$ROOT/$script")" "0"
 done
+check "bar-section defaults to no preference" \
+  "$("$OMAPASS" config | python3 -c 'import sys,json;print(repr(json.load(sys.stdin)["barSection"]))')" "''"
+printf 'bar-section = left\n' >"$OMAPASS_CONFIG"
+check "bar-section accepts a section" \
+  "$("$OMAPASS" config 2>/dev/null | python3 -c 'import sys,json;print(json.load(sys.stdin)["barSection"])')" "left"
+printf 'bar-section = middle\n' >"$OMAPASS_CONFIG"
+check "bar-section rejects a non-section" \
+  "$("$OMAPASS" config 2>/dev/null | python3 -c 'import sys,json;print(repr(json.load(sys.stdin)["barSection"]))')" "''"
+check "and says why" \
+  "$("$OMAPASS" config 2>&1 >/dev/null | grep -c 'not left, center or right')" "1"
+: >"$OMAPASS_CONFIG"
+check "the installer places only when not already on the bar" \
+  "$(grep -c 'on_bar' "$ROOT/install.sh")" "2"
 check "the installer registers through omarchy" \
   "$([[ $(grep -c 'omarchy plugin enable' "$ROOT/install.sh") -ge 1 ]] && echo yes || echo no)" "yes"
 check "the installer prints the binding instead" \

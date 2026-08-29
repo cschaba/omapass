@@ -6,6 +6,8 @@ the CLI surface, or the entry format bump the major.
 
 ## [Unreleased]
 
+## [0.1.32] — 2026-08-29
+
 ### Added
 
 - Copy the entry's name (`Ctrl+Shift+C`), copy its URL (`Ctrl+Shift+U`) and
@@ -392,7 +394,7 @@ top of the README.
 - The clipboard is marked sensitive, so Omarchy's clipboard manager will not
   record it, and the selection is dropped after a timeout.
 
-[Unreleased]: https://github.com/cschaba/omapass/compare/v0.1.31...HEAD
+[Unreleased]: https://github.com/cschaba/omapass/compare/v0.1.32...HEAD
 [0.1.0]: https://github.com/cschaba/omapass/releases/tag/v0.1.0
 [#2]: https://github.com/cschaba/omapass/issues/2
 [0.1.1]: https://github.com/cschaba/omapass/releases/tag/v0.1.1
@@ -449,3 +451,4 @@ top of the README.
 [0.1.29]: https://github.com/cschaba/omapass/releases/tag/v0.1.29
 [0.1.30]: https://github.com/cschaba/omapass/releases/tag/v0.1.30
 [0.1.31]: https://github.com/cschaba/omapass/releases/tag/v0.1.31
+[0.1.32]: https://github.com/cschaba/omapass/releases/tag/v0.1.32

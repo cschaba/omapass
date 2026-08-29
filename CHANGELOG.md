@@ -6,6 +6,21 @@ the CLI surface, or the entry format bump the major.
 
 ## [Unreleased]
 
+### Fixed
+
+- The keybinding never worked. `install.sh` wrote it to
+  `~/.config/hypr/bindings.conf`, and Omarchy 4 runs Hyprland with
+  `configProvider: lua` — so that file, and everything `hyprland.conf` sources,
+  is never read. It goes to `~/.config/hypr/bindings.lua` now, applied
+  immediately, and installing removes any stale entry left in the old file.
+  ([#24])
+
+### Added
+
+- `install.sh` checks Hyprland's live binding list before writing, and names
+  what already holds the chord. It sees bindings from any source, not just
+  Omarchy's own. ([#24])
+
 ## [0.1.26] — 2026-08-29
 
 ### Changed
@@ -370,3 +385,4 @@ top of the README.
 [0.1.25]: https://github.com/cschaba/omapass/releases/tag/v0.1.25
 [#22]: https://github.com/cschaba/omapass/issues/22
 [0.1.26]: https://github.com/cschaba/omapass/releases/tag/v0.1.26
+[#24]: https://github.com/cschaba/omapass/issues/24

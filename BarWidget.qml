@@ -40,6 +40,7 @@ Panel {
   readonly property int rowHeight: Math.max(Style.space(26), Style.font.body + Style.spacing.controlPaddingY)
 
   property bool selectedHasOtp: false
+  property bool selectedHasUrl: false
   property string fieldsForPath: ""
 
   readonly property var currentRow: resultModel.count > 0 && selectedIndex >= 0 && selectedIndex < resultModel.count
@@ -115,6 +116,9 @@ Panel {
     root.close()
     if (action === "type") pass.typePassword(path)
     else if (action === "user") pass.copyUser(path)
+    else if (action === "name") pass.copyName(path)
+    else if (action === "url") pass.copyUrl(path)
+    else if (action === "open") pass.openUrl(path)
     else if (action === "login") pass.typeLogin(path)
     else if (action === "otp") pass.copyOtp(path)
     else if (action === "otp-type") pass.typeOtp(path)
@@ -122,7 +126,10 @@ Panel {
   }
 
   onCurrentPathChanged: {
-    if (root.currentPath !== root.fieldsForPath) root.selectedHasOtp = false
+    if (root.currentPath !== root.fieldsForPath) {
+      root.selectedHasOtp = false
+      root.selectedHasUrl = false
+    }
     fieldsDebounce.restart()
   }
 
@@ -157,6 +164,7 @@ Panel {
     onFieldsLoaded: function (path, fields, otp) {
       if (path !== root.currentPath) return
       root.selectedHasOtp = otp
+      root.selectedHasUrl = PassStore.hasUrl(fields)
       root.fieldsForPath = path
     }
   }
@@ -252,6 +260,12 @@ Panel {
               root.activate(shift ? "otp-type" : "otp"); event.accepted = true
             } else if (ctrl && event.key === Qt.Key_L) {
               root.activate("login"); event.accepted = true
+            } else if (ctrl && event.key === Qt.Key_U) {
+              // Shift copies it instead of opening it, the way Shift turns
+              // copy into type on the other actions.
+              root.activate(shift ? "url" : "open"); event.accepted = true
+            } else if (ctrl && shift && event.key === Qt.Key_C) {
+              root.activate("name"); event.accepted = true
             } else if (ctrl && event.key === Qt.Key_N) {
               root.openManager("new"); event.accepted = true
             } else if (ctrl && event.key === Qt.Key_E) {
@@ -409,8 +423,12 @@ Panel {
             actions: [
               { key: "⏎",  label: "copy", action: function () { root.activate("copy") } },
               { key: "⇧⏎", label: "type", action: function () { root.activate("type") } },
+              { key: "⌥⏎", label: "user", action: function () { root.activate("user") } },
+              { key: "^⇧C", label: "name", action: function () { root.activate("name") } },
               // Only when this entry actually has one — an action that usually
               // fails is worse than one that is not offered. (#5)
+              { key: "^U", label: "url",  action: function () { root.activate("open") },
+                visible: pass.hasUrlSupport && root.selectedHasUrl },
               { key: "^O", label: "otp",  action: function () { root.activate("otp") },
                 visible: pass.hasOtpSupport && root.selectedHasOtp }
             ]

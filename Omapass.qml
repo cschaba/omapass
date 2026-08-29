@@ -113,6 +113,47 @@ Item {
   property string pendingAction: ""
   property string pendingActionEntry: ""
 
+  // --- the welcome comes to you ---------------------------------------------
+  //
+  // #25. The welcome screen was correct and unreachable: it only lived in the
+  // overlay, and on a fresh install the overlay is exactly what a new user has
+  // no way to open yet. Putting the greeting in install.sh would have covered
+  // one install path out of three — `omarchy plugin add` never runs it, and
+  // that is the path the release notes tell people to use.
+  //
+  // What every path does have in common is that the shell ends up loading this
+  // plugin, and `keepLoaded: true` means this object exists from that moment
+  // even with no window on screen. So the plugin greets you itself.
+  property bool welcomeOffered: false
+
+  readonly property bool welcomeWanted: !root.opened
+    && !root.welcomeOffered
+    && pass.status !== null
+    && !pass.welcomed
+    // A fingerprint prompt arriving unasked, seconds after logging in, is a
+    // worse first impression than a welcome you have to go and find. Those
+    // installs meet it on their first deliberate open instead.
+    && !pass.fingerprintRequired
+
+  onWelcomeWantedChanged: if (root.welcomeWanted) welcomeDelay.restart()
+
+  Timer {
+    id: welcomeDelay
+    // Long enough for the bar to be up and for a login to settle. An overlay
+    // that takes the keyboard while the desktop is still assembling itself
+    // reads as a glitch rather than as a greeting.
+    interval: 1500
+    onTriggered: {
+      if (!root.welcomeWanted) return
+      root.welcomeOffered = true
+      // Through the shell, not by setting `opened` here: it is what keeps the
+      // shell's record of which overlays are up true, and therefore what keeps
+      // `omarchy-shell shell hide` and the hotkey's toggle honest.
+      if (root.shell && typeof root.shell.summon === "function")
+        root.shell.summon((root.manifest && root.manifest.id) || "cschaba.omapass", "{}")
+    }
+  }
+
   function open(payloadJson) {
     root.opened = true
     root.mode = "list"

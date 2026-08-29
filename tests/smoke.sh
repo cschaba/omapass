@@ -272,6 +272,27 @@ echo "release plumbing"
 MANIFEST_VERSION=$(python3 -c "import json;print(json.load(open('$ROOT/manifest.json'))['version'])")
 check "welcomed reports json" \
   "$("$OMAPASS" welcomed | grep -c welcomed)" "1"
+"$OMAPASS" welcomed --mark >/dev/null 2>&1
+check "welcomed --mark sticks" \
+  "$("$OMAPASS" welcomed | grep -c '"welcomed":true')" "1"
+"$OMAPASS" welcomed --reset >/dev/null 2>&1
+check "welcomed --reset clears it" \
+  "$("$OMAPASS" welcomed | grep -c '"welcomed":false')" "1"
+# The overlay greets a new user by summoning itself. Both guards matter: the
+# marker stops it after the first time, and the latch stops it twice in one
+# session. Lose either and omapass opens on your desktop uninvited — which is
+# the complaint that started #14 in the first place.
+check "the welcome waits on the marker" \
+  "$(python3 -c "
+import re
+src = open('$ROOT/Omapass.qml').read()
+block = re.search(r'readonly property bool welcomeWanted.*?fingerprintRequired', src, re.S)
+print(bool(block) and '!pass.welcomed' in block.group(0)
+      and '!root.welcomeOffered' in block.group(0))")" "True"
+check "the welcome marker is only reset on a first install" \
+  "$(grep -A2 'FIRST_INSTALL == true' "$ROOT/install.sh" | grep -c 'welcomed --reset')" "1"
+check "and nowhere else in the installer" \
+  "$(grep -c 'welcomed --reset' "$ROOT/install.sh")" "1"
 check "status carries name and homepage" \
   "$("$OMAPASS" status | python3 -c 'import sys,json;d=json.load(sys.stdin);print(bool(d["name"] and d["homepage"]))')" "True"
 check "version command matches the manifest" \

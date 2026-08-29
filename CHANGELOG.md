@@ -6,6 +6,17 @@ the CLI surface, or the entry format bump the major.
 
 ## [Unreleased]
 
+### Changed
+
+- The welcome screen opens by itself, a moment after the shell loads omapass,
+  instead of waiting to be found in an overlay a new user has no way to open
+  yet. It comes from the plugin rather than from `install.sh`, so it works
+  whichever way omapass was installed — `omarchy plugin add` never runs that
+  script. Once dismissed it does not return; installs with a fingerprint
+  unlock are left alone, so nobody is met by a scan prompt seconds after
+  logging in. `install.sh` also clears the "seen" marker on a genuine first
+  install, so removing omapass and putting it back greets you again. ([#25])
+
 ## [0.1.34] — 2026-08-29
 
 ### Changed
@@ -465,6 +476,7 @@ top of the README.
 [0.1.28]: https://github.com/cschaba/omapass/releases/tag/v0.1.28
 [#26]: https://github.com/cschaba/omapass/issues/26
 [#28]: https://github.com/cschaba/omapass/issues/28
+[#25]: https://github.com/cschaba/omapass/issues/25
 [#29]: https://github.com/cschaba/omapass/issues/29
 [0.1.29]: https://github.com/cschaba/omapass/releases/tag/v0.1.29
 [0.1.30]: https://github.com/cschaba/omapass/releases/tag/v0.1.30

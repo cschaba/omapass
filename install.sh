@@ -97,6 +97,12 @@ if [[ -e $LEGACY_DIR || -L $LEGACY_DIR ]]; then
   fi
 fi
 
+# Nothing of omapass was here before this run: a first install rather than a
+# re-run or an upgrade. It decides one thing only — whether to greet the user
+# again, below.
+FIRST_INSTALL=false
+[[ -e $PLUGIN_DIR || -L $PLUGIN_DIR ]] || FIRST_INSTALL=true
+
 if [[ -e $PLUGIN_DIR && ! -L $PLUGIN_DIR ]]; then
   say "✓ plugin already installed at $PLUGIN_DIR"
 elif [[ -L $PLUGIN_DIR && $(readlink -f "$PLUGIN_DIR") == "$SOURCE_DIR" ]]; then
@@ -106,6 +112,19 @@ else
   ln -sfn "$SOURCE_DIR" "$PLUGIN_DIR"
   say "✓ linked $SOURCE_DIR → $PLUGIN_DIR"
 fi
+
+# Uninstalling leaves the "you have been welcomed" marker behind on purpose, so
+# that re-running this script does not nag. But someone who removed omapass and
+# is putting it back has asked to start over, and being greeted is part of
+# starting over. Only omapass's own state is touched.
+if [[ $FIRST_INSTALL == true ]]; then
+  "$SOURCE_DIR/bin/omapass" welcomed --reset >/dev/null 2>&1 || true
+fi
+
+# The shell keeps its own list of what is installed, and a directory that
+# appeared after it started is not on it. Quiet and best-effort: on a machine
+# with no shell running there is nothing to tell.
+omarchy-shell -q shell rescanPlugins >/dev/null 2>&1 || true
 
 # --- 2. registration, through omarchy's own command -------------------------
 
@@ -180,4 +199,7 @@ echo
 say "omapass installed."
 if ! command -v pass >/dev/null 2>&1; then
   say "pass isn't installed yet — omapass will offer to set it up on first open."
+fi
+if [[ $FIRST_INSTALL == true ]]; then
+  say "The welcome screen opens by itself in a moment — no need to press anything."
 fi

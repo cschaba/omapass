@@ -205,6 +205,16 @@ tar -czf pass-backup.tar.gz ~/.password-store
 
 ### First run
 
+A moment after the shell picks omapass up — however you installed it — the
+welcome screen opens by itself. You do not have to find it, and you do not
+need the hotkey to work yet. Press Enter to dismiss it and it does not come
+back. If a fingerprint unlock is set up, omapass stays out of the way instead
+and waits for you to open it, rather than meeting you with a scan prompt
+seconds after you logged in.
+
+`F1` in the overlay brings it back at any time, and `bin/omapass welcomed
+--reset` makes it greet you again on the next load.
+
 omapass needs `pass`, a GPG key, and an initialised password store. If any of
 them is missing, the overlay says so and offers to walk you through it —
 press Enter and it opens a terminal running `bin/omapass-setup`, which installs

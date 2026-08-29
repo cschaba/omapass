@@ -249,15 +249,17 @@ entry_exists() {
 # since reporting a missing jq through jq would be a poor joke. Everything it
 # emits is hand-rolled; the commands that genuinely need jq say so.
 
-# Empty means "no preference" — omarchy then uses the manifest's defaultSection,
-# or asks. Only left, center and right are bar sections.
+# Right by default, matching the manifest's defaultSection — said here as well
+# so that `omapass config` answers the question rather than making the reader
+# go and find the manifest.
 config_bar_section() {
   local value="${OMAPASS_BAR_SECTION:-${CONFIG[bar-section]}}"
   case "$value" in
-  "" | left | center | right) printf '%s' "$value" ;;
+  left | center | right) printf '%s' "$value" ;;
+  "") printf 'right' ;;
   *)
-    config_warn "bar-section: '$value' is not left, center or right — ignoring"
-    printf ''
+    config_warn "bar-section: '$value' is not left, center or right — using right"
+    printf 'right'
     ;;
   esac
 }
@@ -347,8 +349,7 @@ write_config_template() {
 # pulldown-rows = 7
 
 # Which bar section the widget is placed in the first time it is installed:
-# left, center or right. Empty lets Omarchy decide, which is what the plugin's
-# manifest suggests (right) or what the install prompt asks you.
+# left, center or right. The default is right.
 #
 # This is an initial placement only. Once the widget is on the bar, Omarchy owns
 # where it sits — move it with `omarchy bar move cschaba.omapass --section left`

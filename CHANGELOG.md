@@ -6,6 +6,14 @@ the CLI surface, or the entry format bump the major.
 
 ## [Unreleased]
 
+### Changed
+
+- `bar-section` defaults to `right` explicitly, rather than deferring to the
+  manifest and leaving the answer somewhere the reader has to go and find.
+  Behaviour is unchanged — it already placed on the right — but `omapass config`
+  now says so, and an invalid value falls back to right instead of nothing.
+  ([#26])
+
 ## [0.1.29] — 2026-08-29
 
 ### Added

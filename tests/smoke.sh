@@ -238,14 +238,14 @@ for script in install.sh uninstall.sh; do
   check "$script never edits shell.json itself" \
     "$(grep -cE 'json\.dump|shell\.json"?[[:space:]]*<<|>[[:space:]]*"?\$SHELL_JSON' "$ROOT/$script")" "0"
 done
-check "bar-section defaults to no preference" \
-  "$("$OMAPASS" config | python3 -c 'import sys,json;print(repr(json.load(sys.stdin)["barSection"]))')" "''"
+check "bar-section defaults to right" \
+  "$("$OMAPASS" config | python3 -c 'import sys,json;print(json.load(sys.stdin)["barSection"])')" "right"
 printf 'bar-section = left\n' >"$OMAPASS_CONFIG"
 check "bar-section accepts a section" \
   "$("$OMAPASS" config 2>/dev/null | python3 -c 'import sys,json;print(json.load(sys.stdin)["barSection"])')" "left"
 printf 'bar-section = middle\n' >"$OMAPASS_CONFIG"
-check "bar-section rejects a non-section" \
-  "$("$OMAPASS" config 2>/dev/null | python3 -c 'import sys,json;print(repr(json.load(sys.stdin)["barSection"]))')" "''"
+check "bar-section falls back to right on a bad value" \
+  "$("$OMAPASS" config 2>/dev/null | python3 -c 'import sys,json;print(json.load(sys.stdin)["barSection"])')" "right"
 check "and says why" \
   "$("$OMAPASS" config 2>&1 >/dev/null | grep -c 'not left, center or right')" "1"
 : >"$OMAPASS_CONFIG"

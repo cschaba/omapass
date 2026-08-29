@@ -119,11 +119,12 @@ keybind = SUPER ALT, P
 
 ### Where the bar icon sits
 
-Choose it at the prompt above, or set it before the first install:
+It goes on the **right** by default. To put it somewhere else, choose at the
+prompt above, or set this before the first install:
 
 ```ini
 # ~/.config/omapass/config
-bar-section = left        # left, center or right
+bar-section = left        # left, center or right — default is right
 ```
 
 That is an **initial placement only**. Once the widget is on your bar, where it
@@ -260,7 +261,7 @@ hyphens are interchangeable, so `clip_time` and `clip-time` both work.
 | `fingerprint-grace` | `120` | Seconds a successful scan stays valid before you are asked again. Each surface keeps its own window. |
 | `fingerprint-retries` | `1` | Failed fingerprint attempts before falling back to the password prompt. One attempt is a whole `fprintd` conversation, and it retries about three times inside each — so `1` is roughly three touches. |
 | `pulldown-rows` | `7` | Rows shown in the bar pulldown. |
-| `bar-section` | *(unset)* | Where the bar icon goes on the **first** install: `left`, `center` or `right`. Afterwards Omarchy owns it — see [Where the bar icon sits](#where-the-bar-icon-sits). |
+| `bar-section` | `right` | Where the bar icon goes on the **first** install: `left`, `center` or `right`. Afterwards Omarchy owns it — see [Where the bar icon sits](#where-the-bar-icon-sits). |
 | `backup-dir` | `~/.local/state/omapass/backups` | Where `omapass-reset` writes its backups. |
 | `log` | `off` | `on` writes a debug log to `~/.local/state/omapass/omapass.log`. See below. |
 | `log-max-kb` | `256` | Size cap for that log. Past it the file rotates once and starts again. |

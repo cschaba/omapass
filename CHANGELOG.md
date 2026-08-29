@@ -6,6 +6,12 @@ the CLI surface, or the entry format bump the major.
 
 ## [Unreleased]
 
+### Changed
+
+- The README no longer opens with an "early software, expect rough edges"
+  warning. What was worth keeping from it — how to try omapass against a
+  throwaway store — is now a short section next to the install steps.
+
 ## [0.1.32] — 2026-08-29
 
 ### Added

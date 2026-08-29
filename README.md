@@ -78,10 +78,10 @@ cd omapass
 
 `install.sh` links the plugin into `~/.config/omarchy/plugins/cschaba.omapass`, enables
 it in the running shell, puts the widget on your bar, and adds a
-`SUPER + SHIFT + K` binding to `~/.config/hypr/bindings.conf`.
+`SUPER + SHIFT + K` binding to `~/.config/hypr/bindings.lua`.
 
 It edits two files that belong to you — `~/.config/omarchy/shell.json` and
-`~/.config/hypr/bindings.conf` — and says so before it does. It only ever adds
+`~/.config/hypr/bindings.lua` — and says so before it does. It only ever adds
 or removes its own entries, leaves a `.omapass-backup` copy of each beside the
 original, and refuses to touch a `shell.json` it cannot parse rather than
 rewriting it. `./uninstall.sh` takes the same entries back out.
@@ -97,7 +97,9 @@ keybind = SUPER ALT, P
 ./install.sh
 ```
 
-Avoid `SUPER + CTRL + K` — Omarchy already uses it for something else.
+If the chord is already taken, `install.sh` says so and names what holds it —
+it reads Hyprland's live binding list, so it sees other tools' bindings too, not
+just Omarchy's.
 
 If you would rather use Omarchy's own plugin installer:
 
@@ -105,7 +107,8 @@ If you would rather use Omarchy's own plugin installer:
 omarchy plugin add https://github.com/cschaba/omapass.git --enable --yes
 ```
 
-Then place the bar widget and add the binding yourself. Note that
+Then place the bar widget and add the binding yourself, in
+`~/.config/hypr/bindings.lua` (Omarchy 4 does not read `bindings.conf`). Note that
 `omarchy bar put omapass` reports success but does nothing here: omapass
 declares both `overlay` and `bar-widget`, so the shell already considers it
 enabled through `plugins[]` and never writes a layout entry. Add it to
@@ -118,7 +121,7 @@ enabled through `plugins[]` and never writes a layout entry. Add it to
 and the binding:
 
 ```
-bindd = SUPER SHIFT, K, Passwords, exec, omarchy-shell shell toggle cschaba.omapass
+o.bind("SUPER + SHIFT + K", "omapass", "omarchy-shell shell toggle cschaba.omapass")
 ```
 
 To reach it from the Omarchy menu too, add a row to

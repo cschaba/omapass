@@ -13,7 +13,8 @@ PLUGIN_ID="cschaba.omapass"
 LEGACY_ID="omapass"
 PLUGINS_DIR="$HOME/.config/omarchy/plugins"
 SHELL_JSON="$HOME/.config/omarchy/shell.json"
-BINDINGS="$HOME/.config/hypr/bindings.conf"
+BINDINGS="$HOME/.config/hypr/bindings.lua"
+LEGACY_BINDINGS="$HOME/.config/hypr/bindings.conf"
 CONFIG="${OMAPASS_CONFIG:-${XDG_CONFIG_HOME:-$HOME/.config}/omapass/config}"
 STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/omapass"
 
@@ -84,12 +85,19 @@ for dir in "$PLUGINS_DIR/$PLUGIN_ID" "$PLUGINS_DIR/$LEGACY_ID"; do
   fi
 done
 
-# 4. the keybinding, and the comment line that introduces it
-if [[ -f $BINDINGS ]] && grep -qE "shell toggle ($PLUGIN_ID|$LEGACY_ID)\b" "$BINDINGS"; then
+# 4. the keybinding, from both the file Hyprland reads and the one older
+# versions wrote to by mistake
+removed_binding=0
+for file in "$BINDINGS" "$LEGACY_BINDINGS"; do
+  [[ -f $file ]] || continue
+  grep -qE "shell toggle ($PLUGIN_ID|$LEGACY_ID)\b" "$file" || continue
   tmp=$(mktemp)
-  grep -vE "shell toggle ($PLUGIN_ID|$LEGACY_ID)\b" "$BINDINGS" |
-    grep -v "^# omapass — password manager overlay$" >"$tmp"
-  mv "$tmp" "$BINDINGS"
+  grep -vE "shell toggle ($PLUGIN_ID|$LEGACY_ID)\b" "$file" |
+    grep -vE "^(--|#) omapass — password manager overlay$" >"$tmp"
+  mv "$tmp" "$file"
+  removed_binding=1
+done
+if (( removed_binding )); then
   say "✓ removed the keybinding"
   hyprctl reload >/dev/null 2>&1 || true
 fi
@@ -109,6 +117,7 @@ if (( ! PURGE )); then
   [[ -e $CONFIG ]] && say "Its config is still at $CONFIG (--purge removes it)."
 fi
 for backup in "$HOME/.config/omarchy/shell.json.omapass-backup" \
+              "$HOME/.config/hypr/bindings.lua.omapass-backup" \
               "$HOME/.config/hypr/bindings.conf.omapass-backup"; do
   [[ -f $backup ]] && say "install.sh left a copy of your config at $backup"
 done

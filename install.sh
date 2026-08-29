@@ -10,7 +10,12 @@ PLUGIN_ID="cschaba.omapass"
 LEGACY_ID="omapass"
 PLUGIN_DIR="$HOME/.config/omarchy/plugins/$PLUGIN_ID"
 LEGACY_DIR="$HOME/.config/omarchy/plugins/$LEGACY_ID"
-BINDINGS="$HOME/.config/hypr/bindings.conf"
+# Omarchy 4 runs Hyprland with configProvider=lua, so hyprland.conf — and
+# everything it sources, including bindings.conf — is never read. Personal
+# bindings live in bindings.lua. Writing to the old file produced a keybinding
+# that silently never existed. (#24)
+BINDINGS="$HOME/.config/hypr/bindings.lua"
+LEGACY_BINDINGS="$HOME/.config/hypr/bindings.conf"
 SHELL_JSON="$HOME/.config/omarchy/shell.json"
 
 # The hotkey comes from the config file, so changing it is a config edit plus a
@@ -139,41 +144,103 @@ PYEOF
 fi
 
 # 4. keybinding
-# Rewrite rather than append: re-running after changing the hotkey should move
-# the binding, not leave the old one behind to conflict with the new one.
+#
+# Hyprland's own binding list is the authority on what a chord is already doing,
+# including chords claimed by tools that have nothing to do with Omarchy. Better
+# to say who holds it than to write a binding that quietly loses.
+lua_chord() {
+  # "SUPER SHIFT, K" (the config file's Hyprland syntax) -> "SUPER + SHIFT + K"
+  local spec="$1" mods key
+  if [[ $spec == *,* ]]; then
+    mods="${spec%%,*}"
+    key="${spec#*,}"
+  else
+    mods=""
+    key="$spec"
+  fi
+  mods="$(echo "$mods" | xargs)"
+  key="$(echo "$key" | xargs)"
+  if [[ -n $mods ]]; then
+    printf '%s + %s' "$(echo "$mods" | sed 's/  */ + /g')" "$key"
+  else
+    printf '%s' "$key"
+  fi
+}
+
+chord_holder() {
+  local spec="$1" mods key mask=0 m
+  command -v hyprctl >/dev/null 2>&1 || return 0
+  mods="${spec%%,*}"; key="${spec#*,}"
+  [[ $spec == *,* ]] || { mods=""; key="$spec"; }
+  for m in $mods; do
+    case "${m^^}" in
+    SUPER) mask=$((mask + 64)) ;;
+    ALT) mask=$((mask + 8)) ;;
+    CTRL | CONTROL) mask=$((mask + 4)) ;;
+    SHIFT) mask=$((mask + 1)) ;;
+    esac
+  done
+  key="$(echo "$key" | xargs)"
+  hyprctl binds -j 2>/dev/null | python3 -c '
+import json, sys
+mask, key = int(sys.argv[1]), sys.argv[2].upper()
+try:
+    binds = json.load(sys.stdin)
+except Exception:
+    sys.exit(0)
+for b in binds:
+    if b.get("modmask") == mask and str(b.get("key", "")).upper() == key:
+        if b.get("description") == "omapass":
+            continue
+        print(b.get("description") or b.get("dispatcher") or "another binding")
+        break
+' "$mask" "$key" 2>/dev/null
+}
+
 mkdir -p "$(dirname "$BINDINGS")"
 touch "$BINDINGS"
 backup_once "$BINDINGS"
 
-if grep -qE "shell toggle ($PLUGIN_ID|$LEGACY_ID)\\b" "$BINDINGS"; then
-  existing=$(grep -m1 -E "shell toggle ($PLUGIN_ID|$LEGACY_ID)\\b" "$BINDINGS")
-  if [[ $existing == *"$KEYBIND"* && $existing == *"$PLUGIN_ID"* ]]; then
-    say "✓ keybinding already set to ${KEYBIND//,/ +}"
+# Anything omapass left in the file Hyprland does not read.
+if [[ -f $LEGACY_BINDINGS ]] && grep -q "shell toggle \(cschaba\.omapass\|omapass\)" "$LEGACY_BINDINGS"; then
+  tmp=$(mktemp)
+  grep -vE "shell toggle (cschaba\.omapass|omapass)\b" "$LEGACY_BINDINGS" |
+    grep -v "^# omapass — password manager overlay$" >"$tmp"
+  mv "$tmp" "$LEGACY_BINDINGS"
+  say "✓ removed the stale binding from bindings.conf (Hyprland does not read it)"
+fi
+
+CHORD="$(lua_chord "$KEYBIND")"
+HOLDER="$(chord_holder "$KEYBIND")"
+
+if grep -q "shell toggle $PLUGIN_ID" "$BINDINGS"; then
+  if grep -q "\"$CHORD\"" "$BINDINGS"; then
+    say "✓ keybinding already set to $CHORD"
   else
     tmp=$(mktemp)
-    grep -vE "shell toggle ($PLUGIN_ID|$LEGACY_ID)\\b" "$BINDINGS" |
-      grep -v "^# omapass — password manager overlay$" >"$tmp"
+    grep -v "shell toggle $PLUGIN_ID" "$BINDINGS" |
+      grep -v "^-- omapass — password manager overlay$" >"$tmp"
     mv "$tmp" "$BINDINGS"
-    cat >>"$BINDINGS" <<BIND
-
-# omapass — password manager overlay
-bindd = $KEYBIND, Passwords, exec, omarchy-shell shell toggle $PLUGIN_ID
-BIND
-    say "✓ keybinding set to ${KEYBIND//,/ +}"
+    printf '\n-- omapass — password manager overlay\no.bind("%s", "omapass", "omarchy-shell shell toggle %s")\n' \
+      "$CHORD" "$PLUGIN_ID" >>"$BINDINGS"
+    say "✓ keybinding set to $CHORD"
     hyprctl reload >/dev/null 2>&1 || true
   fi
 else
-  cat >>"$BINDINGS" <<BIND
-
-# omapass — password manager overlay
-bindd = $KEYBIND, Passwords, exec, omarchy-shell shell toggle $PLUGIN_ID
-BIND
-  say "✓ added ${KEYBIND//,/ +} to $BINDINGS"
+  printf '\n-- omapass — password manager overlay\no.bind("%s", "omapass", "omarchy-shell shell toggle %s")\n' \
+    "$CHORD" "$PLUGIN_ID" >>"$BINDINGS"
+  say "✓ added $CHORD to $BINDINGS"
   hyprctl reload >/dev/null 2>&1 || true
 fi
 
+if [[ -n $HOLDER ]]; then
+  say "! $CHORD is already bound to \"$HOLDER\" — omapass may not get the key."
+  say "! Pick another with  keybind = SUPER ALT, P  in ~/.config/omapass/config,"
+  say "! then run ./install.sh again."
+fi
+
 echo
-say "omapass installed. Press ${KEYBIND//,/ +} to open it."
+say "omapass installed. Press $CHORD to open it."
 if ! command -v pass >/dev/null 2>&1; then
   say "pass isn't installed yet — the overlay will offer to set it up on first open."
 fi

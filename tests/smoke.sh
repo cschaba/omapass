@@ -225,6 +225,18 @@ check "doctor reports the running copy" \
   "$("$OMAPASS" doctor | grep -c 'running from')" "1"
 check "doctor reports whether logging is on" \
   "$("$OMAPASS" doctor | grep -c '^  log ')" "1"
+# #24: the keybinding went to bindings.conf, which Omarchy 4 never reads, so
+# the hotkey silently never existed. Guard the file and the syntax.
+check "the installer binds in bindings.lua" \
+  "$(grep -c 'hypr/bindings.lua' "$ROOT/install.sh")" "1"
+check "the installer uses the lua binding API" \
+  "$([[ $(grep -c 'o.bind(' "$ROOT/install.sh") -ge 2 ]] && echo yes || echo no)" "yes"
+check "the installer no longer writes hyprland conf syntax" \
+  "$(grep -c '^bindd = \|bindd = \$KEYBIND' "$ROOT/install.sh")" "0"
+check "the installer checks for a chord conflict" \
+  "$(grep -c 'hyprctl binds' "$ROOT/install.sh")" "1"
+check "uninstall cleans the legacy file too" \
+  "$(grep -c 'LEGACY_BINDINGS' "$ROOT/uninstall.sh")" "2"
 check "quit is a real subcommand" \
   "$(grep -cE '^\s+quit\) cmd_quit' "$ROOT/bin/omapass")" "1"
 check "quit tells you how to come back" \

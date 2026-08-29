@@ -83,7 +83,7 @@ listing untrue:
 
 - **"Does not overwrite user configuration without explicit consent."**
   Of files belonging to the user, `install.sh` edits exactly two —
-  `~/.config/omarchy/shell.json` and `~/.config/hypr/bindings.conf` — plus its
+  `~/.config/omarchy/shell.json` and `~/.config/hypr/bindings.lua` — plus its
   own plugin directory. It names both before touching either, adds or removes
   only its own entries, keeps a `.omapass-backup` copy, and refuses to rewrite a
   `shell.json` it cannot parse. Teach the installer to touch a third file and it

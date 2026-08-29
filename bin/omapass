@@ -99,6 +99,28 @@ cmd_doctor() {
   fi
   [[ $found -gt 0 ]] || echo "  none found under $plugins_dir"
 
+  # The question doctor could not answer until now. Everything above reads the
+  # files on disk; the shell runs whatever QML it loaded at startup and keeps
+  # it for the life of the process. Update the files and the CLI goes current
+  # immediately while the interface does not — which looks exactly like a fix
+  # that did not work.
+  local pid started stale
+  pid=$(pgrep -f 'quickshell -n -p' 2>/dev/null | head -1)
+  if [[ -n $pid ]]; then
+    started=$(( $(date +%s) - $(ps -o etimes= -p "$pid" 2>/dev/null | tr -d ' ') ))
+    stale=$(find "$OMAPASS_ROOT" -maxdepth 1 \( -name '*.qml' -o -name '*.js' \) \
+      -newermt "@$started" -printf '%P ' 2>/dev/null)
+    echo
+    if [[ -n $stale ]]; then
+      echo "  ! The running shell is older than the interface files on disk."
+      echo "  ! Changed since it started: ${stale% }"
+      echo "  ! The CLI below is current but the windows are not."
+      echo "  ! Fix with:  omarchy restart shell"
+    else
+      echo "interface: the running shell matches the files on disk"
+    fi
+  fi
+
   if [[ $found -gt 1 ]]; then
     echo
     echo "  ! $found directories declare the plugin id '$id'."

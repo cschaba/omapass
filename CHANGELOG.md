@@ -6,6 +6,13 @@ the CLI surface, or the entry format bump the major.
 
 ## [Unreleased]
 
+### Added
+
+- `omapass doctor` warns when the running shell is older than the interface
+  files on disk. The shell loads omapass's QML once at startup and keeps it for
+  the life of the process, so updating gives you a current command line and
+  stale windows — indistinguishable from a fix that did not work. ([#21])
+
 ## [0.1.23] — 2026-08-28
 
 ### Added

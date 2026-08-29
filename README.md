@@ -309,12 +309,17 @@ If something misbehaves, start here:
 bin/omapass doctor
 ```
 
-It prints which copy of omapass is actually running, its version, where the
-config and store are, and whether logging is on — and warns if more than one
-installed directory claims the plugin id, which happens if you install twice
-(say, `install.sh` once and `omarchy plugin add` later). omarchy loads one of
-them and gives no sign which, so the version you see may not be the code that
-runs.
+It prints which copy of omapass is running, its version, where the config and
+store are, and whether logging is on. It also warns about the two ways the code
+you think you are running is not the code that runs:
+
+- **A stale interface.** The shell loads omapass's windows once, at startup, and
+  keeps them for the life of the process. Update omapass and the command line
+  goes current immediately while the windows do not — which looks exactly like a
+  fix that did not work. `omarchy restart shell` settles it.
+- **Two installs.** Installing twice (say `install.sh` once and
+  `omarchy plugin add` later) leaves two directories claiming the plugin id.
+  omarchy loads one of them and gives no sign which.
 
 Off unless you turn it on:
 

@@ -261,10 +261,13 @@ Panel {
             } else if (ctrl && event.key === Qt.Key_L) {
               root.activate("login"); event.accepted = true
             } else if (ctrl && event.key === Qt.Key_U) {
-              // Shift copies it instead of opening it, the way Shift turns
-              // copy into type on the other actions.
-              root.activate(shift ? "url" : "open"); event.accepted = true
-            } else if (ctrl && shift && event.key === Qt.Key_C) {
+              root.activate("open"); event.accepted = true
+            // Alt copies a field, Ctrl does something with it. Both of these
+            // were on Ctrl+Shift until an input method ate Ctrl+Shift+U before
+            // Qt ever saw it; Alt is left alone by IBus and fcitx alike. (#31)
+            } else if (alt && event.key === Qt.Key_U) {
+              root.activate("url"); event.accepted = true
+            } else if (alt && event.key === Qt.Key_N) {
               root.activate("name"); event.accepted = true
             } else if (ctrl && event.key === Qt.Key_N) {
               root.openManager("new"); event.accepted = true
@@ -427,7 +430,7 @@ Panel {
               { key: "⏎",  label: "copy", action: function () { root.activate("copy") } },
               { key: "⇧⏎", label: "type", action: function () { root.activate("type") } },
               { key: "⌥⏎", label: "user", action: function () { root.activate("user") } },
-              { key: "^⇧C", label: "name", action: function () { root.activate("name") } },
+              { key: "⌥N", label: "name", action: function () { root.activate("name") } },
               // Only when this entry actually has one — an action that usually
               // fails is worse than one that is not offered. (#5)
               { key: "^U", label: "url",  action: function () { root.activate("open") },

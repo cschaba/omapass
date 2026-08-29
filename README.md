@@ -236,9 +236,9 @@ The search field is focused the moment it opens, so just type.
 | `Shift+Enter` | type the password into the window underneath |
 | `Alt+Enter` | copy the username |
 | `Ctrl+L` | fill a login form |
-| `Ctrl+Shift+C` | copy the entry's own name |
+| `Alt+N` | copy the entry's own name |
 | `Ctrl+U` | open the entry's URL in the right application |
-| `Ctrl+Shift+U` | copy the URL instead of opening it |
+| `Alt+U` | copy the URL instead of opening it |
 | `Ctrl+O` | copy the one-time code |
 | `Ctrl+Shift+O` | type the one-time code |
 | `Ctrl+N` | open the manager on a new entry |
@@ -255,9 +255,9 @@ The search field is focused the moment it opens, so just type.
 | `Shift+Enter` | type the password into the window underneath |
 | `Alt+Enter` | copy the username |
 | `Ctrl+L` | fill a login form — username, Tab, password, Enter |
-| `Ctrl+Shift+C` | copy the entry's own name |
+| `Alt+N` | copy the entry's own name |
 | `Ctrl+U` | open the entry's URL in the right application |
-| `Ctrl+Shift+U` | copy the URL instead of opening it |
+| `Alt+U` | copy the URL instead of opening it |
 | `Ctrl+O` | copy the one-time code (needs `pass-otp`) |
 | `Ctrl+Shift+O` | type the one-time code |
 | `Ctrl+Q` | scan a QR code into the selected entry |
@@ -280,6 +280,14 @@ The name and the URL are not secrets, so those two land on the clipboard as an
 ordinary copy: no expiry, and your clipboard manager may keep them. Passwords,
 usernames and one-time codes are always marked sensitive and clear themselves
 after `clip-time`.
+
+`Alt` copies a field and `Ctrl` does something with it — which is also why the
+copy actions are not on `Ctrl+Shift`: input methods claim chords there.
+`Ctrl+Shift+U` in particular is Unicode entry in IBus and fcitx, and never
+reaches the application at all.
+
+When an action cannot do what you asked — an entry with no username field, a
+URL that is not one — it says so in a notification. Nothing fails quietly.
 
 In the editor: `Ctrl+Enter` saves, `Esc` cancels, `Tab` moves between fields.
 Renaming is just editing the name — omapass runs `pass mv` for you.

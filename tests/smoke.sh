@@ -282,6 +282,24 @@ check "welcomed --reset clears it" \
 # marker stops it after the first time, and the latch stops it twice in one
 # session. Lose either and omapass opens on your desktop uninvited — which is
 # the complaint that started #14 in the first place.
+# Ctrl+Shift+U is Unicode entry in IBus and fcitx: they take it before Qt sees
+# it, and the key typed "U+" into the search field instead of copying a URL.
+# Alt is left alone by both, so the copy actions live there. (#31)
+for surface in BarWidget.qml Omapass.qml; do
+  check "$surface copies the url on Alt" \
+    "$(grep -c 'alt && event.key === Qt.Key_U' "$ROOT/$surface")" "1"
+  check "$surface copies the name on Alt" \
+    "$(grep -c 'alt && event.key === Qt.Key_N' "$ROOT/$surface")" "1"
+  check "$surface leaves Ctrl+Shift out of it" \
+    "$(grep -cE 'ctrl && shift && event.key === Qt.Key_(C|U)' "$ROOT/$surface")" "0"
+done
+# A detached action that dies has nowhere to put the message but a
+# notification, and without one a failure is indistinguishable from a dead key.
+check "detached actions notify on failure" \
+  "$(grep -c 'if \$NOTIFY_ERRORS; then notify' "$ROOT/bin/omapass")" "1"
+check "and the actions that need it arm it" \
+  "$(grep -A3 'LOG_ARGS=("\$@")' "$ROOT/bin/omapass" | grep -c 'copy-user | copy-name | copy-url')" "1"
+
 # A surface that fixes the gate's height has to guess how tall it will be, and
 # the guess is wrong exactly when it matters: the failure state carries a
 # status line and an escape hatch the working state does not. Half the prompt

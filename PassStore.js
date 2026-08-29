@@ -197,6 +197,19 @@ function parseBody(raw) {
   return out
 }
 
+// Whether `fields` (as the backend reports them) carries a URL. The keys are
+// the ones parseBody() recognises, and the ones bin/omapass opens — all three
+// have to name the same set or a surface offers an action the backend refuses.
+function hasUrl(fields) {
+  for (var i = 0; i < (fields || []).length; i++) {
+    var key = String(fields[i].key || "").toLowerCase()
+    if ((key === "url" || key === "site" || key === "host")
+        && String(fields[i].value || "").length > 0)
+      return true
+  }
+  return false
+}
+
 // A pass entry is a line-oriented format, so a newline inside a field value is
 // not data — it is a new line in the file. Pasting one into the username field
 // could silently attach an attacker's otpauth:// secret, or overwrite another

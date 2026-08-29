@@ -449,13 +449,15 @@ fingerprint_available() {
 }
 
 cmd_status() {
-  local has_pass has_gpg has_wlcopy has_wtype has_jq has_otp=false
+  local has_pass has_gpg has_wlcopy has_wtype has_jq has_otp=false has_open=false
   has_pass=$(have pass)
   has_gpg=$(have gpg)
   has_wlcopy=$(have wl-copy)
   has_wtype=$(have wtype)
   has_jq=$(have jq)
   [[ $has_pass == "true" ]] && pass otp --help >/dev/null 2>&1 && has_otp=true
+  # Either handler is enough; the browser launcher only covers http(s).
+  { command -v xdg-open >/dev/null 2>&1 || command -v omarchy-launch-browser >/dev/null 2>&1; } && has_open=true
 
   local keys_raw has_key=false
   keys_raw=$(secret_key_lines)
@@ -492,6 +494,7 @@ cmd_status() {
   rows+=("$(req_row key        "GPG key"                    "gpg --full-generate-key"               false "$has_key")")
   rows+=("$(req_row store      "Password store"             "$key_hint"                             false "$has_store")")
   rows+=("$(req_row pass-otp   "pass-otp (one-time codes)"  "sudo pacman -S --needed pass-otp"      true  "$has_otp")")
+  rows+=("$(req_row xdg-open  "xdg-utils (opening urls)"   "sudo pacman -S --needed xdg-utils"     true  "$has_open")")
 
   local ready=true
   [[ $has_pass == "true" && $has_gpg == "true" && $has_wlcopy == "true" \
@@ -508,14 +511,14 @@ cmd_status() {
     sep=","
   done <<<"$keys_raw"
 
-  printf '{"version":"%s","id":"%s","name":"%s","homepage":"%s","welcomed":%s,"pass":%s,"otp":%s,"gpg":%s,"key":%s,"store":%s,"git":%s,"fingerprint":%s,"passwordAuth":%s,' \
+  printf '{"version":"%s","id":"%s","name":"%s","homepage":"%s","welcomed":%s,"pass":%s,"otp":%s,"gpg":%s,"key":%s,"store":%s,"git":%s,"fingerprint":%s,"passwordAuth":%s,"open":%s,' \
     "$(json_escape "$(omapass_version)")" \
     "$(json_escape "$(manifest_field id)")" \
     "$(json_escape "$(manifest_field name)")" \
     "$(json_escape "$(manifest_field homepage)")" \
     "$([[ -e $WELCOME_MARKER ]] && echo true || echo false)" \
     "$has_pass" "$has_otp" "$has_gpg" "$has_key" "$has_store" "$has_git" "$has_fingerprint" \
-    "$has_password_auth"
+    "$has_password_auth" "$has_open"
   printf '"entries":%s,"storePath":"%s","keys":[%s],' \
     "$entries" "$(json_escape "$STORE")" "$keys"
   printf '"requirements":[%s],"config":%s,"ready":%s}\n' \
@@ -633,6 +636,20 @@ extract_user() {
   return 1
 }
 
+# The URL of an entry, under any of the keys the editor recognises. Kept in
+# step with parseBody() in PassStore.js on purpose: a key the editor files
+# under "other lines" must not be the one this opens, or the two surfaces
+# disagree about what the entry's URL is.
+extract_url() {
+  local body="$1" value=""
+  local candidate
+  for candidate in url site host; do
+    value=$(extract "$body" "$candidate")
+    [[ -n $value ]] && { printf '%s\n' "$value"; return; }
+  done
+  return 1
+}
+
 # --- clipboard --------------------------------------------------------------
 
 # Copies with the sensitive hint set, so Omarchy's own clipboard manager (and
@@ -651,6 +668,56 @@ copy_secret() {
   disown
 
   notify "$label copied" "Clipboard clears in ${CLIP_TIME}s"
+}
+
+# For things that are not secrets. No sensitive hint and no timeout: an entry
+# name is meant to be pasted at leisure, and a clipboard that empties itself
+# under you is only worth the annoyance when what it holds is a password.
+copy_plain() {
+  local value="$1" label="${2:-Text}"
+  [[ -n $value ]] || die "nothing to copy"
+  command -v wl-copy >/dev/null 2>&1 || die "wl-copy is not installed"
+  printf '%s' "$value" | wl-copy --type text/plain >/dev/null 2>&1
+  notify "$label copied" "$value"
+}
+
+# --- opening urls -----------------------------------------------------------
+
+# Only an absolute URL with a scheme is ever handed on. Two reasons: the
+# handler lookup is by scheme, so a bare "example.com" has nothing to dispatch
+# on, and neither xdg-open nor omarchy-launch-browser takes a `--`, so a value
+# starting with a dash would arrive as a flag. Requiring scheme:// also leaves
+# javascript: and data: out without needing a list of everything to refuse.
+validate_url() {
+  local url="$1"
+  [[ -n $url ]] || die "no url to open"
+  [[ ${#url} -le 2048 ]] || die "that url is too long to open"
+  LC_ALL=C grep -q '[[:cntrl:]]' <<<"$url" && die "that url has control characters"
+  [[ $url =~ ^[A-Za-z][A-Za-z0-9+.-]*://[^[:space:]]+$ || $url =~ ^mailto:[^[:space:]]+$ ]] ||
+    die "cannot open $url — a url needs a scheme, like https:// or ssh://"
+}
+
+# http and https go through omarchy's own launcher, which picks the default
+# browser and then focuses the window it opened — worth having, and not worth
+# reimplementing. Everything else (ssh, sftp, ftp, vnc, …) is what xdg-open is
+# for. Detached either way: neither call should hold the plugin up.
+open_url() {
+  local url="$1"
+  validate_url "$url"
+
+  local opener=()
+  if [[ $url == http://* || $url == https://* ]] && command -v omarchy-launch-browser >/dev/null 2>&1; then
+    opener=(omarchy-launch-browser)
+  elif command -v xdg-open >/dev/null 2>&1; then
+    opener=(xdg-open)
+  else
+    die "no url handler installed (xdg-utils)"
+  fi
+
+  setsid "${opener[@]}" "$url" >/dev/null 2>&1 &
+  disown
+
+  notify "Opening" "$url" "󰖟"
 }
 
 # --- typing -----------------------------------------------------------------
@@ -680,6 +747,30 @@ cmd_copy_user() {
   body=$(decrypt "$1")
   secret=$(extract_user "$body") || die "no username field in $1"
   copy_secret "$secret" "Username"
+}
+
+# The entry's own name. Not a secret — this exists so a name that is a mail
+# address or a hostname can be pasted into whatever asked for it.
+cmd_copy_name() {
+  local entry="$1"
+  validate_entry "$entry"
+  entry_exists "$entry" || die "no such entry: $entry"
+  copy_plain "$entry" "Name"
+}
+
+# The URL is not a secret either, but reading it means decrypting the entry.
+cmd_copy_url() {
+  local body url
+  body=$(decrypt "$1")
+  url=$(extract_url "$body") || die "no url field in $1"
+  copy_plain "$url" "URL"
+}
+
+cmd_open() {
+  local body url
+  body=$(decrypt "$1")
+  url=$(extract_url "$body") || die "no url field in $1"
+  open_url "$url"
 }
 
 cmd_type() {
@@ -911,6 +1002,9 @@ omapass — pass(1) backend for the omapass Omarchy plugin
   body <entry>               print the whole entry (the editor's read path)
   copy <entry> [field]       copy password (or field) to the clipboard
   copy-user <entry>          copy the username field
+  copy-name <entry>          copy the entry's own name
+  copy-url <entry>           copy the url field
+  open <entry>               open the url field with the desktop's handler
   type <entry> [field]       type password (or field) into the focused window
   type-user <entry>          type the username field
   login <entry>              type username, Tab, password, Enter
@@ -981,6 +1075,9 @@ dispatch() {
   body) cmd_body "${1:?entry required}" ;;
   copy) cmd_copy "${1:?entry required}" "${2:-}" ;;
   copy-user) cmd_copy_user "${1:?entry required}" ;;
+  copy-name) cmd_copy_name "${1:?entry required}" ;;
+  copy-url) cmd_copy_url "${1:?entry required}" ;;
+  open) cmd_open "${1:?entry required}" ;;
   type) cmd_type "${1:?entry required}" "${2:-}" ;;
   type-user) cmd_type_user "${1:?entry required}" ;;
   login) cmd_login "${1:?entry required}" ;;

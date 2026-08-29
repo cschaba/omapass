@@ -25,6 +25,8 @@ Item {
 
   readonly property bool ready: status !== null && status.ready === true
   readonly property bool hasOtpSupport: status !== null && status.otp === true
+  // Whether anything on this machine can be handed a URL at all.
+  readonly property bool hasUrlSupport: status !== null && status.open === true
   readonly property bool hasGit: status !== null && status.git === true
   readonly property bool fingerprintRequired: status !== null && status.fingerprint === true
   readonly property bool passwordAuthAvailable: status !== null && status.passwordAuth === true
@@ -127,6 +129,12 @@ Item {
   function typeUser(path)     { if (path) { run(["type-user", path]); markUnlockedSoon() } }
   function typeLogin(path)    { if (path) { run(["login", path]); markUnlockedSoon() } }
   function copyOtp(path)      { if (path && hasOtpSupport) { run(["otp", path, "copy"]); markUnlockedSoon() } }
+  function copyUrl(path)      { if (path) { run(["copy-url", path]); markUnlockedSoon() } }
+  function openUrl(path)      { if (path && hasUrlSupport) { run(["open", path]); markUnlockedSoon() } }
+
+  // The one action here that never decrypts anything: the name is already on
+  // screen, so there is no agent to warm and nothing to re-probe.
+  function copyName(path)     { if (path) run(["copy-name", path]) }
   function typeOtp(path)      { if (path && hasOtpSupport) { run(["otp", path, "type"]); markUnlockedSoon() } }
 
   // Hands off to slurp + grim + zbarimg. Detached, because the overlay has to

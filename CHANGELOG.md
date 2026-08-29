@@ -6,6 +6,16 @@ the CLI surface, or the entry format bump the major.
 
 ## [Unreleased]
 
+### Added
+
+- Copy the entry's name (`Ctrl+Shift+C`), copy its URL (`Ctrl+Shift+U`) and
+  open its URL (`Ctrl+U`) — from the bar pulldown as well as the overlay, with
+  clickable hints along the bottom of both. `http`/`https` go through
+  Omarchy's own browser launcher and everything else through `xdg-open`, so
+  `ssh`, `sftp`, `ftp` and the rest land wherever the desktop already sends
+  them. The name and the URL are copied as ordinary text, not as secrets:
+  neither expires. New CLI commands `copy-name`, `copy-url` and `open`. ([#29])
+
 ## [0.1.31] — 2026-08-29
 
 ### Changed
@@ -435,6 +445,7 @@ top of the README.
 [0.1.28]: https://github.com/cschaba/omapass/releases/tag/v0.1.28
 [#26]: https://github.com/cschaba/omapass/issues/26
 [#28]: https://github.com/cschaba/omapass/issues/28
+[#29]: https://github.com/cschaba/omapass/issues/29
 [0.1.29]: https://github.com/cschaba/omapass/releases/tag/v0.1.29
 [0.1.30]: https://github.com/cschaba/omapass/releases/tag/v0.1.30
 [0.1.31]: https://github.com/cschaba/omapass/releases/tag/v0.1.31

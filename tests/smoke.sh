@@ -126,6 +126,75 @@ check "reports a missing entry" \
   "$("$OMAPASS" reveal nope/nothing 2>&1 | grep -c "no such entry")" "1"
 echo
 
+echo "names and urls"
+# Real handlers are replaced by shims that only record what they were handed,
+# so the assertions can be about the argument rather than about what a browser
+# did with it. copy_plain is synchronous; open_url detaches, hence the poll.
+SHIM="$TMP/shim"
+mkdir -p "$SHIM"
+CAPTURE="$TMP/capture"
+# wl-copy takes its value on stdin; the url openers take it as an argument.
+cat > "$SHIM/wl-copy" <<SHIM_EOF
+#!/bin/bash
+printf 'wl-copy %s\\n' "\$(cat)" >> "$CAPTURE"
+SHIM_EOF
+for tool in xdg-open omarchy-launch-browser; do
+  cat > "$SHIM/$tool" <<SHIM_EOF
+#!/bin/bash
+printf '$tool %s\\n' "\$1" >> "$CAPTURE"
+SHIM_EOF
+done
+chmod +x "$SHIM"/*
+OLD_PATH="$PATH"
+export PATH="$SHIM:$PATH"
+
+printf 'p1\nurl: ssh://box.example\n' | "$OMAPASS" insert smoke/ssh >/dev/null 2>&1
+printf 'p2\nurl: example.com\n' | "$OMAPASS" insert smoke/schemeless >/dev/null 2>&1
+printf 'p3\nurl: javascript:alert(1)\n' | "$OMAPASS" insert smoke/js >/dev/null 2>&1
+
+: > "$CAPTURE"
+"$OMAPASS" copy-name smoke/full >/dev/null 2>&1
+check "copy-name copies the entry name" \
+  "$(grep -c '^wl-copy smoke/full$' "$CAPTURE")" "1"
+
+: > "$CAPTURE"
+"$OMAPASS" copy-url smoke/full >/dev/null 2>&1
+check "copy-url copies the url field" \
+  "$(grep -c '^wl-copy https://example.com$' "$CAPTURE")" "1"
+
+check "copy-url says when there is no url" \
+  "$("$OMAPASS" copy-url smoke/bare 2>&1 | grep -c "no url field")" "1"
+check "copy-name refuses an entry that is not there" \
+  "$("$OMAPASS" copy-name smoke/nothing 2>&1 | grep -c "no such entry")" "1"
+
+check "open says when there is no url" \
+  "$("$OMAPASS" open smoke/bare 2>&1 | grep -c "no url field")" "1"
+check "open refuses a url with no scheme" \
+  "$("$OMAPASS" open smoke/schemeless 2>&1 | grep -c "cannot open")" "1"
+check "open refuses javascript:" \
+  "$("$OMAPASS" open smoke/js 2>&1 | grep -c "cannot open")" "1"
+
+: > "$CAPTURE"
+"$OMAPASS" open smoke/full >/dev/null 2>&1
+for _ in 1 2 3 4 5 6 7 8 9 10; do grep -q . "$CAPTURE" && break; sleep 0.2; done
+check "open sends http to omarchy's browser launcher" \
+  "$(grep -c '^omarchy-launch-browser https://example.com$' "$CAPTURE")" "1"
+
+: > "$CAPTURE"
+"$OMAPASS" open smoke/ssh >/dev/null 2>&1
+for _ in 1 2 3 4 5 6 7 8 9 10; do grep -q . "$CAPTURE" && break; sleep 0.2; done
+check "open sends every other scheme to xdg-open" \
+  "$(grep -c '^xdg-open ssh://box.example$' "$CAPTURE")" "1"
+
+check "status reports a url handler" \
+  "$("$OMAPASS" status | python3 -c 'import sys,json;print(json.load(sys.stdin)["open"])')" "True"
+
+export PATH="$OLD_PATH"
+"$OMAPASS" remove smoke/ssh >/dev/null 2>&1
+"$OMAPASS" remove smoke/schemeless >/dev/null 2>&1
+"$OMAPASS" remove smoke/js >/dev/null 2>&1
+echo
+
 echo "config"
 printf 'clip-time = 7\nbogus-key = 1\npulldown-rows = nope\n' > "$OMAPASS_CONFIG"
 check "reads a value from the file" \
@@ -162,6 +231,14 @@ if command -v node >/dev/null 2>&1; then
     "nameProblem('.git/x') !== ''" "true"
   js_check "ordinary folder accepted" \
     "nameProblem('github.com/me') === ''" "true"
+  js_check "hasUrl sees a url field" \
+    "hasUrl([{key:'url',value:'https://x'}])" "true"
+  js_check "hasUrl accepts the other spellings" \
+    "hasUrl([{key:'host',value:'box'}]) && hasUrl([{key:'site',value:'x'}])" "true"
+  js_check "hasUrl ignores an empty value" \
+    "hasUrl([{key:'url',value:''}])" "false"
+  js_check "hasUrl says no when there is none" \
+    "hasUrl([{key:'login',value:'me'}]) || hasUrl(undefined)" "false"
 else
   ok "node unavailable — skipped the PassStore.js checks"
 fi

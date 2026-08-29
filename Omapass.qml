@@ -34,6 +34,7 @@ Item {
   readonly property var status: pass.status
   readonly property bool ready: pass.ready
   readonly property bool hasOtpSupport: pass.hasOtpSupport
+  readonly property bool hasUrlSupport: pass.hasUrlSupport
   readonly property bool hasGit: pass.hasGit
 
   // A fingerprint is enrolled and the PAM service exists, so the vault sits
@@ -96,6 +97,9 @@ Item {
   property int cardWidth: Math.min(Style.space(900), panel.width - Style.gapsOut * 2)
   property int cardHeight: Math.min(Style.space(620), panel.height - Style.gapsOut * 2)
   property int rowHeight: Math.max(Style.space(44), Style.font.body + Style.font.caption + Style.spacing.rowPaddingX)
+
+  readonly property bool selectedHasUrl: root.fieldsForPath === root.currentPath
+                                        && PassStore.hasUrl(root.selectedFields)
 
   readonly property var currentRow: displayModel.count > 0 && selectedIndex >= 0 && selectedIndex < displayModel.count
     ? displayModel.get(selectedIndex) : null
@@ -250,6 +254,9 @@ Item {
 
   function copyPassword() { if (root.currentPath) { pass.copyPassword(root.currentPath); root.dismiss() } }
   function copyUser()     { if (root.currentPath) { pass.copyUser(root.currentPath); root.dismiss() } }
+  function copyName()     { if (root.currentPath) { pass.copyName(root.currentPath); root.dismiss() } }
+  function copyUrl()      { if (root.currentPath) { pass.copyUrl(root.currentPath); root.dismiss() } }
+  function openUrl()      { if (root.currentPath && root.hasUrlSupport) { pass.openUrl(root.currentPath); root.dismiss() } }
   function typePassword() { if (root.currentPath) { pass.typePassword(root.currentPath); root.dismiss() } }
   function typeLogin()    { if (root.currentPath) { pass.typeLogin(root.currentPath); root.dismiss() } }
   function copyOtp()      { if (root.currentPath && root.hasOtpSupport) { pass.copyOtp(root.currentPath); root.dismiss() } }
@@ -521,6 +528,14 @@ Item {
             root.toggleReveal(); event.accepted = true
           } else if (ctrl && event.key === Qt.Key_L) {
             root.typeLogin(); event.accepted = true
+          } else if (ctrl && event.key === Qt.Key_U) {
+            // Shift copies it instead of opening it, the way Shift turns copy
+            // into type on the other actions.
+            if (shift) root.copyUrl()
+            else root.openUrl()
+            event.accepted = true
+          } else if (ctrl && shift && event.key === Qt.Key_C) {
+            root.copyName(); event.accepted = true
           } else if (ctrl && event.key === Qt.Key_O) {
             if (shift) root.typeOtp()
             else root.copyOtp()
@@ -909,6 +924,9 @@ Item {
               { key: "⏎",  label: "copy",       action: function () { root.copyPassword() } },
               { key: "⇧⏎", label: "type",       action: function () { root.typePassword() } },
               { key: "⌥⏎", label: "user",       action: function () { root.copyUser() } },
+              { key: "^⇧C", label: "name",      action: function () { root.copyName() } },
+              { key: "^U", label: "open url",   action: function () { root.openUrl() },
+                visible: root.hasUrlSupport && root.selectedHasUrl },
               { key: "^L", label: "fill login", action: function () { root.typeLogin() } },
               { key: "^O", label: "otp",        action: function () { root.copyOtp() },
                 visible: root.hasOtpSupport },

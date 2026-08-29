@@ -39,7 +39,8 @@ New entries and edits open in the overlay too, on `^N` and `^E`:
 
 Omarchy 4, `pass`, `gpg`, `wl-clipboard`, `wtype`, and `jq` — all but `pass`
 ship with Omarchy. `pass-otp` is optional and only needed for one-time codes;
-QR enrolment additionally wants `zbar` (`slurp` and `grim` already ship).
+QR enrolment additionally wants `zbar` (`slurp` and `grim` already ship), and
+opening a URL wants `xdg-utils`.
 
 ## Install
 
@@ -176,6 +177,9 @@ The search field is focused the moment it opens, so just type.
 | `Shift+Enter` | type the password into the window underneath |
 | `Alt+Enter` | copy the username |
 | `Ctrl+L` | fill a login form |
+| `Ctrl+Shift+C` | copy the entry's own name |
+| `Ctrl+U` | open the entry's URL in the right application |
+| `Ctrl+Shift+U` | copy the URL instead of opening it |
 | `Ctrl+O` | copy the one-time code |
 | `Ctrl+Shift+O` | type the one-time code |
 | `Ctrl+N` | open the manager on a new entry |
@@ -192,6 +196,9 @@ The search field is focused the moment it opens, so just type.
 | `Shift+Enter` | type the password into the window underneath |
 | `Alt+Enter` | copy the username |
 | `Ctrl+L` | fill a login form — username, Tab, password, Enter |
+| `Ctrl+Shift+C` | copy the entry's own name |
+| `Ctrl+U` | open the entry's URL in the right application |
+| `Ctrl+Shift+U` | copy the URL instead of opening it |
 | `Ctrl+O` | copy the one-time code (needs `pass-otp`) |
 | `Ctrl+Shift+O` | type the one-time code |
 | `Ctrl+Q` | scan a QR code into the selected entry |
@@ -203,6 +210,17 @@ The search field is focused the moment it opens, so just type.
 | `Delete` / `Ctrl+D` | delete the selected entry |
 | `Ctrl+S` | `git pull --rebase && git push` the store |
 | `Esc` | clear the filter, then close |
+
+`Ctrl+U` hands the entry's `url` field (or `site`, or `host`) to the desktop:
+`http` and `https` go to your default browser through Omarchy's own launcher,
+and everything else — `ssh`, `sftp`, `ftp`, `vnc`, `mailto` — to `xdg-open`,
+which means whatever you have already told your desktop to use. A URL without
+a scheme is refused rather than guessed at.
+
+The name and the URL are not secrets, so those two land on the clipboard as an
+ordinary copy: no expiry, and your clipboard manager may keep them. Passwords,
+usernames and one-time codes are always marked sensitive and clear themselves
+after `clip-time`.
 
 In the editor: `Ctrl+Enter` saves, `Esc` cancels, `Tab` moves between fields.
 Renaming is just editing the name — omapass runs `pass mv` for you.
@@ -418,6 +436,10 @@ bin/omapass list                    # JSON: every entry
 bin/omapass fields github.com/cs    # JSON: everything except the password
 bin/omapass copy github.com/cs
 bin/omapass type github.com/cs
+bin/omapass copy-user github.com/cs
+bin/omapass copy-name github.com/cs # the entry's own name
+bin/omapass copy-url github.com/cs
+bin/omapass open github.com/cs      # hand the url to the desktop's handler
 bin/omapass login github.com/cs     # username, Tab, password, Enter
 bin/omapass otp github.com/cs copy
 bin/omapass otp-scan github.com/cs  # read a QR code off the screen

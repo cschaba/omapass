@@ -95,6 +95,60 @@ omarchy bar move cschaba.omapass --section left
 
 or drag it in Setup → Plugins.
 
+### Updating it
+
+```bash
+omarchy plugin update cschaba.omapass
+```
+
+or, if you installed from a clone, `git pull` in the directory you cloned into.
+
+**Then restart the shell.** The running shell holds the interface it loaded at
+startup, so new files on disk change nothing you can see. `omarchy plugin
+update` ends with `rescanPlugins`, which notices plugins appearing and
+disappearing but does not re-read the QML of one that was already loaded — so
+without a restart the CLI is the new version while the windows are still the
+old one, which is a confusing way to spend an afternoon:
+
+```bash
+omarchy restart shell
+```
+
+To check what is actually running:
+
+```bash
+bin/omapass doctor
+```
+
+It prints the version, the directory it is running from, every installed copy
+it can find, and — the point of it — whether the shell started before or after
+the interface files were last written:
+
+```
+omapass 0.1.33
+  running from   /home/you/.config/omarchy/plugins/cschaba.omapass
+  plugin id      cschaba.omapass
+  ...
+installed plugin directories:
+  /home/you/.config/omarchy/plugins/cschaba.omapass  (0.1.33)  ← this one
+
+  ! The running shell is older than the interface files on disk.
+  ! Changed since it started: BarWidget.qml Omapass.qml
+  ! The CLI below is current but the windows are not.
+  ! Fix with:  omarchy restart shell
+```
+
+When they agree it says so instead:
+
+```
+interface: the running shell matches the files on disk
+```
+
+The version number on its own cannot answer this. `bin/omapass version`, and
+the one `F1` shows in the overlay, both read `manifest.json` off disk — so
+after an update they say the new version while the shell may still be drawing
+the old one. That is why `doctor` compares timestamps instead of numbers.
+
 ### Removing it
 
 ```bash

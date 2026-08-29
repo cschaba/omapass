@@ -227,16 +227,23 @@ check "doctor reports whether logging is on" \
   "$("$OMAPASS" doctor | grep -c '^  log ')" "1"
 # #24: the keybinding went to bindings.conf, which Omarchy 4 never reads, so
 # the hotkey silently never existed. Guard the file and the syntax.
-check "the installer binds in bindings.lua" \
-  "$(grep -c 'hypr/bindings.lua' "$ROOT/install.sh")" "1"
-check "the installer uses the lua binding API" \
-  "$([[ $(grep -c 'o.bind(' "$ROOT/install.sh") -ge 2 ]] && echo yes || echo no)" "yes"
-check "the installer no longer writes hyprland conf syntax" \
-  "$(grep -c '^bindd = \|bindd = \$KEYBIND' "$ROOT/install.sh")" "0"
+# The rule: nothing outside the plugin's own directories is written. These
+# guard the shapes that would break it — a redirect into a config file, or an
+# in-place edit of one.
+for script in install.sh uninstall.sh; do
+  check "$script never redirects into hypr config" \
+    "$(grep -cE '>>?[[:space:]]*"?\$(BINDINGS|LEGACY_BINDINGS)"?' "$ROOT/$script")" "0"
+  check "$script never rewrites hypr config in place" \
+    "$(grep -cE 'mv .*"\$(BINDINGS|LEGACY_BINDINGS)"|tee .*\$(BINDINGS|LEGACY_BINDINGS)' "$ROOT/$script")" "0"
+  check "$script never edits shell.json itself" \
+    "$(grep -cE 'json\.dump|shell\.json"?[[:space:]]*<<|>[[:space:]]*"?\$SHELL_JSON' "$ROOT/$script")" "0"
+done
+check "the installer registers through omarchy" \
+  "$([[ $(grep -c 'omarchy plugin enable' "$ROOT/install.sh") -ge 1 ]] && echo yes || echo no)" "yes"
+check "the installer prints the binding instead" \
+  "$([[ $(grep -c 'o.bind(' "$ROOT/install.sh") -ge 1 ]] && echo yes || echo no)" "yes"
 check "the installer checks for a chord conflict" \
   "$(grep -c 'hyprctl binds' "$ROOT/install.sh")" "1"
-check "uninstall cleans the legacy file too" \
-  "$(grep -c 'LEGACY_BINDINGS' "$ROOT/uninstall.sh")" "2"
 check "quit is a real subcommand" \
   "$(grep -cE '^\s+quit\) cmd_quit' "$ROOT/bin/omapass")" "1"
 check "quit tells you how to come back" \

@@ -66,6 +66,38 @@ land in its history.
 **Revert temporary overrides.** Forcing `fingerprint_available()` to return true
 is the usual one. `grep -rn TEMPORARY` before committing.
 
+## Stay inside the plugin
+
+**omapass never creates, edits or deletes a file outside its own directories.**
+
+What is ours:
+
+- the plugin directory, `~/.config/omarchy/plugins/cschaba.omapass`
+- `~/.config/omapass/` — its config
+- `~/.local/state/omapass/` — its log, backups and first-run marker
+- the password store, and only through `pass`
+
+Everything else belongs to the user, including `~/.config/hypr/bindings.lua` and
+`~/.config/omarchy/shell.json`. Being careful about editing them — announcing
+first, keeping a backup, touching only our own lines — is not the same as not
+editing them, and a plugin that rewrites your compositor config is one you have
+to trust twice.
+
+Where something outside genuinely has to change, **detect it and print it**: the
+exact line, or the exact command, and then stop. `install.sh` prints the
+`o.bind` line for the keybinding and lets the user paste it.
+
+Omarchy's own commands are the exception, because they are omarchy managing
+omarchy's configuration and are what a user would type by hand:
+
+```bash
+omarchy plugin enable cschaba.omapass    # also places the bar widget
+omarchy plugin disable cschaba.omapass
+omarchy bar put cschaba.omapass
+```
+
+Prefer them over touching `shell.json`, which they own.
+
 ## Publishing
 
 omapass is listed on the [Omarchy plugin marketplace][mp]. The listing points at
@@ -82,12 +114,9 @@ about how omapass behaves, so a change that breaks one silently makes the
 listing untrue:
 
 - **"Does not overwrite user configuration without explicit consent."**
-  Of files belonging to the user, `install.sh` edits exactly two —
-  `~/.config/omarchy/shell.json` and `~/.config/hypr/bindings.lua` — plus its
-  own plugin directory. It names both before touching either, adds or removes
-  only its own entries, keeps a `.omapass-backup` copy, and refuses to rewrite a
-  `shell.json` it cannot parse. Teach the installer to touch a third file and it
-  has to meet the same bar: announced, reversible, and only its own entries.
+  omapass goes further than the checklist asks: it writes nothing outside its
+  own directories at all. See *Stay inside the plugin* above. The easiest way to
+  keep this claim true is to keep having nothing to declare.
 - **"The repository is public and contains installation and removal
   instructions."** `uninstall.sh` has to keep working, and keep leaving the
   password store alone.

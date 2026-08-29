@@ -6,6 +6,8 @@ the CLI surface, or the entry format bump the major.
 
 ## [Unreleased]
 
+## [0.1.25] — 2026-08-29
+
 ### Fixed
 
 - `ui:` log lines are numbered. Each event is written by its own process, so
@@ -313,7 +315,7 @@ top of the README.
 - The clipboard is marked sensitive, so Omarchy's clipboard manager will not
   record it, and the selection is dropped after a timeout.
 
-[Unreleased]: https://github.com/cschaba/omapass/compare/v0.1.24...HEAD
+[Unreleased]: https://github.com/cschaba/omapass/compare/v0.1.25...HEAD
 [0.1.0]: https://github.com/cschaba/omapass/releases/tag/v0.1.0
 [#2]: https://github.com/cschaba/omapass/issues/2
 [0.1.1]: https://github.com/cschaba/omapass/releases/tag/v0.1.1
@@ -357,3 +359,4 @@ top of the README.
 [0.1.22]: https://github.com/cschaba/omapass/releases/tag/v0.1.22
 [0.1.23]: https://github.com/cschaba/omapass/releases/tag/v0.1.23
 [0.1.24]: https://github.com/cschaba/omapass/releases/tag/v0.1.24
+[0.1.25]: https://github.com/cschaba/omapass/releases/tag/v0.1.25

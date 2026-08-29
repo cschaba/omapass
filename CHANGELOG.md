@@ -6,6 +6,14 @@ the CLI surface, or the entry format bump the major.
 
 ## [Unreleased]
 
+### Changed
+
+- The README says how to update an installed copy: `omarchy plugin update`,
+  then `omarchy restart shell`, then `bin/omapass doctor` to confirm the
+  windows are as new as the files. `rescanPlugins` — which `plugin update`
+  runs on its own — does not re-read the QML of a plugin that is already
+  loaded, so the restart is not optional.
+
 ## [0.1.33] — 2026-08-29
 
 ### Changed

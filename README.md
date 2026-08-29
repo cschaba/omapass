@@ -19,48 +19,21 @@
 A password manager for [Omarchy 4](https://omarchy.org), built as a shell
 plugin and backed by [`pass`](https://www.passwordstore.org/).
 
-![omapass](docs/preview.png)
+![The omapass manager overlay](docs/preview.png)
 
 It gives you two ways in. A bar icon with a search pulldown for the common
-case — find a password, copy it, get on with your day. And a full-screen
-overlay, in the same family as Omarchy's clipboard and emoji pickers, that also
-creates, edits, generates, renames and deletes entries, so `pass` on the command
-line stays optional.
+case — find a password, copy it, get on with your day. And the full-screen
+overlay above, on `SUPER + SHIFT + K`, in the same family as Omarchy's clipboard
+and emoji pickers, which also creates, edits, generates, renames and deletes
+entries, so `pass` on the command line stays optional.
 
-The bar pulldown — click the lock, or search straight away:
+The bar pulldown — click the lock, or start typing straight away:
 
-```
- 󰌾  ← bar icon
- ┌────────────────────────────────┐
- │ git                            │
- ├────────────────────────────────┤
- │ carsten          github.com    │
- │ deploy-bot       github.com    │
- ├────────────────────────────────┤
- │ ⏎ copy  ⇧⏎ type      Manage…   │
- └────────────────────────────────┘
-```
+![The omapass bar pulldown, filtered to "git"](docs/pulldown.png)
 
-And the full manager:
+New entries and edits open in the overlay too, on `^N` and `^E`:
 
-```
-SUPER + SHIFT + K
-
- ┌────────────────────────────────────────────────┐
- │ github                              3 of 24    │
- ├──────────────────────┬─────────────────────────┤
- │ ▸ cs                 │ github.com/cs           │
- │   github.com         │                         │
- │                      │ password                │
- │   deploy-bot         │ ••••••••••••            │
- │   github.com         │                         │
- │                      │ login                   │
- │   personal           │ cs@example.com          │
- │   github.com         │                         │
- ├──────────────────────┴─────────────────────────┤
- │ ⏎ copy  ⇧⏎ type  ⌥⏎ user  ^L fill login  …     │
- └────────────────────────────────────────────────┘
-```
+![The omapass new-password form](docs/editor.png)
 
 ## Requirements
 

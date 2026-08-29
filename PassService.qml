@@ -39,9 +39,18 @@ Item {
   // The UI's own breadcrumbs, so a failure that never reaches a process is
   // still visible in the log. Never pass a name or a value — only which step
   // was reached and, where it helps, why it stopped.
+  // Each event is a detached process, so four events fired in one function
+  // reach the file in whatever order the kernel schedules them — and a trace
+  // whose order cannot be trusted cannot answer "which step was last", which
+  // is the only question it exists to answer. The counter restores the order
+  // the calls were actually made in.
+  property int logSequence: 0
+
   function logEvent(message) {
     // setting() looks in config first — "log" lives there, not at the top level.
-    if (root.setting("log", false) === true) run(["log", "--event", String(message)])
+    if (root.setting("log", false) !== true) return
+    root.logSequence += 1
+    run(["log", "--event", "#" + root.logSequence + " " + String(message)])
   }
 
   // The effective configuration, already resolved by bin/omapass — file,

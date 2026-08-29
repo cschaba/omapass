@@ -338,6 +338,10 @@ About screen (`F1`) grows an **Open debug log** link while it is on, and
 2026-08-28T17:22:53Z list       exit=0 entry=- dur=6ms
 ```
 
+Lines beginning `ui:` come from the interface and carry a sequence number.
+Each is written by its own short-lived process, so they can land out of order —
+sort by the `#N` to see what actually happened in what order.
+
 **It is written so you can paste it into a bug report without reading it first.**
 No passwords, usernames, URLs, OTP secrets — and no entry names either. An entry
 name is itself disclosure: a log saying `bank/deutsche-bank` tells anyone who

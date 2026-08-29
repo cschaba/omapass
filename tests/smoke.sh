@@ -219,6 +219,8 @@ import json
 m = json.load(open('$ROOT/manifest.json'))
 need = ['schemaVersion','id','name','version','author','description','kinds','entryPoints']
 print(all(m.get(k) for k in need))")" "True"
+check "ui events are numbered" \
+  "$(grep -c 'logSequence' "$ROOT/PassService.qml")" "3"
 check "doctor reports the running copy" \
   "$("$OMAPASS" doctor | grep -c 'running from')" "1"
 check "doctor reports whether logging is on" \

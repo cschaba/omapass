@@ -6,6 +6,14 @@ the CLI surface, or the entry format bump the major.
 
 ## [Unreleased]
 
+### Fixed
+
+- `ui:` log lines are numbered. Each event is written by its own process, so
+  four fired from one function reached the file in whatever order the kernel
+  chose — and a trace whose order cannot be trusted cannot answer "which step
+  was last", which is the only thing it is for. Timestamps carry milliseconds
+  now too. ([#21])
+
 ## [0.1.24] — 2026-08-29
 
 ### Added

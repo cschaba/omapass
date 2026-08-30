@@ -11,10 +11,15 @@ the CLI surface, or the entry format bump the major.
 ### Changed
 
 - The product is called **OmaPass**, matching the OmaIpsum/OmaNano family. The
-  manifest's display name and description carry the new casing, so it is what
-  the About screen, the plugin list and the marketplace listing show. Every
-  identifier stays lowercase and unchanged — the plugin id `cschaba.omapass`,
-  the `bin/omapass` command, `~/.config/omapass/`, and the repository name.
+  manifest's display name and description carry the new casing, and so does
+  every place the name is written as prose: the README and DEVELOPMENT.md, the
+  About screen's title and *Quit OmaPass*, the setup notices, and what
+  `install.sh` and `uninstall.sh` print. Every identifier stays lowercase and
+  unchanged — the plugin id `cschaba.omapass`, the `bin/omapass` command,
+  `~/.config/omapass/`, the layer-shell namespace, the notification app name,
+  the `omapass:` prefix on error output, and the `"omapass"` description on the
+  Hyprland keybinding, which `install.sh` matches on to recognise its own
+  binding.
 
 ## [0.1.40] — 2026-08-30
 

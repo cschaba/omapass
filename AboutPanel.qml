@@ -246,7 +246,7 @@ Item {
       Text {
         width: parent.width
         visible: !root.confirmingQuit
-        text: "󰗼  Quit omapass"
+        text: "󰗼  Quit OmaPass"
         color: quitArea.containsMouse ? Color.urgent : root.foreground
         opacity: quitArea.containsMouse ? 1 : 0.6
         font.family: root.fontFamily
@@ -270,7 +270,7 @@ Item {
 
         Text {
           width: parent.width
-          text: "Stop omapass? The bar icon and the hotkey stop working."
+          text: "Stop OmaPass? The bar icon and the hotkey stop working."
           color: root.foreground
           font.family: root.fontFamily
           font.pixelSize: Style.font.caption

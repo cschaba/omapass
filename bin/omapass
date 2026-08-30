@@ -141,7 +141,7 @@ cmd_quit() {
     die "could not stop the plugin — is omarchy-shell running?"
   fi
 
-  echo "omapass stopped. It is still installed."
+  echo "OmaPass stopped. It is still installed."
   echo "Start it again with:  omarchy plugin enable $id"
 }
 
@@ -186,7 +186,7 @@ die() {
   # own entry, and is useless without the detail.
   # An if, not `$NOTIFY_ERRORS && notify`: under errexit the false branch of an
   # and-list fails the whole list, which would leave die() before it logged.
-  if $NOTIFY_ERRORS; then notify "omapass" "$message" "󰀦"; fi
+  if $NOTIFY_ERRORS; then notify "OmaPass" "$message" "󰀦"; fi
 
   # The terminal gets the real message; the log gets it with every argument
   # this command was given substituted out. Redacting the actual values beats
@@ -1018,7 +1018,7 @@ cmd_sync() {
 
 usage() {
   cat <<'USAGE'
-omapass — pass(1) backend for the omapass Omarchy plugin
+omapass — pass(1) backend for the OmaPass Omarchy plugin
 
   version                    print the omapass version
   log [--path|--clear|--event <text>]

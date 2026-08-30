@@ -66,17 +66,17 @@ for file in "$BINDINGS" "$LEGACY_BINDINGS"; do
   grep -qE "shell toggle ($PLUGIN_ID|$LEGACY_ID)\b" "$file" || continue
   say "The keybinding is still in $file:"
   grep -nE "shell toggle ($PLUGIN_ID|$LEGACY_ID)\b" "$file" | sed 's/^/      /'
-  say "Delete that line when convenient — omapass will not edit your config."
+  say "Delete that line when convenient — OmaPass will not edit your config."
   echo
 done
 
 for backup in "$HOME/.config/omarchy/shell.json.omapass-backup" \
               "$HOME/.config/hypr/bindings.lua.omapass-backup" \
               "$HOME/.config/hypr/bindings.conf.omapass-backup"; do
-  [[ -f $backup ]] && say "An older omapass left a backup at $backup — safe to delete."
+  [[ -f $backup ]] && say "An older OmaPass left a backup at $backup — safe to delete."
 done
 
-say "omapass removed."
+say "OmaPass removed."
 if (( ! PURGE )) && [[ -e $CONFIG ]]; then
   say "Its config is still at $CONFIG (--purge removes it)."
 fi

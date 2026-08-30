@@ -39,7 +39,7 @@ Item {
 
     Text {
       width: parent.width
-      text: "omapass isn’t set up yet"
+      text: "OmaPass isn’t set up yet"
       color: root.foreground
       font.family: root.fontFamily
       font.pixelSize: Style.font.heading

@@ -19,6 +19,29 @@ New entries and edits open in the overlay too, on `^N` and `^E`:
 
 ![The omapass new-password form](docs/editor.png)
 
+## Built with AI
+
+omapass was written with heavy use of AI. Most of the code, the tests and this
+documentation were produced by Claude (Anthropic), working from my direction
+and against my testing on a real machine. I decide what it does and what ships;
+Claude wrote most of the lines.
+
+That is not buried in the history. Every commit that changes anything carries a
+`Co-Authored-By: Claude` trailer — everything in the repository that is not an
+automated release or merge commit. Count them yourself:
+
+```bash
+git log --format='%h %s' --grep='Co-Authored-By: Claude'
+```
+
+You are being asked to trust this with your passwords, so it is worth saying
+plainly rather than leaving you to infer it. What that is worth weighing
+against: there is no build step and nothing is minified, the whole thing is
+about 3,500 lines of QML and 2,100 of shell, and the single file that ever
+touches a decrypted password — `bin/omapass` — is 1,100 lines you can read in
+an afternoon. [How it handles secrets](#how-it-handles-secrets) says what it
+does and why; the code is there to check it against.
+
 ## Requirements
 
 Omarchy 4, `pass`, `gpg`, `wl-clipboard`, `wtype`, and `jq` — all but `pass`

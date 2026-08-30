@@ -6,6 +6,13 @@ the CLI surface, or the entry format bump the major.
 
 ## [Unreleased]
 
+### Added
+
+- The README says that omapass was written with heavy use of AI, and how to
+  check that against the history — every commit that changes anything carries
+  a `Co-Authored-By: Claude` trailer. Worth stating plainly in a project that
+  asks to hold your passwords, rather than leaving people to infer it. ([#35])
+
 ## [0.1.38] — 2026-08-30
 
 ### Added
@@ -526,6 +533,7 @@ top of the README.
 [#29]: https://github.com/cschaba/omapass/issues/29
 [#30]: https://github.com/cschaba/omapass/issues/30
 [#31]: https://github.com/cschaba/omapass/issues/31
+[#35]: https://github.com/cschaba/omapass/issues/35
 [#37]: https://github.com/cschaba/omapass/issues/37
 [0.1.29]: https://github.com/cschaba/omapass/releases/tag/v0.1.29
 [0.1.30]: https://github.com/cschaba/omapass/releases/tag/v0.1.30

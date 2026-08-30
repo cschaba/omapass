@@ -290,6 +290,28 @@ check "welcomed --reset clears it" \
 # marker stops it after the first time, and the latch stops it twice in one
 # session. Lose either and omapass opens on your desktop uninvited — which is
 # the complaint that started #14 in the first place.
+# The pulldown keeps the last search only after something was copied from it,
+# so a second attribute of the same entry does not mean retyping. Both guards
+# matter: a pulldown merely opened and closed was a change of mind, and the
+# filter is a fragment of an entry name, so it must not outlive the gate that
+# decides who may see entry names. (#38)
+check "the search is only kept after an action" \
+  "$(python3 -c "
+import re
+src = open('$ROOT/BarWidget.qml').read()
+body = re.search(r'function activate\(action\) \{.*?\n  \}', src, re.S).group(0)
+print('rememberSearch()' in body)")" "True"
+check "and dropped when the pulldown is closed without one" \
+  "$(grep -c 'if (!root.actionTaken) root.forgetSearch()' "$ROOT/BarWidget.qml")" "1"
+check "a re-locked vault takes the search with it" \
+  "$(python3 -c "
+import re
+src = open('$ROOT/BarWidget.qml').read()
+body = re.search(r'id: graceTimer.*?\n  \}', src, re.S).group(0)
+print('forgetSearch()' in body)")" "True"
+check "search-memory has a default and reaches the UI" \
+  "$("$OMAPASS" config 2>/dev/null | python3 -c 'import sys,json;print(json.load(sys.stdin)["searchMemory"])')" "120"
+
 # The field the whole Password section is named after used to vanish when
 # generate was ticked, so the form reshuffled every time the box was touched.
 # It stays put now, disabled rather than removed. (#33)

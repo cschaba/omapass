@@ -268,6 +268,13 @@ The search field is focused the moment it opens, so just type.
 | `Ctrl+E` | open the manager editing the selected entry |
 | `Esc` | clear the search, then close |
 
+After you copy something, the pulldown remembers what you searched for. Open it
+again and the search is still there, selected, with the same entry under the
+cursor — so the username, then the password, then the one-time code is one
+search rather than three. Typing replaces it; closing the pulldown without
+copying anything clears it, as does the vault re-locking. `search-memory`
+bounds how long it is kept.
+
 ### Full overlay
 
 | Key | Action |
@@ -352,6 +359,7 @@ hyphens are interchangeable, so `clip_time` and `clip-time` both work.
 | `clip-time` | `45` | Seconds a copied password stays on the clipboard. When it expires the selection is dropped entirely, not just blanked. |
 | `type-delay` | `12` | Milliseconds between simulated keystrokes when typing into a window. Raise it if a target application drops characters. |
 | `type-focus-delay` | `0.2` | Seconds to wait for focus to return before typing. Raise it if the first characters of a typed password go missing. |
+| `search-memory` | `120` | Seconds the bar pulldown remembers your last search after you copy something from it. `0` always starts empty. |
 | `draft-timeout` | `300` | Seconds an unsaved entry form is kept while omapass is closed, so you can fetch a password from another app and come back. Memory only. `0` keeps nothing. |
 | `reveal-timeout` | `15` | Seconds a revealed password (`Ctrl+R`) stays on screen before it hides itself again. |
 | `fingerprint` | `auto` | `auto` requires a scan when a finger is enrolled; `always` requires one whenever the PAM service exists, even if enrolment cannot be confirmed; `off` never does. |

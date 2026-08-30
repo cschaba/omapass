@@ -49,22 +49,76 @@ Panel {
 
   // --- lifecycle ------------------------------------------------------------
 
+  // Copying one thing off an entry is usually not the end of the errand — the
+  // username, then the password, then the one-time code, and each of those
+  // meant typing the same search again. So an action is read as "I am coming
+  // back", and the search that found the entry is waiting when you do. (#38)
+  //
+  // Only after an action. A pulldown you opened and closed again was a change
+  // of mind, and reopening onto a stale filter would be the app arguing.
+  property string rememberedFilter: ""
+  property string rememberedPath: ""
+
+  readonly property int searchMemoryMs: pass.setting("searchMemory", 120) * 1000
+
+  property bool actionTaken: false
+
+  function rememberSearch() {
+    root.actionTaken = true
+    if (root.searchMemoryMs <= 0 || !root.filterText) return
+    root.rememberedFilter = root.filterText
+    root.rememberedPath = root.currentPath
+    memoryTimer.restart()
+  }
+
+  function forgetSearch() {
+    root.rememberedFilter = ""
+    root.rememberedPath = ""
+    memoryTimer.stop()
+  }
+
+  Timer {
+    id: memoryTimer
+    interval: Math.max(1000, root.searchMemoryMs)
+    onTriggered: root.forgetSearch()
+  }
+
   onOpenedChanged: {
     if (opened) {
-      root.filterText = ""
+      // Selecting it means the next keystroke replaces the search rather than
+      // extending it, so a remembered filter is never in the way of a new one.
+      var resumed = root.rememberedFilter
+      root.filterText = resumed
       root.selectedIndex = 0
+      root.pendingSelect = resumed ? root.rememberedPath : ""
       pass.refresh()
-      searchField.text = ""
-    } else if (root.fingerprintPassed) {
-      // The pulldown is its own surface, so it keeps its own grace window.
-      graceTimer.restart()
+      searchField.text = resumed
+      if (resumed) Qt.callLater(function () { searchField.selectAll() })
+      memoryTimer.stop()
+    } else {
+      // Closed without copying anything — a change of mind, not an errand in
+      // two parts. Reopening onto a filter the user walked away from would be
+      // the app arguing with them.
+      if (!root.actionTaken) root.forgetSearch()
+      root.actionTaken = false
+      if (root.fingerprintPassed) {
+        // The pulldown is its own surface, so it keeps its own grace window.
+        graceTimer.restart()
+      }
     }
   }
+
+  property string pendingSelect: ""
 
   Timer {
     id: graceTimer
     interval: pass.setting("fingerprintGrace", 120) * 1000
-    onTriggered: root.fingerprintPassed = false
+    onTriggered: {
+      root.fingerprintPassed = false
+      // The filter is a fragment of an entry name. It should not outlive the
+      // gate that decides who gets to see entry names at all.
+      root.forgetSearch()
+    }
   }
 
   function rebuild() {
@@ -73,6 +127,13 @@ Panel {
     resultModel.clear()
     for (var i = 0; i < rows.length; i++)
       resultModel.append({ path: rows[i].path, name: rows[i].name, folder: rows[i].folder })
+
+    if (root.pendingSelect) {
+      for (var j = 0; j < rows.length; j++) {
+        if (rows[j].path === root.pendingSelect) { root.selectedIndex = j; break }
+      }
+      root.pendingSelect = ""
+    }
 
     if (resultModel.count === 0) root.selectedIndex = 0
     else if (root.selectedIndex >= resultModel.count) root.selectedIndex = resultModel.count - 1
@@ -113,6 +174,7 @@ Panel {
   function activate(action) {
     if (root.vaultLocked || !root.currentPath) return
     var path = root.currentPath
+    root.rememberSearch()
     root.close()
     if (action === "type") pass.typePassword(path)
     else if (action === "user") pass.copyUser(path)

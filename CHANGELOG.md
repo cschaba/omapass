@@ -6,6 +6,18 @@ the CLI surface, or the entry format bump the major.
 
 ## [Unreleased]
 
+### Added
+
+- The bar pulldown remembers your last search after you copy something from
+  it, with the same entry still under the cursor — needing the username, then
+  the password, then the one-time code used to mean typing the same search
+  three times. The text comes back selected, so a new search replaces it
+  rather than extending it. Closing the pulldown without copying anything
+  clears it, and so does the vault re-locking: the filter is a fragment of an
+  entry name and should not outlive the gate that decides who may see those.
+  Bounded by the new `search-memory` setting (default 120 seconds, `0` to
+  always start empty). ([#38])
+
 ## [0.1.39] — 2026-08-30
 
 ### Added
@@ -556,6 +568,7 @@ top of the README.
 [#33]: https://github.com/cschaba/omapass/issues/33
 [#35]: https://github.com/cschaba/omapass/issues/35
 [#36]: https://github.com/cschaba/omapass/issues/36
+[#38]: https://github.com/cschaba/omapass/issues/38
 [#37]: https://github.com/cschaba/omapass/issues/37
 [0.1.29]: https://github.com/cschaba/omapass/releases/tag/v0.1.29
 [0.1.30]: https://github.com/cschaba/omapass/releases/tag/v0.1.30

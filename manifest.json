@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
   "id": "cschaba.omapass",
-  "name": "omapass",
+  "name": "OmaPass",
   "version": "0.1.40",
   "author": "Carsten",
   "license": "MIT",
-  "description": "Password manager overlay for Omarchy, backed by the pass CLI",
+  "description": "OmaPass \u2014 password manager overlay for Omarchy, backed by the pass CLI",
   "kinds": [
     "overlay",
     "bar-widget"

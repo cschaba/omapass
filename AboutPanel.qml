@@ -25,7 +25,7 @@ Item {
   property bool confirmingQuit: false
   readonly property string pluginId: service ? service.setting("id", "cschaba.omapass") : "cschaba.omapass"
 
-  readonly property string appName: service ? service.setting("name", "omapass") : "omapass"
+  readonly property string appName: service ? service.setting("name", "OmaPass") : "OmaPass"
   readonly property string appVersion: service && service.status ? (service.status.version || "") : ""
   readonly property string homepage: service ? service.setting("homepage", "") : ""
   readonly property int entryCount: service && service.status ? (service.status.entries || 0) : 0

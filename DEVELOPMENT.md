@@ -1,6 +1,6 @@
-# Developing omapass
+# Developing OmaPass
 
-Notes for working on omapass itself. If you only want to *use* it, everything
+Notes for working on OmaPass itself. If you only want to *use* it, everything
 you need is in [README.md](README.md).
 
 [CHANGELOG.md](CHANGELOG.md) records what changed when.
@@ -81,7 +81,7 @@ misleading `X is not a type` errors.
 ## Testing the fingerprint paths
 
 These cannot be tested without hardware, so they are the least-proven part of
-omapass. This is the plan a tester should work through; the running record of
+OmaPass. This is the plan a tester should work through; the running record of
 what has actually been confirmed is
 [issue #11](https://github.com/cschaba/omapass/issues/11).
 

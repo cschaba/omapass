@@ -1,9 +1,9 @@
-# omapass
+# OmaPass
 
 A password manager for [Omarchy 4](https://omarchy.org), built as a shell
 plugin and backed by [`pass`](https://www.passwordstore.org/).
 
-![The omapass manager overlay](docs/preview.png)
+![The OmaPass manager overlay](docs/preview.png)
 
 It gives you two ways in. A bar icon with a search pulldown for the common
 case — find a password, copy it, get on with your day. And the full-screen
@@ -13,15 +13,15 @@ entries, so `pass` on the command line stays optional.
 
 The bar pulldown — click the lock, or start typing straight away:
 
-![The omapass bar pulldown, filtered to "git"](docs/pulldown.png)
+![The OmaPass bar pulldown, filtered to "git"](docs/pulldown.png)
 
 New entries and edits open in the overlay too, on `^N` and `^E`:
 
-![The omapass new-password form](docs/editor.png)
+![The OmaPass new-password form](docs/editor.png)
 
 ## Built with AI
 
-omapass was written with heavy use of AI. Most of the code, the tests and this
+OmaPass was written with heavy use of AI. Most of the code, the tests and this
 documentation were produced by Claude (Anthropic), working from my direction
 and against my testing on a real machine. I decide what it does and what ships;
 Claude wrote most of the lines.
@@ -85,7 +85,7 @@ config:
 o.bind("SUPER + SHIFT + K", "omapass", "omarchy-shell shell toggle cschaba.omapass")
 ```
 
-followed by `hyprctl reload`. omapass writes nothing outside its own directories
+followed by `hyprctl reload`. OmaPass writes nothing outside its own directories
 — not your Hyprland config, not `shell.json`. If the chord you chose is already
 taken it says so and names what holds it, reading Hyprland's live binding list
 so it sees other tools' bindings too.
@@ -183,19 +183,19 @@ It prints the keybinding line for you to delete, for the same reason it asked
 you to add it.
 
 Your password store and GPG key are never touched. The store is a plain `pass`
-store — the `pass` command carries on reading it whether omapass is installed or
+store — the `pass` command carries on reading it whether OmaPass is installed or
 not.
 
 ### Quitting
 
-To stop omapass without removing it — the bar icon goes, the hotkey stops doing
+To stop OmaPass without removing it — the bar icon goes, the hotkey stops doing
 anything, and the shell unloads it:
 
 ```bash
 bin/omapass quit
 ```
 
-Or **Quit omapass** on the About screen (`F1`), which asks first. Everything
+Or **Quit OmaPass** on the About screen (`F1`), which asks first. Everything
 stays installed; bring it back with:
 
 ```bash
@@ -211,13 +211,13 @@ omarchy plugin enable cschaba.omapass
 | [`omapass-reset`](#starting-over) | no | no | yes, after backing them up |
 
 **Quit** to put it away for now. **Uninstall** when you are done with it.
-**Reset** to keep omapass but start over with a new key or an empty store. Your
+**Reset** to keep OmaPass but start over with a new key or an empty store. Your
 password store is a plain `pass` store and survives all three — only reset
 touches it, and only after making a backup.
 
 ### Trying it on something other than your real store
 
-omapass edits and deletes entries in the store it is pointed at, so if you
+OmaPass edits and deletes entries in the store it is pointed at, so if you
 would rather not aim it at the real one straight away, put
 `store = ~/test-store` in its config and point it somewhere else. A backup is
 a tarball either way:
@@ -228,22 +228,22 @@ tar -czf pass-backup.tar.gz ~/.password-store
 
 ### First run
 
-A moment after the shell picks omapass up — however you installed it — the
+A moment after the shell picks OmaPass up — however you installed it — the
 welcome screen opens by itself. You do not have to find it, and you do not
 need the hotkey to work yet. Press Enter to dismiss it and it does not come
-back. If a fingerprint unlock is set up, omapass stays out of the way instead
+back. If a fingerprint unlock is set up, OmaPass stays out of the way instead
 and waits for you to open it, rather than meeting you with a scan prompt
 seconds after you logged in.
 
 `F1` in the overlay brings it back at any time, and `bin/omapass welcomed
 --reset` makes it greet you again on the next load.
 
-omapass needs `pass`, a GPG key, and an initialised password store. If any of
+OmaPass needs `pass`, a GPG key, and an initialised password store. If any of
 them is missing, the overlay says so and offers to walk you through it —
 press Enter and it opens a terminal running `bin/omapass-setup`, which installs
 the packages, generates a key, and runs `pass init`.
 
-If you already use `pass`, there is nothing to do; omapass reads the store you
+If you already use `pass`, there is nothing to do; OmaPass reads the store you
 have, including one you clone from another machine.
 
 ## Keys
@@ -320,12 +320,12 @@ When an action cannot do what you asked — an entry with no username field, a
 URL that is not one — it says so in a notification. Nothing fails quietly.
 
 In the editor: `Ctrl+Enter` saves, `Esc` cancels, `Tab` moves between fields.
-Renaming is just editing the name — omapass runs `pass mv` for you.
+Renaming is just editing the name — OmaPass runs `pass mv` for you.
 
 ### Leaving a half-finished entry
 
 Filling the form in usually means fetching something from somewhere else, and
-reaching another application means closing omapass. So closing it **keeps the
+reaching another application means closing OmaPass. So closing it **keeps the
 form**: come back and it is as you left it, with *picked up where you left off*
 next to the title.
 
@@ -339,8 +339,8 @@ bounds how long it can sit there; `draft-timeout = 0` keeps nothing at all.
 
 ## Configuration
 
-Everything omapass reads lives in one file: **`~/.config/omapass/config`**.
-There is none by default — omapass runs on its defaults until you write one.
+Everything OmaPass reads lives in one file: **`~/.config/omapass/config`**.
+There is none by default — OmaPass runs on its defaults until you write one.
 
 ```bash
 bin/omapass config --init    # write a template, every default commented out
@@ -360,7 +360,7 @@ hyphens are interchangeable, so `clip_time` and `clip-time` both work.
 | `type-delay` | `12` | Milliseconds between simulated keystrokes when typing into a window. Raise it if a target application drops characters. |
 | `type-focus-delay` | `0.2` | Seconds to wait for focus to return before typing. Raise it if the first characters of a typed password go missing. |
 | `search-memory` | `120` | Seconds the bar pulldown remembers your last search after you copy something from it. `0` always starts empty. |
-| `draft-timeout` | `300` | Seconds an unsaved entry form is kept while omapass is closed, so you can fetch a password from another app and come back. Memory only. `0` keeps nothing. |
+| `draft-timeout` | `300` | Seconds an unsaved entry form is kept while OmaPass is closed, so you can fetch a password from another app and come back. Memory only. `0` keeps nothing. |
 | `reveal-timeout` | `15` | Seconds a revealed password (`Ctrl+R`) stays on screen before it hides itself again. |
 | `fingerprint` | `auto` | `auto` requires a scan when a finger is enrolled; `always` requires one whenever the PAM service exists, even if enrolment cannot be confirmed; `off` never does. |
 | `fingerprint-grace` | `120` | Seconds a successful scan stays valid before you are asked again. Each surface keeps its own window. |
@@ -370,7 +370,7 @@ hyphens are interchangeable, so `clip_time` and `clip-time` both work.
 | `backup-dir` | `~/.local/state/omapass/backups` | Where `omapass-reset` writes its backups. |
 | `log` | `off` | `on` writes a debug log to `~/.local/state/omapass/omapass.log`. See below. |
 | `log-max-kb` | `256` | Size cap for that log. Past it the file rotates once and starts again. |
-| `keybind` | `SUPER SHIFT, K` | The hotkey that opens omapass, in Hyprland's syntax. Run `./install.sh` again after changing it. |
+| `keybind` | `SUPER SHIFT, K` | The hotkey that opens OmaPass, in Hyprland's syntax. Run `./install.sh` again after changing it. |
 
 ### An example
 
@@ -401,7 +401,7 @@ setting name in capitals with underscores for the rest — `OMAPASS_CLIP_TIME`,
 ### When you get it wrong
 
 An unknown setting or an unparseable number produces a warning on stderr and
-falls back to the default. It will not stop omapass from starting:
+falls back to the default. It will not stop OmaPass from starting:
 
 ```
 omapass: ~/.config/omapass/config: line 4: unknown setting 'clip-timeout'
@@ -427,12 +427,12 @@ If something misbehaves, start here:
 bin/omapass doctor
 ```
 
-It prints which copy of omapass is running, its version, where the config and
+It prints which copy of OmaPass is running, its version, where the config and
 store are, and whether logging is on. It also warns about the two ways the code
 you think you are running is not the code that runs:
 
-- **A stale interface.** The shell loads omapass's windows once, at startup, and
-  keeps them for the life of the process. Update omapass and the command line
+- **A stale interface.** The shell loads OmaPass's windows once, at startup, and
+  keeps them for the life of the process. Update OmaPass and the command line
   goes current immediately while the windows do not — which looks exactly like a
   fix that did not work. `omarchy restart shell` settles it.
 - **Two installs.** Installing twice (say `install.sh` once and
@@ -476,7 +476,7 @@ without bound.
 
 ## Fingerprint unlock
 
-If you have a fingerprint enrolled, omapass puts a scan in front of the vault —
+If you have a fingerprint enrolled, OmaPass puts a scan in front of the vault —
 both the overlay and the bar pulldown show a reader prompt instead of your
 entries until you touch it.
 
@@ -509,13 +509,13 @@ This is a second local factor in front of a GUI, not a cryptographic one. Your
 entries are still encrypted to your GPG key and still need its passphrase; the
 fingerprint does not protect anything on disk.
 
-> Fingerprint unlock has had far less use than the rest of omapass. If it
+> Fingerprint unlock has had far less use than the rest of OmaPass. If it
 > misbehaves, `Esc` and the `pass` command always still work, and
 > `fingerprint = off` turns it off entirely.
 
 ## One-time codes (TOTP)
 
-omapass stores TOTP secrets the way `pass-otp` does — an `otpauth://` line in
+OmaPass stores TOTP secrets the way `pass-otp` does — an `otpauth://` line in
 the entry — so anything else that speaks pass-otp reads the same store.
 
 | What | How |
@@ -579,7 +579,7 @@ otpauth://totp/GitHub:cs?secret=…
 
 The plugin runs inside `omarchy-shell`, a long-lived process that also draws
 your bar and handles notifications. Keeping decrypted passwords in there would
-mean keeping them in memory for the length of your session, so omapass mostly
+mean keeping them in memory for the length of your session, so OmaPass mostly
 doesn't.
 
 - **Copy, type, login and OTP never enter the shell process.** They are detached
@@ -595,7 +595,7 @@ doesn't.
   `timeout` kills after 45 seconds (`OMAPASS_CLIP_TIME`), dropping the selection
   entirely.
 - **The detail pane does not decrypt on its own.** Moving the cursor down a list
-  of 200 entries should not fire 200 pinentry prompts, so omapass only reads an
+  of 200 entries should not fire 200 pinentry prompts, so OmaPass only reads an
   entry for preview once `gpg-agent` already has your key cached. Until then the
   pane says `Locked`, and `Tab` is the deliberate unlock.
 - **Two things do hold a password in memory, and only when you ask.** `Ctrl+R`
@@ -618,7 +618,7 @@ The dot rule matters more than it looks: without it an entry called
 `.git/hooks/pre-commit` would write inside your store's own git repository.
 
 Slashes and punctuation are **not** filtered. `/` is how `pass` makes folders,
-and `$`, `&` and the rest are ordinary characters in a password — omapass never
+and `$`, `&` and the rest are ordinary characters in a password — OmaPass never
 passes anything through a shell, so shell metacharacters have no meaning here.
 
 Field values are stripped of newlines and control characters before an entry is
@@ -633,7 +633,7 @@ rather than quietly dropping what you typed.
 `bin/omapass-reset` empties the slate so setup runs again from scratch — for
 starting over with a different GPG key or a fresh store.
 
-**It does not uninstall omapass.** The plugin stays on your bar and the keybinding
+**It does not uninstall OmaPass.** The plugin stays on your bar and the keybinding
 keeps working; only your store and its key go. To remove the app itself, use
 [`./uninstall.sh`](#removing-it).
 
@@ -652,9 +652,9 @@ encrypt. `--restore` puts the store, the key, and the trust back.
 gpg-agent is restarted at the end, so the next run starts locked rather than
 inheriting a warm agent from the session before it.
 
-## Developing omapass
+## Developing OmaPass
 
-omapass is a plain directory of QML and shell scripts, and contributions are
+OmaPass is a plain directory of QML and shell scripts, and contributions are
 welcome. Everything about building, testing and releasing it is in
 [DEVELOPMENT.md](DEVELOPMENT.md).
 

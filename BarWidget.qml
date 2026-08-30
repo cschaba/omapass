@@ -243,7 +243,7 @@ Panel {
     tooltipText: pass.ready
       ? (pass.entries.length + (pass.entries.length === 1 ? " password" : " passwords")
          + "  ·  right-click to manage")
-      : "omapass needs setting up"
+      : "OmaPass needs setting up"
     // Right-click goes straight to the full manager, so the editor is one
     // gesture away from the bar rather than a pulldown and then a link. (#7)
     onPressed: function (b) {
@@ -430,7 +430,7 @@ Panel {
 
           Text {
             width: parent.width
-            text: "omapass isn’t set up yet"
+            text: "OmaPass isn’t set up yet"
             color: root.foreground
             font.family: root.fontFamily
             font.pixelSize: Style.font.body

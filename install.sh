@@ -167,7 +167,7 @@ fi
 
 echo
 if [[ -f $BINDINGS ]] && grep -q "shell toggle $PLUGIN_ID" "$BINDINGS"; then
-  say "✓ a keybinding for omapass is already in $BINDINGS"
+  say "✓ a keybinding for OmaPass is already in $BINDINGS"
 else
   say "One step left, in a file that belongs to you. Add this to"
   say "$BINDINGS:"
@@ -190,15 +190,15 @@ fi
 # removing it is not ours to do.
 if [[ -f $LEGACY_BINDINGS ]] && grep -qE "shell toggle ($PLUGIN_ID|$LEGACY_ID)\b" "$LEGACY_BINDINGS"; then
   echo
-  say "! An older omapass left a keybinding in $LEGACY_BINDINGS."
+  say "! An older OmaPass left a keybinding in $LEGACY_BINDINGS."
   say "! Omarchy 4 never reads that file, so the line does nothing. Delete it"
-  say "! when convenient — omapass will not touch it."
+  say "! when convenient — OmaPass will not touch it."
 fi
 
 echo
-say "omapass installed."
+say "OmaPass installed."
 if ! command -v pass >/dev/null 2>&1; then
-  say "pass isn't installed yet — omapass will offer to set it up on first open."
+  say "pass isn't installed yet — OmaPass will offer to set it up on first open."
 fi
 if [[ $FIRST_INSTALL == true ]]; then
   say "The welcome screen opens by itself in a moment — no need to press anything."

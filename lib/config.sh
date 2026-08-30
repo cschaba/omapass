@@ -49,6 +49,7 @@ declare -A CONFIG=(
   [type-focus-delay]="0.2"
   [reveal-timeout]="15"
   [draft-timeout]="300"
+  [search-memory]="120"
   [fingerprint]="auto"
   [fingerprint-grace]="120"
   [fingerprint-retries]="1"

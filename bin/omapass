@@ -287,7 +287,8 @@ config_json() {
     "$(json_escape "$STORE")" \
     "$CLIP_TIME" "$TYPE_DELAY" \
     "${OMAPASS_TYPE_FOCUS_DELAY:-$(config_number type-focus-delay 0.2)}"
-  printf '"draftTimeout":%s,' "$(config_number draft-timeout 300)"
+  printf '"draftTimeout":%s,"searchMemory":%s,' \
+    "$(config_number draft-timeout 300)" "$(config_number search-memory 120)"
   printf '"revealTimeout":%s,"fingerprint":"%s","fingerprintGrace":%s,"fingerprintRetries":%s,"pulldownRows":%s,' \
     "$(config_number reveal-timeout 15)" \
     "$(json_escape "${CONFIG[fingerprint]}")" \
@@ -345,6 +346,12 @@ write_config_template() {
 # The draft lives in memory only, is never written to disk, and is dropped on
 # save, on cancel, and whenever the vault re-locks. Set to 0 to keep nothing.
 # draft-timeout = 300
+
+# Seconds the bar pulldown remembers your last search after you copy something
+# from it, so a second attribute of the same entry does not mean typing the
+# same search again. Cleared when you close the pulldown without copying
+# anything, and whenever the vault re-locks. Set to 0 to always start empty.
+# search-memory = 120
 
 # Fingerprint unlock in front of the vault.
 #   auto    require it when a finger is enrolled  (default)

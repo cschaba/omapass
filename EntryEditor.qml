@@ -40,6 +40,9 @@ Item {
   property bool generateSymbols: true
   property bool revealPassword: false
   property bool loadingEntry: false
+  // Set by the overlay when it hands a kept draft back, so the form can say
+  // that this is work you left rather than something it invented. (#37)
+  property bool resumed: false
   property string loadError: ""
 
   signal cancelled()
@@ -83,6 +86,7 @@ Item {
 
   function startNew() {
     root.isNew = true
+    root.resumed = false
     root.originalPath = ""
     root.loadError = ""
     root.loadingEntry = false
@@ -109,6 +113,7 @@ Item {
 
   function startEdit(path) {
     root.isNew = false
+    root.resumed = false
     root.originalPath = path
     root.loadError = ""
     root.generate = false
@@ -128,6 +133,64 @@ Item {
     if (root.service) root.service.loadBody(path)
 
     Qt.callLater(function () { nameField.forceActiveFocus() })
+  }
+
+  // --- drafts ---------------------------------------------------------------
+  //
+  // Everything the form is holding, as plain data, so the overlay can put an
+  // unfinished entry down and pick it up again. Closing omapass to go and copy
+  // a password out of another application is the ordinary way to fill this
+  // form in, and it used to cost you everything you had typed. (#37)
+  function captureDraft() {
+    if (!root.opened) return null
+    var draft = {
+      isNew: root.isNew,
+      originalPath: root.originalPath,
+      generate: root.generate,
+      generateLength: root.generateLength,
+      generateSymbols: root.generateSymbols,
+      name: nameField.text,
+      password: passwordField.text,
+      user: userField.text,
+      url: urlField.text,
+      otp: otpField.text,
+      notes: notesArea.text
+    }
+    // A form still waiting for its own entry to decrypt has nothing in it that
+    // the user put there, and restoring it would hold an empty body over the
+    // real one — worse than not remembering at all.
+    if (root.loadingEntry) return null
+    if (!draft.name && !draft.password && !draft.user && !draft.url
+        && !draft.otp && !draft.notes)
+      return null
+    return draft
+  }
+
+  function restoreDraft(draft) {
+    if (!draft) return
+    root.resumed = true
+    root.isNew = draft.isNew === true
+    root.originalPath = String(draft.originalPath || "")
+    root.generate = draft.generate === true
+    root.generateLength = Number(draft.generateLength) || 24
+    root.generateSymbols = draft.generateSymbols === true
+    root.revealPassword = false
+    root.loadError = ""
+    // Deliberately not re-reading the entry: the body that matters is the one
+    // in the draft, and loadBody would land on top of it a moment later.
+    root.loadingEntry = false
+
+    nameField.text = String(draft.name || "")
+    passwordField.text = String(draft.password || "")
+    userField.text = String(draft.user || "")
+    urlField.text = String(draft.url || "")
+    otpField.text = String(draft.otp || "")
+    notesArea.text = String(draft.notes || "")
+
+    Qt.callLater(function () {
+      nameField.forceActiveFocus()
+      nameField.cursorPosition = nameField.text.length
+    })
   }
 
   // Wipe every field that could still be holding a secret.
@@ -263,6 +326,15 @@ Item {
         color: root.foreground
         font.family: root.fontFamily
         font.pixelSize: Style.font.heading
+      }
+
+      Text {
+        anchors.verticalCenter: parent.verticalCenter
+        visible: root.resumed && !root.loadingEntry
+        text: "· picked up where you left off"
+        color: root.accent
+        font.family: root.fontFamily
+        font.pixelSize: Style.font.caption
       }
 
       Text {

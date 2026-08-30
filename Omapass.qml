@@ -80,6 +80,56 @@ Item {
 
   property string pendingDelete: ""
 
+  // An unfinished entry form, kept while omapass is closed. Filling this form
+  // in usually means fetching a password from somewhere else, and the only way
+  // to reach another application is to close this one — so closing it used to
+  // throw away exactly the work the user was in the middle of. (#37)
+  //
+  // Memory only. It is never written anywhere, it is dropped on save, on
+  // cancel, and whenever the vault re-locks, and draft-timeout puts an upper
+  // bound on how long a typed password can sit here.
+  property var editorDraft: null
+
+  readonly property int draftTimeoutMs: pass.setting("draftTimeout", 300) * 1000
+
+  function keepDraft() {
+    if (root.mode !== "editor" || root.draftTimeoutMs <= 0) return
+    root.editorDraft = editor.captureDraft()
+    if (root.editorDraft) draftTimer.restart()
+  }
+
+  function forgetDraft() {
+    root.editorDraft = null
+    draftTimer.stop()
+  }
+
+  Timer {
+    id: draftTimer
+    interval: Math.max(1000, root.draftTimeoutMs)
+    onTriggered: root.forgetDraft()
+  }
+
+  // A draft only comes back once the vault is open. It can hold a password,
+  // and the editor draws above the fingerprint gate — resuming behind the gate
+  // would hand back the very thing the gate exists to withhold.
+  readonly property bool draftResumable: root.opened
+    && root.editorDraft !== null
+    && root.mode === "list"
+    && root.ready
+    && !root.vaultLocked
+    && root.pendingAction === ""
+
+  onDraftResumableChanged: if (root.draftResumable) Qt.callLater(root.resumeDraft)
+
+  function resumeDraft() {
+    if (!root.draftResumable) return
+    // Stopped, not restarted: the clock is on how long a draft may sit while
+    // omapass is closed, and it is running again the moment it is put down.
+    draftTimer.stop()
+    root.mode = "editor"
+    editor.restoreDraft(root.editorDraft)
+  }
+
   // --- theme (shares the [menu] surface tokens, like the other overlays) ---
   property color background: Color.menu.background
   property color foreground: Color.menu.text
@@ -185,13 +235,19 @@ Item {
     pass.logEvent("summon: action=" + action)
 
     if (action === "new") {
-      root.newEntry()
+      // Ctrl+N with an unfinished new entry waiting is far more likely to mean
+      // "back to that" than "throw it away and start again", and Cancel is
+      // right there for when it does not.
+      if (root.editorDraft && root.editorDraft.isNew === true) root.resumeDraft()
+      else root.newEntry()
     } else if (action === "edit" && entry) {
       if (root.selectPath(entry)) root.editEntry()
     }
   }
 
   function close() {
+    // Before mode is reset, or there is no editor left to ask.
+    root.keepDraft()
     root.opened = false
     root.mode = "list"
     root.forgetSecrets()
@@ -203,6 +259,7 @@ Item {
   function lockVault() {
     root.fingerprintPassed = false
     graceTimer.stop()
+    root.forgetDraft()
   }
 
   function dismiss() {
@@ -331,6 +388,9 @@ Item {
   }
 
   function closeEditor() {
+    // Cancel and save are both decisions about the form, so both end the
+    // draft. Closing the *window* is not — that is the case keepDraft() is for.
+    root.forgetDraft()
     root.mode = "list"
     Qt.callLater(function () { keyCatcher.forceActiveFocus() })
   }

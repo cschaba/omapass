@@ -6,6 +6,14 @@ the CLI surface, or the entry format bump the major.
 
 ## [Unreleased]
 
+### Changed
+
+- The product is called **OmaPass**, matching the OmaIpsum/OmaNano family. The
+  manifest's display name and description carry the new casing, so it is what
+  the About screen, the plugin list and the marketplace listing show. Every
+  identifier stays lowercase and unchanged — the plugin id `cschaba.omapass`,
+  the `bin/omapass` command, `~/.config/omapass/`, and the repository name.
+
 ## [0.1.40] — 2026-08-30
 
 ### Added

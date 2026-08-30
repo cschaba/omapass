@@ -282,6 +282,16 @@ check "welcomed --reset clears it" \
 # marker stops it after the first time, and the latch stops it twice in one
 # session. Lose either and omapass opens on your desktop uninvited — which is
 # the complaint that started #14 in the first place.
+# The field the whole Password section is named after used to vanish when
+# generate was ticked, so the form reshuffled every time the box was touched.
+# It stays put now, disabled rather than removed. (#33)
+check "the password field is never hidden" \
+  "$(python3 -c "
+import re
+src = open('$ROOT/EntryEditor.qml').read()
+block = re.search(r'TextField \{\s*id: passwordField.*?\n      \}', src, re.S).group(0)
+print('visible: !root.generate' not in block and 'enabled: !root.generate' in block)")" "True"
+
 # An unsaved form is kept while omapass is closed, so a password can be
 # fetched from another application and pasted back. Three properties matter,
 # and each is a different kind of wrong if it breaks: the draft must not

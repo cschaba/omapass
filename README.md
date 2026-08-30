@@ -546,6 +546,7 @@ bin/omapass copy-user github.com/cs
 bin/omapass copy-name github.com/cs # the entry's own name
 bin/omapass copy-url github.com/cs
 bin/omapass open github.com/cs      # hand the url to the desktop's handler
+bin/omapass open-url https://…      # or any url at all
 bin/omapass login github.com/cs     # username, Tab, password, Enter
 bin/omapass otp github.com/cs copy
 bin/omapass otp-scan github.com/cs  # read a QR code off the screen

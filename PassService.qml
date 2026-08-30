@@ -132,6 +132,10 @@ Item {
   function copyUrl(path)      { if (path) { run(["copy-url", path]); markUnlockedSoon() } }
   function openUrl(path)      { if (path && hasUrlSupport) { run(["open", path]); markUnlockedSoon() } }
 
+  // A fixed link from the UI — the project homepage. No entry, no decrypt, and
+  // no second opinion about which browser to use: the helper decides that once.
+  function openLink(url)      { if (url) run(["open-url", String(url)]) }
+
   // The one action here that never decrypts anything: the name is already on
   // screen, so there is no agent to warm and nothing to re-probe.
   function copyName(path)     { if (path) run(["copy-name", path]) }

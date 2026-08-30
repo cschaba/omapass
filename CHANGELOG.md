@@ -6,6 +6,8 @@ the CLI surface, or the entry format bump the major.
 
 ## [Unreleased]
 
+## [0.1.39] — 2026-08-30
+
 ### Added
 
 - The version number on the About screen (`F1`) is a link to the project on
@@ -494,7 +496,7 @@ top of the README.
 - The clipboard is marked sensitive, so Omarchy's clipboard manager will not
   record it, and the selection is dropped after a timeout.
 
-[Unreleased]: https://github.com/cschaba/omapass/compare/v0.1.38...HEAD
+[Unreleased]: https://github.com/cschaba/omapass/compare/v0.1.39...HEAD
 [0.1.0]: https://github.com/cschaba/omapass/releases/tag/v0.1.0
 [#2]: https://github.com/cschaba/omapass/issues/2
 [0.1.1]: https://github.com/cschaba/omapass/releases/tag/v0.1.1
@@ -565,3 +567,4 @@ top of the README.
 [0.1.36]: https://github.com/cschaba/omapass/releases/tag/v0.1.36
 [0.1.37]: https://github.com/cschaba/omapass/releases/tag/v0.1.37
 [0.1.38]: https://github.com/cschaba/omapass/releases/tag/v0.1.38
+[0.1.39]: https://github.com/cschaba/omapass/releases/tag/v0.1.39

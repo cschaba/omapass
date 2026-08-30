@@ -282,6 +282,34 @@ check "welcomed --reset clears it" \
 # marker stops it after the first time, and the latch stops it twice in one
 # session. Lose either and omapass opens on your desktop uninvited — which is
 # the complaint that started #14 in the first place.
+# An unsaved form is kept while omapass is closed, so a password can be
+# fetched from another application and pasted back. Three properties matter,
+# and each is a different kind of wrong if it breaks: the draft must not
+# survive the vault re-locking, cancelling must actually discard it, and it
+# must not be restored while the fingerprint gate is up — the editor draws
+# above the gate, so resuming behind it would hand back a secret the gate
+# exists to withhold. (#37)
+check "a draft does not survive the vault locking" \
+  "$(python3 -c "
+import re
+src = open('$ROOT/Omapass.qml').read()
+body = re.search(r'function lockVault\(\) \{.*?\n  \}', src, re.S).group(0)
+print('forgetDraft()' in body)")" "True"
+check "cancelling the form discards the draft" \
+  "$(python3 -c "
+import re
+src = open('$ROOT/Omapass.qml').read()
+body = re.search(r'function closeEditor\(\) \{.*?\n  \}', src, re.S).group(0)
+print('forgetDraft()' in body)")" "True"
+check "a draft is never resumed behind the fingerprint gate" \
+  "$(python3 -c "
+import re
+src = open('$ROOT/Omapass.qml').read()
+block = re.search(r'readonly property bool draftResumable.*?pendingAction === \"\"', src, re.S)
+print(bool(block) and '!root.vaultLocked' in block.group(0) and 'root.ready' in block.group(0))")" "True"
+check "draft-timeout has a default and reaches the UI" \
+  "$("$OMAPASS" config 2>/dev/null | python3 -c 'import sys,json;print(json.load(sys.stdin)["draftTimeout"])')" "300"
+
 # Ctrl+Shift+U is Unicode entry in IBus and fcitx: they take it before Qt sees
 # it, and the key typed "U+" into the search field instead of copying a URL.
 # Alt is left alone by both, so the copy actions live there. (#31)

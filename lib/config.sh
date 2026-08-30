@@ -48,6 +48,7 @@ declare -A CONFIG=(
   [type-delay]="12"
   [type-focus-delay]="0.2"
   [reveal-timeout]="15"
+  [draft-timeout]="300"
   [fingerprint]="auto"
   [fingerprint-grace]="120"
   [fingerprint-retries]="1"

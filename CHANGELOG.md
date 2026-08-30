@@ -6,6 +6,19 @@ the CLI surface, or the entry format bump the major.
 
 ## [Unreleased]
 
+### Added
+
+- Closing omapass with an unsaved entry form open no longer throws the form
+  away. Filling that form in usually means fetching a password out of another
+  application, and reaching another application means closing this one — so
+  the two halves of the job were in each other's way. Reopening brings the
+  form back as it was. `Esc` and Cancel still discard, which is the difference
+  between putting the form down and deciding against it. The draft is held in
+  memory only, never written to disk, dropped on save, on cancel and whenever
+  the vault re-locks, never restored while a fingerprint prompt is up, and
+  bounded by the new `draft-timeout` setting (default 300 seconds, `0` to keep
+  nothing). ([#37])
+
 ## [0.1.37] — 2026-08-29
 
 ### Fixed
@@ -511,6 +524,7 @@ top of the README.
 [#29]: https://github.com/cschaba/omapass/issues/29
 [#30]: https://github.com/cschaba/omapass/issues/30
 [#31]: https://github.com/cschaba/omapass/issues/31
+[#37]: https://github.com/cschaba/omapass/issues/37
 [0.1.29]: https://github.com/cschaba/omapass/releases/tag/v0.1.29
 [0.1.30]: https://github.com/cschaba/omapass/releases/tag/v0.1.30
 [0.1.31]: https://github.com/cschaba/omapass/releases/tag/v0.1.31

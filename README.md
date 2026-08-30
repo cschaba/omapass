@@ -292,6 +292,21 @@ URL that is not one — it says so in a notification. Nothing fails quietly.
 In the editor: `Ctrl+Enter` saves, `Esc` cancels, `Tab` moves between fields.
 Renaming is just editing the name — omapass runs `pass mv` for you.
 
+### Leaving a half-finished entry
+
+Filling the form in usually means fetching something from somewhere else, and
+reaching another application means closing omapass. So closing it **keeps the
+form**: come back and it is as you left it, with *picked up where you left off*
+next to the title.
+
+`Esc` and **Cancel** still throw it away — that is what they are for. The
+difference is between putting the form down and deciding against it.
+
+The draft lives in memory only. It is never written to disk, it is dropped when
+you save or cancel, it goes when the vault re-locks, and it is never handed
+back while a fingerprint prompt is up. `draft-timeout` (default 300 seconds)
+bounds how long it can sit there; `draft-timeout = 0` keeps nothing at all.
+
 ## Configuration
 
 Everything omapass reads lives in one file: **`~/.config/omapass/config`**.
@@ -314,6 +329,7 @@ hyphens are interchangeable, so `clip_time` and `clip-time` both work.
 | `clip-time` | `45` | Seconds a copied password stays on the clipboard. When it expires the selection is dropped entirely, not just blanked. |
 | `type-delay` | `12` | Milliseconds between simulated keystrokes when typing into a window. Raise it if a target application drops characters. |
 | `type-focus-delay` | `0.2` | Seconds to wait for focus to return before typing. Raise it if the first characters of a typed password go missing. |
+| `draft-timeout` | `300` | Seconds an unsaved entry form is kept while omapass is closed, so you can fetch a password from another app and come back. Memory only. `0` keeps nothing. |
 | `reveal-timeout` | `15` | Seconds a revealed password (`Ctrl+R`) stays on screen before it hides itself again. |
 | `fingerprint` | `auto` | `auto` requires a scan when a finger is enrolled; `always` requires one whenever the PAM service exists, even if enrolment cannot be confirmed; `off` never does. |
 | `fingerprint-grace` | `120` | Seconds a successful scan stays valid before you are asked again. Each surface keeps its own window. |

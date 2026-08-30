@@ -287,6 +287,7 @@ config_json() {
     "$(json_escape "$STORE")" \
     "$CLIP_TIME" "$TYPE_DELAY" \
     "${OMAPASS_TYPE_FOCUS_DELAY:-$(config_number type-focus-delay 0.2)}"
+  printf '"draftTimeout":%s,' "$(config_number draft-timeout 300)"
   printf '"revealTimeout":%s,"fingerprint":"%s","fingerprintGrace":%s,"fingerprintRetries":%s,"pulldownRows":%s,' \
     "$(config_number reveal-timeout 15)" \
     "$(json_escape "${CONFIG[fingerprint]}")" \
@@ -338,6 +339,12 @@ write_config_template() {
 
 # Seconds a revealed password stays on screen before it re-hides.
 # reveal-timeout = 15
+
+# Seconds an unsaved entry form is kept when you close omapass with it open,
+# so you can go and fetch a password from somewhere else and come back to it.
+# The draft lives in memory only, is never written to disk, and is dropped on
+# save, on cancel, and whenever the vault re-locks. Set to 0 to keep nothing.
+# draft-timeout = 300
 
 # Fingerprint unlock in front of the vault.
 #   auto    require it when a finger is enrolled  (default)

@@ -186,6 +186,14 @@ for _ in 1 2 3 4 5 6 7 8 9 10; do grep -q . "$CAPTURE" && break; sleep 0.2; done
 check "open sends every other scheme to xdg-open" \
   "$(grep -c '^xdg-open ssh://box.example$' "$CAPTURE")" "1"
 
+: > "$CAPTURE"
+"$OMAPASS" open-url "https://github.com/cschaba/omapass" >/dev/null 2>&1
+for _ in 1 2 3 4 5 6 7 8 9 10; do grep -q . "$CAPTURE" && break; sleep 0.2; done
+check "open-url opens a plain link" \
+  "$(grep -c '^omarchy-launch-browser https://github.com/cschaba/omapass$' "$CAPTURE")" "1"
+check "open-url refuses one that is not a url" \
+  "$("$OMAPASS" open-url "javascript:alert(1)" 2>&1 | grep -c "cannot open")" "1"
+
 check "status reports a url handler" \
   "$("$OMAPASS" status | python3 -c 'import sys,json;print(json.load(sys.stdin)["open"])')" "True"
 

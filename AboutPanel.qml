@@ -35,8 +35,15 @@ Item {
   readonly property bool logging: service ? service.setting("log", false) === true : false
   readonly property string logPath: service ? service.setting("logPath", "") : ""
 
+  // What the tooltips say before anyone clicks: the action, and where it goes.
+  readonly property string homepageLabel: root.homepage.replace(/^https:\/\//, "")
+  readonly property string homepageHint: "Open " + root.homepageLabel + " in your browser"
+
   function openHomepage() {
-    if (root.homepage) Util.execArgv(["xdg-open", root.homepage])
+    // Through the helper, which sends http(s) to omarchy-launch-browser and
+    // everything else to xdg-open. One answer to "how does omapass open a
+    // link", wherever the link is.
+    if (root.homepage && root.service) root.service.openLink(root.homepage)
   }
 
   function openLog() {
@@ -66,15 +73,34 @@ Item {
       horizontalAlignment: Text.AlignHCenter
     }
 
+    // The version is the thing people reach for when they want to know what
+    // this is and where it came from, so it is the thing that takes them
+    // there. The tooltip names the destination first — a link that only tells
+    // you where it went after you followed it is not much of an offer. (#36)
     Text {
       width: parent.width
       visible: root.appVersion.length > 0
       text: "version " + root.appVersion
-      color: root.foreground
-      opacity: 0.5
+      color: versionArea.containsMouse ? root.accent : root.foreground
+      opacity: versionArea.containsMouse ? 1 : 0.5
       font.family: root.fontFamily
       font.pixelSize: Style.font.caption
       horizontalAlignment: Text.AlignHCenter
+
+      MouseArea {
+        id: versionArea
+        anchors.fill: parent
+        anchors.margins: -Style.space(4)
+        hoverEnabled: true
+        enabled: root.homepage.length > 0
+        cursorShape: Qt.PointingHandCursor
+        onClicked: root.openHomepage()
+
+        PanelToolTip {
+          visible: versionArea.containsMouse
+          text: root.homepageHint
+        }
+      }
     }
 
     Text {
@@ -310,7 +336,7 @@ Item {
     Text {
       width: parent.width
       visible: root.homepage.length > 0
-      text: root.homepage.replace(/^https:\/\//, "")
+      text: root.homepageLabel
       color: linkArea.containsMouse ? root.accent : root.foreground
       opacity: linkArea.containsMouse ? 1 : 0.45
       font.family: root.fontFamily
@@ -324,6 +350,11 @@ Item {
         hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
         onClicked: root.openHomepage()
+
+        PanelToolTip {
+          visible: linkArea.containsMouse
+          text: root.homepageHint
+        }
       }
     }
   }

@@ -786,6 +786,14 @@ cmd_copy_url() {
   copy_plain "$url" "URL"
 }
 
+# Opening a plain URL, for the parts of the UI that link somewhere fixed — the
+# project homepage on the About screen. Same validation and same choice of
+# handler as `open`, so there is one answer to "how does omapass open a link"
+# rather than one per caller.
+cmd_open_url() {
+  open_url "$1"
+}
+
 cmd_open() {
   local body url
   body=$(decrypt "$1")
@@ -1025,6 +1033,7 @@ omapass — pass(1) backend for the omapass Omarchy plugin
   copy-name <entry>          copy the entry's own name
   copy-url <entry>           copy the url field
   open <entry>               open the url field with the desktop's handler
+  open-url <url>             open a url with the desktop's handler
   type <entry> [field]       type password (or field) into the focused window
   type-user <entry>          type the username field
   login <entry>              type username, Tab, password, Enter
@@ -1071,7 +1080,7 @@ main() {
   LOG_CMD="$cmd"
   LOG_ARGS=("$@")
   case "$cmd" in
-  copy | copy-user | copy-name | copy-url | type | type-user | login | otp | otp-scan | open | sync)
+  copy | copy-user | copy-name | copy-url | type | type-user | login | otp | otp-scan | open | open-url | sync)
     NOTIFY_ERRORS=true
     ;;
   esac
@@ -1103,6 +1112,7 @@ dispatch() {
   copy-name) cmd_copy_name "${1:?entry required}" ;;
   copy-url) cmd_copy_url "${1:?entry required}" ;;
   open) cmd_open "${1:?entry required}" ;;
+  open-url) cmd_open_url "${1:?url required}" ;;
   type) cmd_type "${1:?entry required}" "${2:-}" ;;
   type-user) cmd_type_user "${1:?entry required}" ;;
   login) cmd_login "${1:?entry required}" ;;

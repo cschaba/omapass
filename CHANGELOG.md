@@ -6,6 +6,15 @@ the CLI surface, or the entry format bump the major.
 
 ## [Unreleased]
 
+### Added
+
+- The version number on the About screen (`F1`) is a link to the project on
+  GitHub, with a tooltip that names the destination before you follow it. The
+  homepage line at the bottom got the same tooltip, and both now open through
+  the same helper the rest of omapass uses — so `http(s)` goes to Omarchy's
+  browser launcher rather than straight to `xdg-open`. New CLI command
+  `open-url`. ([#36])
+
 ### Fixed
 
 - The password field no longer disappears when *generate* is ticked. It stays
@@ -544,6 +553,7 @@ top of the README.
 [#31]: https://github.com/cschaba/omapass/issues/31
 [#33]: https://github.com/cschaba/omapass/issues/33
 [#35]: https://github.com/cschaba/omapass/issues/35
+[#36]: https://github.com/cschaba/omapass/issues/36
 [#37]: https://github.com/cschaba/omapass/issues/37
 [0.1.29]: https://github.com/cschaba/omapass/releases/tag/v0.1.29
 [0.1.30]: https://github.com/cschaba/omapass/releases/tag/v0.1.30

@@ -399,7 +399,12 @@ Item {
           MouseArea {
             anchors.fill: parent
             cursorShape: Qt.PointingHandCursor
-            onClicked: root.generate = !root.generate
+            onClicked: {
+              root.generate = !root.generate
+              // Switching it off is a decision to type a password, so the
+              // cursor goes where that happens.
+              if (!root.generate) Qt.callLater(function () { passwordField.forceActiveFocus() })
+            }
           }
         }
 
@@ -456,15 +461,34 @@ Item {
         }
       }
 
+      // Always on screen, even when generating. Hiding it made the form
+      // reshuffle every time the checkbox was touched, and left the field the
+      // whole section is named after missing from it. Generating disables it
+      // rather than removing it — there is nothing to type, but there is still
+      // something to look at. (#33)
       TextField {
         id: passwordField
         width: parent.width
-        visible: !root.generate
+        enabled: !root.generate
+        opacity: root.generate ? 0.5 : 1
         password: !root.revealPassword
-        placeholderText: "the password"
+        placeholderText: root.generate ? "generated when you save" : "the password"
         foreground: root.foreground
         accent: root.accent
         KeyNavigation.tab: userField
+
+        // A visible field you cannot type into is an invitation with nothing
+        // behind it. Clicking it is a clear enough statement of intent to
+        // switch generation off and let the user get on with typing.
+        MouseArea {
+          anchors.fill: parent
+          visible: root.generate
+          cursorShape: Qt.PointingHandCursor
+          onClicked: {
+            root.generate = false
+            Qt.callLater(function () { passwordField.forceActiveFocus() })
+          }
+        }
       }
 
       Text {

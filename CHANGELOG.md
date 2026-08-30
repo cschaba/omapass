@@ -6,6 +6,15 @@ the CLI surface, or the entry format bump the major.
 
 ## [Unreleased]
 
+### Fixed
+
+- The password field no longer disappears when *generate* is ticked. It stays
+  where it is, disabled and reading "generated when you save", so the form
+  keeps its shape instead of reshuffling every time the box is touched — and
+  the field the section is named after is actually in it. Clicking it switches
+  generation off and puts the cursor there, since a field you cannot type into
+  is an invitation with nothing behind it. ([#33])
+
 ### Added
 
 - The README says that omapass was written with heavy use of AI, and how to
@@ -533,6 +542,7 @@ top of the README.
 [#29]: https://github.com/cschaba/omapass/issues/29
 [#30]: https://github.com/cschaba/omapass/issues/30
 [#31]: https://github.com/cschaba/omapass/issues/31
+[#33]: https://github.com/cschaba/omapass/issues/33
 [#35]: https://github.com/cschaba/omapass/issues/35
 [#37]: https://github.com/cschaba/omapass/issues/37
 [0.1.29]: https://github.com/cschaba/omapass/releases/tag/v0.1.29

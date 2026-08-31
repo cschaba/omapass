@@ -6,6 +6,23 @@ the CLI surface, or the entry format bump the major.
 
 ## [Unreleased]
 
+### Added
+
+- A shortcut sheet, on `F1` or the `?` in the bottom-right corner. OmaPass is
+  keyboard-first, which is only a virtue while you can find out what the keys
+  are — and the footer hints can only ever carry the handful that fit. The
+  sheet covers both surfaces at once, says which rows are manager-only, and
+  lists only what your machine can do: no one-time-code rows without
+  `pass-otp`, no sync row without a git store. It also spells your configured
+  hotkey the way a person says it rather than the way `keybind` writes it.
+  `F1` in the bar pulldown opens the manager showing it. ([#32])
+
+### Changed
+
+- `F1` is the shortcut sheet rather than the About screen, which is the
+  convention everywhere else. About moved onto the sheet, so it is one keypress
+  further away and no harder to find. ([#32])
+
 ## [0.1.43] — 2026-08-31
 
 ### Fixed
@@ -600,6 +617,7 @@ top of the README.
 [#29]: https://github.com/cschaba/omapass/issues/29
 [#30]: https://github.com/cschaba/omapass/issues/30
 [#31]: https://github.com/cschaba/omapass/issues/31
+[#32]: https://github.com/cschaba/omapass/issues/32
 [#33]: https://github.com/cschaba/omapass/issues/33
 [#35]: https://github.com/cschaba/omapass/issues/35
 [#36]: https://github.com/cschaba/omapass/issues/36

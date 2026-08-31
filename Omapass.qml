@@ -48,6 +48,11 @@ Item {
   // Shown once on first run, and on demand with F1 after that. Waits until the
   // vault is open, so it never sits between the user and an unlock prompt.
   property bool aboutOpen: false
+  // F1 is Help everywhere else in the world, so it is Help here too. About
+  // moved onto the sheet rather than losing its way in. (#32)
+  property bool helpOpen: false
+  readonly property bool helpVisible: root.opened && root.ready && !root.vaultLocked
+    && root.helpOpen && !root.aboutVisible
   // Marking the welcome as seen writes a file, and the flag that hides this
   // panel is read back from that file with the rest of the status — which does
   // not happen until the next open. Without a local latch the panel stays up
@@ -65,6 +70,23 @@ Item {
     root.aboutOpen = false
     Qt.callLater(function () { keyCatcher.forceActiveFocus() })
   }
+  // "SUPER SHIFT, K" is how Hyprland's config spells it; nobody says it that way.
+  readonly property string openKeyLabel: {
+    var spec = String(pass.setting("keybind", "SUPER SHIFT, K"))
+    var parts = spec.split(",")
+    var mods = parts[0].trim().split(/\s+/).filter(function (m) { return m.length })
+    var key = parts.length > 1 ? parts[1].trim() : ""
+    var pretty = mods.map(function (m) {
+      var lower = m.toLowerCase()
+      return lower === "super" ? "Super"
+        : lower === "shift" ? "Shift"
+        : lower === "ctrl" || lower === "control" ? "Ctrl"
+        : lower === "alt" ? "Alt" : m
+    })
+    if (key) pretty.push(key.toUpperCase())
+    return pretty.join(" + ")
+  }
+
   readonly property var entries: pass.entries
   readonly property bool loading: pass.loading
   readonly property string errorText: pass.errorText
@@ -234,7 +256,9 @@ Item {
 
     pass.logEvent("summon: action=" + action)
 
-    if (action === "new") {
+    if (action === "help") {
+      root.helpOpen = true
+    } else if (action === "new") {
       // Ctrl+N with an unfinished new entry waiting is far more likely to mean
       // "back to that" than "throw it away and start again", and Cancel is
       // right there for when it does not.
@@ -250,6 +274,9 @@ Item {
     root.keepDraft()
     root.opened = false
     root.mode = "list"
+    // A sheet left open would be the first thing seen on the next open, in
+    // front of the list the user actually asked for.
+    root.helpOpen = false
     root.forgetSecrets()
     // Re-lock after the grace window rather than immediately: opening the
     // picker twice in a row should not cost two scans.
@@ -569,6 +596,17 @@ Item {
             return
           }
 
+          // Same rule the About screen already follows: while a sheet is over
+          // the list, the list must not be driveable through it. Without this,
+          // Ctrl+N behind the help sheet opens an editor nobody can see.
+          if (root.helpVisible) {
+            if (event.key === Qt.Key_Escape || event.key === Qt.Key_F1
+                || event.key === Qt.Key_Return || event.key === Qt.Key_Enter)
+              root.helpOpen = false
+            event.accepted = true
+            return
+          }
+
           if (root.aboutVisible) {
             if (event.key === Qt.Key_Escape || event.key === Qt.Key_Return
                 || event.key === Qt.Key_Enter || event.key === Qt.Key_F1)
@@ -643,7 +681,7 @@ Item {
             else root.copyOtp()
             event.accepted = true
           } else if (event.key === Qt.Key_F1) {
-            root.aboutOpen = true; event.accepted = true
+            root.helpOpen = !root.helpOpen; event.accepted = true
           } else if (ctrl && event.key === Qt.Key_Q) {
             root.scanOtp(); event.accepted = true
           } else if (ctrl && event.key === Qt.Key_S) {
@@ -684,6 +722,31 @@ Item {
           root.fingerprintPassed = true
           Qt.callLater(function () { keyCatcher.forceActiveFocus() })
           Qt.callLater(root.runPendingAction)
+        }
+      }
+
+      HelpSheet {
+        anchors.fill: parent
+        anchors.topMargin: card.contentTopInset
+        anchors.rightMargin: card.contentRightInset
+        anchors.bottomMargin: card.contentBottomInset
+        anchors.leftMargin: card.contentLeftInset
+        z: 15
+        visible: root.helpVisible
+        foreground: root.foreground
+        accent: root.selectedText
+        fontFamily: root.fontFamily
+        hasOtpSupport: root.hasOtpSupport
+        hasUrlSupport: root.hasUrlSupport
+        hasGit: root.hasGit
+        openKey: root.openKeyLabel
+        onDismissed: {
+          root.helpOpen = false
+          Qt.callLater(function () { keyCatcher.forceActiveFocus() })
+        }
+        onAboutRequested: {
+          root.helpOpen = false
+          root.aboutOpen = true
         }
       }
 
@@ -1002,9 +1065,48 @@ Item {
           width: parent.width
           height: root.footerHeight
 
+          // The mockup's (?), bottom right. A keyboard-first app still has to
+          // be discoverable by someone reaching for the mouse — F1 is only
+          // findable once you already know it is there. (#32)
+          Rectangle {
+            id: helpButton
+            anchors.right: parent.right
+            anchors.verticalCenter: parent.verticalCenter
+            width: Style.space(20)
+            height: width
+            radius: width / 2
+            color: helpArea.containsMouse || root.helpOpen ? root.selectedBackground : "transparent"
+            border.width: 1
+            border.color: Util.alpha(root.foreground, helpArea.containsMouse ? 0.45 : 0.22)
+
+            Text {
+              anchors.centerIn: parent
+              text: "?"
+              color: helpArea.containsMouse || root.helpOpen ? root.selectedText : root.foreground
+              opacity: helpArea.containsMouse || root.helpOpen ? 1 : 0.45
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.caption
+            }
+
+            MouseArea {
+              id: helpArea
+              anchors.fill: parent
+              anchors.margins: -Style.space(4)
+              hoverEnabled: true
+              cursorShape: Qt.PointingHandCursor
+              onClicked: root.helpOpen = !root.helpOpen
+
+              PanelToolTip {
+                visible: helpArea.containsMouse
+                text: "Keyboard shortcuts (F1)"
+              }
+            }
+          }
+
           Text {
             anchors.left: parent.left
-            anchors.right: parent.right
+            anchors.right: helpButton.left
+            anchors.rightMargin: Style.space(8)
             anchors.verticalCenter: parent.verticalCenter
             visible: root.errorText.length > 0
             text: root.errorText
@@ -1016,7 +1118,8 @@ Item {
 
           ActionHints {
             anchors.left: parent.left
-            anchors.right: parent.right
+            anchors.right: helpButton.left
+            anchors.rightMargin: Style.space(8)
             anchors.verticalCenter: parent.verticalCenter
             visible: root.errorText.length === 0
             foreground: root.foreground
@@ -1040,7 +1143,7 @@ Item {
               { key: "⌦",  label: "delete",     action: function () { root.requestDelete() } },
               { key: "^S", label: "sync",       action: function () { root.sync() },
                 visible: root.hasGit },
-              { key: "F1", label: "about",      action: function () { root.aboutOpen = true } }
+              { key: "F1", label: "help",       action: function () { root.helpOpen = true } }
             ]
           }
         }

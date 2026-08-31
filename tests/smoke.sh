@@ -320,6 +320,35 @@ check "welcomed --reset clears it" \
 # marker stops it after the first time, and the latch stops it twice in one
 # session. Lose either and omapass opens on your desktop uninvited — which is
 # the complaint that started #14 in the first place.
+# The help sheet sits over the list, so the list must not be driveable through
+# it — Ctrl+N behind the sheet would open an editor nobody can see. Same rule
+# the About screen already follows. (#32)
+check "the help sheet swallows keys while it is up" \
+  "$(python3 -c "
+import re
+src = open('$ROOT/Omapass.qml').read()
+block = re.search(r'if \(root.helpVisible\) \{.*?\n          \}', src, re.S).group(0)
+print('event.accepted = true' in block and 'return' in block)")" "True"
+check "and F1 opens it rather than the about screen" \
+  "$(grep -c 'root.helpOpen = !root.helpOpen; event.accepted = true' "$ROOT/Omapass.qml")" "1"
+check "closing the overlay puts the sheet away" \
+  "$(python3 -c "
+import re
+src = open('$ROOT/Omapass.qml').read()
+body = re.search(r'function close\(\) \{.*?\n  \}', src, re.S).group(0)
+print('helpOpen = false' in body)")" "True"
+check "every shortcut the overlay binds is on the sheet" \
+  "$(python3 -c "
+import re
+keys = set(re.findall(r'event\.key === Qt\.Key_([A-Za-z0-9]+)', open('$ROOT/Omapass.qml').read()))
+sheet = open('$ROOT/HelpSheet.qml').read()
+# navigation and modifiers are documented as glyphs or words, not Qt names
+alias = {'Up':'↑','Down':'↓','PageUp':'PgUp','PageDown':'PgDn','Home':'Home','End':'End',
+         'Return':'⏎','Enter':'⏎','Escape':'Esc','Delete':'Del','Tab':'Tab','F1':'F1',
+         'N':'N','E':'E','R':'R','L':'L','U':'U','O':'O','Q':'Q','S':'S','D':'D'}
+missing = [k for k in keys if alias.get(k) and alias[k] not in sheet]
+print(missing if missing else True)")" "True"
+
 # The pulldown keeps the last search only after something was copied from it,
 # so a second attribute of the same entry does not mean retyping. Both guards
 # matter: a pulldown merely opened and closed was a change of mind, and the

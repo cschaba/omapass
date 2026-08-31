@@ -161,7 +161,7 @@ Panel {
   // new-entry form rather than the list with the form one more keystroke away.
   function openManager(action) {
     var payload = { }
-    if (action === "new") payload.action = "new"
+    if (action === "new" || action === "help") payload.action = action
     else if (action === "edit" && root.currentPath) {
       payload.action = "edit"
       payload.entry = root.currentPath
@@ -335,6 +335,10 @@ Panel {
               root.openManager("new"); event.accepted = true
             } else if (ctrl && event.key === Qt.Key_E) {
               root.openManager("edit"); event.accepted = true
+            } else if (event.key === Qt.Key_F1) {
+              // The sheet documents both surfaces, and there is no room for it
+              // here — so F1 goes where it fits rather than doing nothing. (#32)
+              root.openManager("help"); event.accepted = true
             } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
               root.activate(alt ? "user" : (shift ? "type" : "copy"))
               event.accepted = true

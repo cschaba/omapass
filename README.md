@@ -248,6 +248,13 @@ have, including one you clone from another machine.
 
 ## Keys
 
+**Press `F1` for the full list.** Every shortcut in both surfaces is on one
+sheet inside the app, so this table is a reference rather than something to
+memorise — there is a `?` in the bottom-right corner of the manager for anyone
+reaching for the mouse instead. The sheet only lists what your machine can
+actually do: no one-time-code rows without `pass-otp`, no sync row without a
+git store.
+
 ### Bar pulldown
 
 The search field is focused the moment it opens, so just type.
@@ -266,6 +273,7 @@ The search field is focused the moment it opens, so just type.
 | `Ctrl+Shift+O` | type the one-time code |
 | `Ctrl+N` | open the manager on a new entry |
 | `Ctrl+E` | open the manager editing the selected entry |
+| `F1` | open the manager showing the shortcut sheet |
 | `Esc` | clear the search, then close |
 
 After you copy something, the pulldown remembers what you searched for. Open it
@@ -298,6 +306,7 @@ bounds how long it is kept.
 | `Ctrl+E` | edit the selected entry |
 | `Delete` / `Ctrl+D` | delete the selected entry |
 | `Ctrl+S` | `git pull --rebase && git push` the store |
+| `F1` | show or hide the shortcut sheet |
 | `Esc` | clear the filter, then close |
 
 `Ctrl+U` hands the entry's `url` field (or `site`, or `host`) to the desktop:

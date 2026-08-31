@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "cschaba.omapass",
   "name": "OmaPass",
-  "version": "0.1.43",
+  "version": "0.1.44",
   "author": "Carsten",
   "license": "MIT",
   "description": "OmaPass \u2014 password manager overlay for Omarchy, backed by the pass CLI",

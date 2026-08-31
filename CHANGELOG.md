@@ -6,6 +6,17 @@ the CLI surface, or the entry format bump the major.
 
 ## [Unreleased]
 
+### Changed
+
+- The default hotkey is **`SUPER + ALT + P`**, was `SUPER + SHIFT + K`. Checked
+  against a live Omarchy install rather than picked by feel: `SUPER + P`,
+  `SUPER + SHIFT + P` and `SUPER + CTRL + P` are all taken, and `SUPER + ALT`
+  is busy with 25 window and group bindings but not with `P`. Nothing breaks
+  for anyone already installed — OmaPass has never written to `bindings.lua`,
+  it prints the line for you to paste, so an existing binding keeps working.
+  Re-running `install.sh` now says which chord it actually found and offers the
+  new line rather than reporting "already there" and hiding the change. ([#41])
+
 ## [0.1.44] — 2026-08-31
 
 ### Added
@@ -625,6 +636,7 @@ top of the README.
 [#36]: https://github.com/cschaba/omapass/issues/36
 [#38]: https://github.com/cschaba/omapass/issues/38
 [#40]: https://github.com/cschaba/omapass/issues/40
+[#41]: https://github.com/cschaba/omapass/issues/41
 [#37]: https://github.com/cschaba/omapass/issues/37
 [0.1.29]: https://github.com/cschaba/omapass/releases/tag/v0.1.29
 [0.1.30]: https://github.com/cschaba/omapass/releases/tag/v0.1.30

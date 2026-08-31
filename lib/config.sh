@@ -57,7 +57,7 @@ declare -A CONFIG=(
   [log-max-kb]="256"
   [pulldown-rows]="7"
   [bar-section]="right"
-  [keybind]="SUPER SHIFT, K"
+  [keybind]="SUPER ALT, P"
   [backup-dir]=""
 )
 

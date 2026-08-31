@@ -70,9 +70,9 @@ Item {
     root.aboutOpen = false
     Qt.callLater(function () { keyCatcher.forceActiveFocus() })
   }
-  // "SUPER SHIFT, K" is how Hyprland's config spells it; nobody says it that way.
+  // "SUPER ALT, P" is how Hyprland's config spells it; nobody says it that way.
   readonly property string openKeyLabel: {
-    var spec = String(pass.setting("keybind", "SUPER SHIFT, K"))
+    var spec = String(pass.setting("keybind", "SUPER ALT, P"))
     var parts = spec.split(",")
     var mods = parts[0].trim().split(/\s+/).filter(function (m) { return m.length })
     var key = parts.length > 1 ? parts[1].trim() : ""

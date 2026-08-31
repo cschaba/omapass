@@ -7,7 +7,7 @@ plugin and backed by [`pass`](https://www.passwordstore.org/).
 
 It gives you two ways in. A bar icon with a search pulldown for the common
 case — find a password, copy it, get on with your day. And the full-screen
-overlay above, on `SUPER + SHIFT + K`, in the same family as Omarchy's clipboard
+overlay above, on `SUPER + ALT + P`, in the same family as Omarchy's clipboard
 and emoji pickers, which also creates, edits, generates, renames and deletes
 entries, so `pass` on the command line stays optional.
 
@@ -82,7 +82,7 @@ config:
 
 ```lua
 -- in ~/.config/hypr/bindings.lua
-o.bind("SUPER + SHIFT + K", "omapass", "omarchy-shell shell toggle cschaba.omapass")
+o.bind("SUPER + ALT + P", "omapass", "omarchy-shell shell toggle cschaba.omapass")
 ```
 
 followed by `hyprctl reload`. OmaPass writes nothing outside its own directories
@@ -95,7 +95,7 @@ the updated line:
 
 ```ini
 # ~/.config/omapass/config
-keybind = SUPER ALT, P
+keybind = SUPER SHIFT, K
 ```
 
 ### Where the bar icon sits
@@ -379,7 +379,7 @@ hyphens are interchangeable, so `clip_time` and `clip-time` both work.
 | `backup-dir` | `~/.local/state/omapass/backups` | Where `omapass-reset` writes its backups. |
 | `log` | `off` | `on` writes a debug log to `~/.local/state/omapass/omapass.log`. See below. |
 | `log-max-kb` | `256` | Size cap for that log. Past it the file rotates once and starts again. |
-| `keybind` | `SUPER SHIFT, K` | The hotkey that opens OmaPass, in Hyprland's syntax. Run `./install.sh` again after changing it. |
+| `keybind` | `SUPER ALT, P` | The hotkey that opens OmaPass, in Hyprland's syntax. Run `./install.sh` again after changing it. |
 
 ### An example
 
@@ -390,7 +390,7 @@ store             = ~/vaults/work
 clip-time         = 20
 fingerprint       = off
 pulldown-rows     = 12
-keybind           = SUPER ALT, P
+keybind           = SUPER SHIFT, K
 ```
 
 ### Precedence

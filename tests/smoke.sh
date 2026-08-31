@@ -320,6 +320,24 @@ check "welcomed --reset clears it" \
 # marker stops it after the first time, and the latch stops it twice in one
 # session. Lose either and omapass opens on your desktop uninvited — which is
 # the complaint that started #14 in the first place.
+# The default hotkey is written out in four places — the config default, the
+# installer's own fallback, the commented template, and the QML fallback the
+# shortcut sheet prints. They drifted apart once already. (#41)
+KEYBIND_DEFAULT=$(sed -n 's/.*\[keybind\]="\(.*\)"/\1/p' "$ROOT/lib/config.sh")
+check "the keybind default is what we think" "$KEYBIND_DEFAULT" "SUPER ALT, P"
+check "the installer falls back to the same chord" \
+  "$(grep -c "KEYBIND:-$KEYBIND_DEFAULT" "$ROOT/install.sh")" "1"
+check "the config template offers the same chord" \
+  "$(grep -c "^# keybind = $KEYBIND_DEFAULT\$" "$ROOT/bin/omapass")" "1"
+check "the shortcut sheet falls back to the same chord" \
+  "$(grep -c "pass.setting(\"keybind\", \"$KEYBIND_DEFAULT\")" "$ROOT/Omapass.qml")" "1"
+check "config reports it" \
+  "$("$OMAPASS" config 2>/dev/null | python3 -c 'import sys,json;print(json.load(sys.stdin)["keybind"])')" \
+  "$KEYBIND_DEFAULT"
+# Suggesting the default as the thing to change it to would be a no-op.
+check "the examples do not name the default" \
+  "$(grep -c "keybind = $KEYBIND_DEFAULT" "$ROOT/README.md")" "0"
+
 # The help sheet sits over the list, so the list must not be driveable through
 # it — Ctrl+N behind the sheet would open an editor nobody can see. Same rule
 # the About screen already follows. (#32)

@@ -19,8 +19,8 @@ LEGACY_BINDINGS="$HOME/.config/hypr/bindings.conf"
 
 say() { echo "  $*"; }
 
-# The hotkey as the config file spells it ("SUPER SHIFT, K") becomes the form
-# bindings.lua wants ("SUPER + SHIFT + K").
+# The hotkey as the config file spells it ("SUPER ALT, P") becomes the form
+# bindings.lua wants ("SUPER + ALT + P").
 lua_chord() {
   local spec="$1" mods key
   if [[ $spec == *,* ]]; then
@@ -81,7 +81,7 @@ config_value() {
 }
 
 KEYBIND="$(config_value keybind)"
-KEYBIND="${KEYBIND:-SUPER SHIFT, K}"
+KEYBIND="${KEYBIND:-SUPER ALT, P}"
 BAR_SECTION="$(config_value barSection)"
 CHORD="$(lua_chord "$KEYBIND")"
 
@@ -166,7 +166,29 @@ fi
 # --- 3. the keybinding, which is yours to add -------------------------------
 
 echo
-if [[ -f $BINDINGS ]] && grep -q "shell toggle $PLUGIN_ID" "$BINDINGS"; then
+# The chord already in the file, if any. Worth reading rather than just
+# noticing that a line exists: the default moved in 0.1.45, so anyone upgrading
+# has a working binding that no longer matches what the config asks for, and
+# being told "already there" would hide that entirely. (#41)
+existing_chord() {
+  [[ -f $BINDINGS ]] || return 0
+  sed -n "s/.*o\.bind(\"\([^\"]*\)\".*shell toggle $PLUGIN_ID.*/\1/p" "$BINDINGS" | head -1
+}
+
+EXISTING="$(existing_chord)"
+
+if [[ -n $EXISTING ]]; then
+  if [[ $EXISTING == "$CHORD" ]]; then
+    say "✓ a keybinding for OmaPass is already in $BINDINGS"
+  else
+    say "✓ OmaPass is on $EXISTING in $BINDINGS"
+    say "  Your config asks for $CHORD. Keep the one you have, or swap the line for:"
+    echo
+    echo "    o.bind(\"$CHORD\", \"omapass\", \"omarchy-shell shell toggle $PLUGIN_ID\")"
+    echo
+    say "  then reload with:  hyprctl reload"
+  fi
+elif [[ -f $BINDINGS ]] && grep -q "shell toggle $PLUGIN_ID" "$BINDINGS"; then
   say "✓ a keybinding for OmaPass is already in $BINDINGS"
 else
   say "One step left, in a file that belongs to you. Add this to"
@@ -182,7 +204,7 @@ HOLDER="$(chord_holder "$KEYBIND")"
 if [[ -n $HOLDER ]]; then
   echo
   say "! $CHORD is already bound to \"$HOLDER\"."
-  say "! Choose another with  keybind = SUPER ALT, P  in ~/.config/omapass/config"
+  say "! Choose another with  keybind = SUPER SHIFT, K  in ~/.config/omapass/config"
   say "! and re-run this script to see the updated line."
 fi
 

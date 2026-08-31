@@ -245,20 +245,29 @@ Item {
       nameField.selectAll()
       return
     }
-    // Rejected here rather than dropped on the way to the store, so a mistyped
-    // secret is not silently discarded.
-    if (!PassStore.validOtpUri(otpField.text)) {
+    // Repaired where it can be, rejected where it cannot — and never dropped on
+    // the way to the store, so a mistyped secret does not vanish silently. A
+    // bare secret and a URI with no label are both things other password
+    // managers hand out, and both are things `pass otp` refuses to read until
+    // they have a label on them. (#40)
+    var otp = PassStore.normalizeOtp(otpField.text, name)
+    if (otp === null) {
       if (root.service) root.service.logEvent("editor: refused (otp)")
-      root.loadError = "OTP must be an otpauth:// URI, or empty"
+      root.loadError = "That is not a one-time-code secret. Paste the otpauth:// URI, "
+        + "or just the secret key on its own."
       otpField.forceActiveFocus()
+      otpField.selectAll()
       return
     }
+    // Show what will actually be stored rather than saving something other than
+    // what is on screen.
+    if (otp !== otpField.text) otpField.text = otp
 
     var extras = []
     if (userField.text.trim()) extras.push({ key: "login", value: userField.text })
     if (urlField.text.trim()) extras.push({ key: "url", value: urlField.text })
 
-    var body = PassStore.composeBody(passwordField.text, extras, otpField.text.trim())
+    var body = PassStore.composeBody(passwordField.text, extras, otp)
     var notes = notesArea.text.trim()
     if (notes) body += notes + "\n"
 
@@ -560,7 +569,7 @@ Item {
 
       FieldLabel {
         width: parent.width
-        label: "OTP secret (otpauth:// URI — or save, then Ctrl+Q to scan a QR code)"
+        label: "OTP secret (otpauth:// URI or the bare key — or save, then Ctrl+Q to scan a QR code)"
         field: otpField
         limit: root.otpLimit
       }
@@ -570,7 +579,7 @@ Item {
         width: parent.width
         maximumLength: root.otpLimit
         password: true
-        placeholderText: "otpauth://totp/…"
+        placeholderText: "otpauth://totp/… or just the secret key"
         foreground: root.foreground
         accent: root.accent
         KeyNavigation.tab: notesArea

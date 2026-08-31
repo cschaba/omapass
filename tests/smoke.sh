@@ -239,6 +239,36 @@ if command -v node >/dev/null 2>&1; then
     "nameProblem('.git/x') !== ''" "true"
   js_check "ordinary folder accepted" \
     "nameProblem('github.com/me') === ''" "true"
+  # pass-otp makes the label optional to parse and then dies on a missing
+  # accountname, so a URI several password managers hand out is one it will not
+  # read. These expectations were taken from its parser, not from the spec. (#40)
+  js_check "a bare secret becomes a usable uri" \
+    "normalizeOtp('JBSWY3DPEHPK3PXP','github.com/cs')" \
+    "otpauth://totp/github.com%2Fcs?secret=JBSWY3DPEHPK3PXP"
+  js_check "a spaced lowercase secret is tidied" \
+    "normalizeOtp('jbsw y3dp ehpk 3pxp','e')" "otpauth://totp/e?secret=JBSWY3DPEHPK3PXP"
+  js_check "a uri with no label gets one" \
+    "normalizeOtp('otpauth://totp?secret=ABCDEFGHIJKLMNOP&digits=6','mail/fm')" \
+    "otpauth://totp/mail%2Ffm?secret=ABCDEFGHIJKLMNOP&digits=6"
+  js_check "an empty label gets one" \
+    "normalizeOtp('otpauth://totp/?secret=ABCDEFGHIJKLMNOP','e')" \
+    "otpauth://totp/e?secret=ABCDEFGHIJKLMNOP"
+  js_check "an issuer with no account keeps the issuer" \
+    "normalizeOtp('otpauth://totp/Iss:?secret=ABCDEFGHIJKLMNOP','e')" \
+    "otpauth://totp/Iss:e?secret=ABCDEFGHIJKLMNOP"
+  js_check "a good uri is left alone" \
+    "normalizeOtp('otpauth://totp/Ex:me@x?secret=ABC','e')" "otpauth://totp/Ex:me@x?secret=ABC"
+  js_check "empty stays empty" "JSON.stringify(normalizeOtp('','e'))" '""'
+  # A password pasted into the OTP field is base32-shaped often enough to matter.
+  js_check "a short word is not mistaken for a secret" \
+    "normalizeOtp('hunter2','e') === null" "true"
+  js_check "a url is not a secret" \
+    "normalizeOtp('https://example.com','e') === null" "true"
+  js_check "a uri with no secret is refused" \
+    "normalizeOtp('otpauth://totp/x?digits=6','e') === null" "true"
+  js_check "validOtpUri refuses what pass-otp refuses" \
+    "validOtpUri('otpauth://totp?secret=ABC')" "false"
+
   js_check "hasUrl sees a url field" \
     "hasUrl([{key:'url',value:'https://x'}])" "true"
   js_check "hasUrl accepts the other spellings" \

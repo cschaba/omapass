@@ -521,10 +521,26 @@ the entry — so anything else that speaks pass-otp reads the same store.
 | What | How |
 |------|-----|
 | Enrol from a QR code | select the entry, `Ctrl+Q`, drag a box over the code on screen |
-| Enrol by hand | paste the `otpauth://` URI into the editor's OTP field |
+| Enrol by hand | paste the `otpauth://` URI **or just the secret key** into the editor's OTP field |
 | Copy the current code | `Ctrl+O` (overlay or pulldown) |
 | Type the code into a form | `Ctrl+Shift+O` |
 | See which entries have one | the detail pane says so; `omapass fields` reports `"otp": true` |
+
+The OTP field takes what sites actually give you. A bare secret — the string
+printed under the QR code when a site offers "can't scan it?" — is enough;
+spaces and lower case are fine, and OmaPass builds the URI around it. A URI
+that is missing its label, which some password managers hand out, gets one.
+What is stored is always a complete `otpauth://` line, and the field is
+rewritten to show you exactly that before it is saved.
+
+`pass-otp` needs the label even though it looks optional: its parser makes it
+optional to match and then refuses a URI with no account name in it. So
+`otpauth://totp?secret=…` cannot be stored as-is — it is repaired rather than
+rejected, using the entry's own name.
+
+A word that merely looks like base32 is not accepted as a secret. Anything
+under 16 characters is refused, so a password pasted into the wrong field is
+not quietly turned into a one-time code.
 
 `Ctrl+Q` pipes `grim` into `zbarimg` without the screenshot touching disk, and
 replaces an entry's existing `otpauth://` line rather than stacking a second

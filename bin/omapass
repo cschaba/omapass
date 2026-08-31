@@ -867,6 +867,22 @@ scan_otp_uri() {
   [[ $uri == otpauth://* ]] || die "that QR code is not an otpauth:// URI"
   LC_ALL=C grep -q '[[:cntrl:]]' <<<"$uri" && die "that QR code contains control characters"
 
+  # pass-otp's own rule, which is stricter than its regex looks: the label is
+  # optional to parse but it then reads an accountname out of it and refuses a
+  # URI that has none. Checking here means a QR code it cannot read is reported
+  # now, rather than stored and discovered the next time a code is wanted. (#40)
+  # Split on ? first: a secret may itself contain a slash, so looking for the
+  # label's slash in the whole URI finds the wrong one.
+  local head label account
+  head=${uri#otpauth://}
+  head=${head%%\?*}
+  case "$head" in
+  */*) label=${head#*/} ;;
+  *) label="" ;;
+  esac
+  account=${label##*:}
+  [[ -n $account ]] || die "that QR code has no account name, and pass otp will not read it"
+
   printf '%s' "$uri"
 }
 

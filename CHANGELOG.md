@@ -6,6 +6,20 @@ the CLI surface, or the entry format bump the major.
 
 ## [Unreleased]
 
+### Fixed
+
+- The OTP field accepts what sites and other password managers actually hand
+  out. A bare secret is enough — spaces and lower case included — and a URI
+  missing its label, such as `otpauth://totp?secret=…`, is repaired rather than
+  refused. Both are then stored as a complete `otpauth://` line and shown in
+  the field before saving. This is not just a looser check: `pass-otp`'s parser
+  makes the label optional to match and then dies on the missing account name,
+  so the URI in the report would have been unreadable by the very command that
+  has to read it. `Ctrl+Q` QR enrolment refuses such a code up front instead of
+  storing one that cannot be used. A word shorter than 16 characters is never
+  taken for a secret, so a password pasted into the wrong field is not silently
+  turned into a one-time code. ([#40])
+
 ## [0.1.42] — 2026-08-30
 
 ## [0.1.41] — 2026-08-30
@@ -588,6 +602,7 @@ top of the README.
 [#35]: https://github.com/cschaba/omapass/issues/35
 [#36]: https://github.com/cschaba/omapass/issues/36
 [#38]: https://github.com/cschaba/omapass/issues/38
+[#40]: https://github.com/cschaba/omapass/issues/40
 [#37]: https://github.com/cschaba/omapass/issues/37
 [0.1.29]: https://github.com/cschaba/omapass/releases/tag/v0.1.29
 [0.1.30]: https://github.com/cschaba/omapass/releases/tag/v0.1.30

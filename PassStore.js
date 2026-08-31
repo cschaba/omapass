@@ -229,12 +229,65 @@ function sanitizeKey(key) {
   return sanitizeValue(key).replace(/[:=]/g, "").trim()
 }
 
-// Accepted only when it is what it claims to be. `pass otp` is handed this
-// verbatim, and a line that merely looks like a field would be stored as one.
+// What `pass otp` will actually accept, which is stricter than it first looks.
+// Its own regex makes the label optional — but it then reads an accountname out
+// of that label and dies with "missing accountname" when there is none. So
+// `otpauth://totp?secret=...`, which several password managers hand out and
+// which parses fine on paper, is refused by the thing that has to read it. (#40)
+//
+// Checked against pass-otp's parser rather than inferred from the spec.
 function validOtpUri(uri) {
   var value = sanitizeValue(uri)
   if (!value) return true
-  return /^otpauth:\/\/[a-z]+\/\S*$/i.test(value)
+  var m = value.match(/^otpauth:\/\/(totp|hotp)\/([^?]*)\?(.+)$/i)
+  if (!m) return false
+  // The label has to yield a non-empty accountname. pass-otp splits it on the
+  // first colon and takes the right-hand side, falling back to the whole label.
+  var label = decodeURIComponent(m[2].replace(/\+/g, " "))
+  var account = label.indexOf(":") === -1 ? label : label.slice(label.indexOf(":") + 1)
+  if (!account.trim()) return false
+  return /(^|&)secret=[^&]+/i.test(m[3])
+}
+
+// A bare secret, as printed under a QR code when a site offers "can't scan it?".
+// Base32 only, and long enough that a password pasted into the wrong field is
+// not mistaken for one — the shortest secret anyone issues is 16 characters,
+// while "hunter2" would otherwise pass for base32 quite happily.
+function looksLikeOtpSecret(value) {
+  var bare = sanitizeValue(value).replace(/[\s-]+/g, "")
+  return bare.length >= 16 && /^[A-Za-z2-7]+=*$/.test(bare)
+}
+
+// Turns what the user actually pasted into something `pass otp` can read.
+// Three shapes go in: a complete URI, a URI missing its label, and a bare
+// secret. One shape comes out. Returns "" for empty input, and null for
+// anything that cannot be rescued, so the caller can tell the two apart.
+function normalizeOtp(value, entryName) {
+  var raw = sanitizeValue(value)
+  if (!raw) return ""
+
+  // The label is cosmetic to pass-otp but not optional, so the entry's own name
+  // is the honest thing to put there — it is what the user called this account.
+  var label = encodeURIComponent(sanitizeValue(entryName) || "omapass")
+
+  if (looksLikeOtpSecret(raw))
+    return "otpauth://totp/" + label + "?secret=" + raw.replace(/[\s-]+/g, "").toUpperCase()
+
+  var missingLabel = raw.match(/^otpauth:\/\/(totp|hotp)\?(.+)$/i)
+  if (missingLabel)
+    return "otpauth://" + missingLabel[1].toLowerCase() + "/" + label + "?" + missingLabel[2]
+
+  // A label that is present but empty, or one that is only an issuer with no
+  // account after the colon: same problem, same repair.
+  var emptyLabel = raw.match(/^otpauth:\/\/(totp|hotp)\/([^?]*)\?(.+)$/i)
+  if (emptyLabel && !validOtpUri(raw)) {
+    var stub = emptyLabel[2].replace(/:.*$/, "")
+    var rebuilt = stub ? stub + ":" + label : label
+    var candidate = "otpauth://" + emptyLabel[1].toLowerCase() + "/" + rebuilt + "?" + emptyLabel[3]
+    if (validOtpUri(candidate)) return candidate
+  }
+
+  return validOtpUri(raw) ? raw : null
 }
 
 // Turns the editor's field rows back into the body pass stores: password on

@@ -243,6 +243,41 @@ fetch of a remote branch**, here or anywhere else that is scanned, and treat
 any new finding as blocking rather than as something to explain on the issue.
 The explanation is on #3086 and it changed nothing.
 
+### Taking the screenshots
+
+**Never point a screenshot at the real store.** A password manager's window is a
+list of the places its author has accounts, and a preview is published
+permanently. Build a throwaway store instead: `cmd_list` is a `find` over
+filenames and never decrypts, so a tree of *empty* `.gpg` files lists perfectly
+and no keys or secrets are involved at all.
+
+The shell is spawned by Hyprland rather than by your terminal — see the comment
+in `omarchy-restart-shell` — so exporting `PASSWORD_STORE_DIR` and restarting
+achieves nothing. Kill it and relaunch it through the compositor with the
+variable in place, and always restore the normal shell afterwards:
+
+```bash
+quickshell kill -p "$OMARCHY_PATH/shell" --any-display
+hyprctl dispatch "hl.dsp.exec_cmd(\"env PASSWORD_STORE_DIR=$STORE omarchy-launch-shell\")"
+grim shot.png            # the overlay card is centred; crop to its border
+omarchy restart shell
+```
+
+Driving the overlay from a script: plain keys work as `wtype -k F1`, but
+**modifier combinations need the text form** — `wtype -M ctrl n -m ctrl`, not
+`wtype -M ctrl -k n -m ctrl`. The documented `-k` form never reaches the
+overlay, and the keystrokes land in the search filter instead, which reads as
+the shortcut being broken rather than the injection being wrong.
+
+### The marketplace flattens previews
+
+The root `preview.png` is what it reads, and `build-catalog.mjs` calls
+`sharp(buffer)` with no `animated` option: it takes the **first frame** and
+re-encodes to static WebP twice, 720px for the card and 1600px for the detail
+view. So an animated PNG is accepted and silently reduced to one frame, and a
+multi-panel composite is illegible once the card is 720px wide. One view per
+preview; animation goes in the README, where GitHub renders it.
+
 ## Secrets
 
 Two rules the whole design rests on, worth keeping when you extend it:

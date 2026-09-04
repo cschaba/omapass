@@ -6,6 +6,15 @@ the CLI surface, or the entry format bump the major.
 
 ## [Unreleased]
 
+### Changed
+
+- `scripts/release.sh` asks `git ls-remote` where `main` points instead of
+  running `git fetch`. It only ever wanted the answer to "is this checkout
+  behind?", and it now gets it without pulling anything into the repository.
+  That `git fetch` was the marketplace scanner's one finding against omapass
+  (`remote-git-execution-unpinned`), and a finding is fail-closed there — no
+  maintainer can accept one, which is why the submission sat for a month.
+
 ## [0.1.45] — 2026-08-31
 
 ### Changed

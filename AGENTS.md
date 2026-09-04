@@ -146,7 +146,7 @@ omapass is listed on the [Omarchy plugin marketplace][mp]. The listing points at
 the moment they look. That is the sharper reason for the branch rule above:
 `main` is the public face, not a workspace.
 
-[mp]: https://github.com/HANCORE-linux/omarchy-plugin-marketplace/issues/3086
+[mp]: https://github.com/omacom/omarchy-plugin-marketplace/issues/3086
 
 ### Promises already made
 
@@ -188,17 +188,34 @@ already: `privilege` and `package-manager` (the guided setup offers to
 one appearing in a diff means the plugin started doing something categorically
 different, and deserves a second look before it ships.
 
-### One accepted finding
+### Findings are fail-closed. Capabilities are not.
 
-`remote-git-execution-unpinned` on `scripts/release.sh`. The analyser tracks
-whether a git source is pinned to a 40-character SHA or is the plugin's own
-repository; `git fetch --quiet "$REMOTE" main` uses a variable, so it cannot
-tell, and the later `./tests/smoke.sh` reads as an execution sink.
+This distinction decides whether the listing can ever be published, and it is
+worth knowing before writing anything that shells out.
 
-It is a modelling gap rather than a risk — `scripts/` is not in the release
-tarball, and nothing fetched is ever checked out or executed. The finding is
-non-blocking and a maintainer can accept it. Do not contort `release.sh` to
-silence it; the reasoning is recorded on the submission.
+**Capabilities are fine.** They produce a `review-required` outcome, which a
+maintainer can accept. The four above have been accepted for plugins already
+listed — `privilege`, `package-manager` and `installer` together on
+`omavoice`, `remote-build` on others.
+
+**A finding is not.** It produces `needs-fixes`, and `VERIFICATION.md` in the
+marketplace repository is explicit that `needs-fixes` and findings "are never
+eligible for maintainer verification and remain fail closed". No maintainer can
+wave one through, however good the argument against it. Of the approved
+listings sampled, every single one had an empty finding set.
+
+omapass had one — `remote-git-execution-unpinned` on `scripts/release.sh`,
+where `git fetch --quiet "$REMOTE" main` named a branch through a variable the
+analyser could not resolve to a pinned SHA, and the later `./tests/smoke.sh`
+read as an execution sink. It cost the submission a month of silence: the
+maintainer applied `needs-fixes` and later removed `validated`, with no comment
+either time, because the gate had already decided.
+
+`release.sh` now asks `git ls-remote` where `main` points instead of fetching
+it. Same question, nothing pulled into the repository. **Do not reintroduce a
+fetch of a remote branch**, here or anywhere else that is scanned, and treat
+any new finding as blocking rather than as something to explain on the issue.
+The explanation is on #3086 and it changed nothing.
 
 ## Secrets
 

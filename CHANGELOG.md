@@ -6,6 +6,46 @@ the CLI surface, or the entry format bump the major.
 
 ## [Unreleased]
 
+### Added
+
+- The `?` that opens the shortcut sheet is on every surface now, not only the
+  manager's list. The two places you are most likely to be stuck — halfway
+  through a form, or in the pulldown — were the two with no way to the sheet
+  but a key you had to already know. `F1` works in the form as well. The
+  pulldown has no room for the sheet, so both the key and the button open the
+  manager with it already up. ([#32])
+
+- The `?` sits in the top-right corner in the manager and the editor, rather
+  than on the hint row at the bottom. That row is the busiest line in the app,
+  and in the editor a third thing to aim at beside Cancel and Save is one too
+  many. The entry count moves left to make room. The pulldown keeps its `?` at
+  the bottom, next to `Manage…`, because its top row is the search field and
+  its bottom row is short. ([#32])
+
+  `Esc` is the reflex that closes a help window, and in the editor it is also
+  the key that discards the draft. It only means the first of those while the
+  sheet is up. ([#32])
+
+### Fixed
+
+- Three rows on the shortcut sheet were not true. `Ctrl+Q` (scan a QR code) and
+  `Ctrl+S` (sync) are bound in the manager and not in the bar pulldown, but
+  neither said **manager only**, so the sheet sent you to the pulldown to press
+  a key that was never there. And the sheet's own fallback for the open hotkey
+  still read `Super + Shift + K`, the chord that changed in 0.1.45. Two tests
+  now hold the sheet to the code: every key the pulldown does not bind has to
+  be marked, and the fallback chord is derived from `lib/config.sh` rather than
+  typed. ([#32], [#41])
+
+- The shortcut sheet is readable again. It had no background of its own, over a
+  list that nothing had told to get out of the way, so the two sets of text sat
+  on top of each other. It paints its own background now and covers the card
+  corner to corner — a view on top of the others, not a panel floating in one —
+  and everything underneath goes dark while it is up. Those panes are hidden in
+  place rather than removed, because a `Column` lays out only its visible
+  children and dropping them would have pulled the footer to the top of the
+  card. ([#32])
+
 ## [0.1.45] — 2026-08-31
 
 ### Changed

@@ -528,9 +528,50 @@ Panel {
             }
           }
 
+          // Same corner as the manager's, so it is in one place across both
+          // surfaces. There is no room for the sheet in the pulldown, so it
+          // goes where it fits — the manager, with the sheet already up,
+          // exactly as F1 does from here. (#32)
+          Rectangle {
+            id: helpButton
+            anchors.right: parent.right
+            anchors.verticalCenter: parent.verticalCenter
+            width: Style.space(18)
+            height: width
+            radius: width / 2
+            visible: pass.ready && !root.vaultLocked
+            color: helpArea.containsMouse ? Color.menu.selectedBackground : "transparent"
+            border.width: 1
+            border.color: Util.alpha(root.foreground, helpArea.containsMouse ? 0.45 : 0.22)
+
+            Text {
+              anchors.centerIn: parent
+              text: "?"
+              color: helpArea.containsMouse ? Color.accent : root.foreground
+              opacity: helpArea.containsMouse ? 1 : 0.45
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.caption
+            }
+
+            MouseArea {
+              id: helpArea
+              anchors.fill: parent
+              anchors.margins: -Style.space(4)
+              hoverEnabled: true
+              cursorShape: Qt.PointingHandCursor
+              onClicked: root.openManager("help")
+
+              PanelToolTip {
+                visible: helpArea.containsMouse
+                text: "Keyboard shortcuts (F1)"
+              }
+            }
+          }
+
           Text {
             id: manageLabel
-            anchors.right: parent.right
+            anchors.right: helpButton.visible ? helpButton.left : parent.right
+            anchors.rightMargin: helpButton.visible ? Style.space(10) : 0
             anchors.verticalCenter: parent.verticalCenter
             text: root.vaultLocked ? "" : (pass.ready ? "Manage…" : "Set up…")
             color: manageArea.containsMouse ? Color.accent : root.dim

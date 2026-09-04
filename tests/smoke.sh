@@ -331,6 +331,16 @@ check "the config template offers the same chord" \
   "$(grep -c "^# keybind = $KEYBIND_DEFAULT\$" "$ROOT/bin/omapass")" "1"
 check "the shortcut sheet falls back to the same chord" \
   "$(grep -c "pass.setting(\"keybind\", \"$KEYBIND_DEFAULT\")" "$ROOT/Omapass.qml")" "1"
+# And the sheet spells it the way a person says it, which is a fifth copy of
+# the same fact — derived here rather than typed, because it was still offering
+# the pre-#41 chord long after the chord changed.
+KEYBIND_HUMAN=$(python3 -c "
+spec = '$KEYBIND_DEFAULT'.split(',')
+mods = [m.capitalize() for m in spec[0].split()]
+key = spec[1].strip().upper() if len(spec) > 1 else ''
+print(' + '.join(mods + ([key] if key else [])))")
+check "and spells it the way a person says it" \
+  "$(grep -c "property string openKey: \"$KEYBIND_HUMAN\"" "$ROOT/HelpSheet.qml")" "1"
 check "config reports it" \
   "$("$OMAPASS" config 2>/dev/null | python3 -c 'import sys,json;print(json.load(sys.stdin)["keybind"])')" \
   "$KEYBIND_DEFAULT"
@@ -347,6 +357,60 @@ import re
 src = open('$ROOT/Omapass.qml').read()
 block = re.search(r'if \(root.helpVisible\) \{.*?\n          \}', src, re.S).group(0)
 print('event.accepted = true' in block and 'return' in block)")" "True"
+# Swallowing the keys was only half of it. The sheet has no background of its
+# own, so the search line and the list showed straight through it and neither
+# was readable. They go dark while it is up — and stay in the layout, or the
+# footer would jump to the top of the card. Three of them: the search line, the
+# list, and the editor the sheet can also be opened from. (#32)
+check "the list does not show through the sheet" \
+  "$(grep -c 'opacity: root.helpVisible ? 0 : 1' "$ROOT/Omapass.qml")" "3"
+# It is a view on top, corner to corner, not a panel floating in the card.
+check "and it covers the card" \
+  "$(python3 -c "
+import re
+src = open('$ROOT/Omapass.qml').read()
+block = re.search(r'HelpSheet \{.*?\n      \}', src, re.S).group(0)
+print('bottomMargin: card.contentBottomInset' in block
+      and 'root.footerHeight' not in block)")" "True"
+# Belt as well as braces: the sheet carries its own background rather than
+# relying on every sibling to move out of the way. (#32)
+check "the sheet paints its own background" \
+  "$(python3 -c "
+import re
+src = open('$ROOT/HelpSheet.qml').read()
+print(bool(re.search(r'Rectangle \{\s*anchors\.fill: parent\s*color: root\.background', src)))")" "True"
+# The (?) was only on the manager's list footer, so the two places you are
+# most likely to be stuck — a form you are halfway through, and the pulldown —
+# had no way to it but a key you had to already know. (#32)
+check "the editor offers the sheet" \
+  "$(grep -c 'onClicked: root.helpRequested()' "$ROOT/EntryEditor.qml")" "1"
+check "and the overlay answers it" \
+  "$(grep -c 'onHelpRequested: root.helpOpen = true' "$ROOT/Omapass.qml")" "1"
+# Top-right on the two big surfaces, so it never competes with the hint row or
+# with Cancel and Save. The count and the title give way to it. (#32)
+check "the (?) takes the manager's header corner" \
+  "$(grep -c 'anchors.right: helpButton.left' "$ROOT/Omapass.qml")" "1"
+check "and the editor's" \
+  "$(grep -c 'anchors.right: editorHelpButton.left' "$ROOT/EntryEditor.qml")" "1"
+check "the pulldown offers it" \
+  "$(grep -c 'onClicked: root.openManager("help")' "$ROOT/BarWidget.qml")" "1"
+# Esc closes a help window everywhere, and in the editor it also throws the
+# draft away. Losing work to the key that dismisses a shortcut list would be a
+# nasty way to learn that. (#32)
+check "the sheet does not let Esc reach the draft" \
+  "$(python3 -c "
+import re
+src = open('$ROOT/EntryEditor.qml').read()
+block = re.search(r'Shortcut \{\s*sequence: \"Esc\".*?\n  \}', src, re.S).group(0)
+print('enabled: root.opened && !root.helpUp' in block)")" "True"
+# Exactly one side owns Esc at a time: two enabled Shortcuts on one sequence
+# is an ambiguous activation, and Qt fires neither.
+check "and the overlay takes it over instead" \
+  "$(python3 -c "
+import re
+src = open('$ROOT/Omapass.qml').read()
+block = re.search(r'Shortcut \{\s*sequences: \[\"Esc\", \"F1\"\].*?\n      \}', src, re.S).group(0)
+print('enabled: root.helpVisible' in block and 'root.helpOpen = false' in block)")" "True"
 check "and F1 opens it rather than the about screen" \
   "$(grep -c 'root.helpOpen = !root.helpOpen; event.accepted = true' "$ROOT/Omapass.qml")" "1"
 check "closing the overlay puts the sheet away" \
@@ -366,6 +430,35 @@ alias = {'Up':'↑','Down':'↓','PageUp':'PgUp','PageDown':'PgDn','Home':'Home'
          'N':'N','E':'E','R':'R','L':'L','U':'U','O':'O','Q':'Q','S':'S','D':'D'}
 missing = [k for k in keys if alias.get(k) and alias[k] not in sheet]
 print(missing if missing else True)")" "True"
+
+# A row that works in only one of the two surfaces has to say so. Ctrl+Q and
+# Ctrl+S both claimed to work everywhere while living only in the manager, which
+# sends a reader to the wrong window hunting for a key that was never there.
+# Tab is the one key the pulldown takes as a signal rather than a key event. (#32)
+check "keys the pulldown does not bind are marked manager only" \
+  "$(python3 -c "
+import re
+Q = chr(34)
+mgr = set(re.findall(r'event.key === Qt.Key_([A-Za-z0-9]+)', open('$ROOT/Omapass.qml').read()))
+bar = set(re.findall(r'event.key === Qt.Key_([A-Za-z0-9]+)', open('$ROOT/BarWidget.qml').read()))
+bar.add('Tab')
+label = {'Q': 'Ctrl + Q', 'S': 'Ctrl + S', 'R': 'Ctrl + R', 'D': 'Ctrl + D',
+         'Delete': 'Del', 'Home': 'Home', 'End': 'End'}
+rows = []
+for line in open('$ROOT/HelpSheet.qml'):
+    if 'key: ' + Q in line and 'text: ' + Q in line:
+        rows.append((line.split('key: ' + Q, 1)[1].split(Q, 1)[0],
+                     line.split('text: ' + Q, 1)[1].split(Q, 1)[0]))
+bad = []
+for key in sorted(mgr - bar):
+    frag = label.get(key)
+    if frag is None:
+        bad.append(key + ': this test has no row for it')
+        continue
+    hits = [t for k, t in rows if frag in [x.strip() for x in re.split(r'·|\s{2,}', k)]]
+    if not hits: bad.append(key + ': no row on the sheet')
+    elif not all('manager only' in t for t in hits): bad.append(key + ': row not marked')
+print(bad if bad else True)")" "True"
 
 # The pulldown keeps the last search only after something was copied from it,
 # so a second attribute of the same entry does not mean retyping. Both guards

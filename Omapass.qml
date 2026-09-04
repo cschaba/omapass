@@ -582,6 +582,22 @@ Item {
 
       MouseArea { anchors.fill: parent; onClicked: {} }
 
+      // Focus lives in a text field while the editor is open, and a focused
+      // TextField swallows keys before the catcher below ever sees them. So
+      // the way out of the sheet is a Shortcut, which sees them regardless.
+      // Enabled only while the sheet is up, which is precisely when the
+      // editor's own Esc and F1 stand down. (#32)
+      Shortcut {
+        sequences: ["Esc", "F1"]
+        enabled: root.helpVisible
+        context: Qt.WindowShortcut
+        onActivated: {
+          root.helpOpen = false
+          if (root.mode === "editor") Qt.callLater(function () { editor.refocus() })
+          else Qt.callLater(function () { keyCatcher.forceActiveFocus() })
+        }
+      }
+
       Item {
         id: keyCatcher
         anchors.fill: parent
@@ -742,7 +758,8 @@ Item {
         openKey: root.openKeyLabel
         onDismissed: {
           root.helpOpen = false
-          Qt.callLater(function () { keyCatcher.forceActiveFocus() })
+          if (root.mode === "editor") Qt.callLater(function () { editor.refocus() })
+          else Qt.callLater(function () { keyCatcher.forceActiveFocus() })
         }
         onAboutRequested: {
           root.helpOpen = false
@@ -802,6 +819,11 @@ Item {
         Item {
           width: parent.width
           height: root.headerHeight
+          // Hidden rather than removed while the shortcut sheet is over it.
+          // A Column lays out only its visible children, so dropping these two
+          // out would pull the footer up to the top of the card. (#32)
+          opacity: root.helpVisible ? 0 : 1
+          enabled: !root.helpVisible
 
           Text {
             id: searchText
@@ -817,9 +839,49 @@ Item {
             elide: Text.ElideRight
           }
 
+          // The corner, where there is room for it. A keyboard-first app still
+          // has to be discoverable by someone reaching for the mouse — F1 is
+          // only findable once you already know it is there — but the hint row
+          // it used to sit on is the busiest line in the app. (#32)
+          Rectangle {
+            id: helpButton
+            anchors.right: parent.right
+            anchors.verticalCenter: parent.verticalCenter
+            width: Style.space(20)
+            height: width
+            radius: width / 2
+            color: helpArea.containsMouse ? root.selectedBackground : "transparent"
+            border.width: 1
+            border.color: Util.alpha(root.foreground, helpArea.containsMouse ? 0.45 : 0.22)
+
+            Text {
+              anchors.centerIn: parent
+              text: "?"
+              color: helpArea.containsMouse ? root.selectedText : root.foreground
+              opacity: helpArea.containsMouse ? 1 : 0.45
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.caption
+            }
+
+            MouseArea {
+              id: helpArea
+              anchors.fill: parent
+              anchors.margins: -Style.space(4)
+              hoverEnabled: true
+              cursorShape: Qt.PointingHandCursor
+              onClicked: root.helpOpen = !root.helpOpen
+
+              PanelToolTip {
+                visible: helpArea.containsMouse
+                text: "Keyboard shortcuts (F1)"
+              }
+            }
+          }
+
           Text {
             id: countText
-            anchors.right: parent.right
+            anchors.right: helpButton.left
+            anchors.rightMargin: Style.space(10)
             anchors.verticalCenter: parent.verticalCenter
             text: root.loading ? "…"
               : (displayModel.count === root.entries.length
@@ -836,6 +898,8 @@ Item {
         Item {
           width: parent.width
           height: parent.height - root.headerHeight - root.footerHeight - root.contentSpacing * 2
+          opacity: root.helpVisible ? 0 : 1
+          enabled: !root.helpVisible
 
           Row {
             anchors.fill: parent
@@ -1065,48 +1129,9 @@ Item {
           width: parent.width
           height: root.footerHeight
 
-          // The mockup's (?), bottom right. A keyboard-first app still has to
-          // be discoverable by someone reaching for the mouse — F1 is only
-          // findable once you already know it is there. (#32)
-          Rectangle {
-            id: helpButton
-            anchors.right: parent.right
-            anchors.verticalCenter: parent.verticalCenter
-            width: Style.space(20)
-            height: width
-            radius: width / 2
-            color: helpArea.containsMouse || root.helpOpen ? root.selectedBackground : "transparent"
-            border.width: 1
-            border.color: Util.alpha(root.foreground, helpArea.containsMouse ? 0.45 : 0.22)
-
-            Text {
-              anchors.centerIn: parent
-              text: "?"
-              color: helpArea.containsMouse || root.helpOpen ? root.selectedText : root.foreground
-              opacity: helpArea.containsMouse || root.helpOpen ? 1 : 0.45
-              font.family: root.fontFamily
-              font.pixelSize: Style.font.caption
-            }
-
-            MouseArea {
-              id: helpArea
-              anchors.fill: parent
-              anchors.margins: -Style.space(4)
-              hoverEnabled: true
-              cursorShape: Qt.PointingHandCursor
-              onClicked: root.helpOpen = !root.helpOpen
-
-              PanelToolTip {
-                visible: helpArea.containsMouse
-                text: "Keyboard shortcuts (F1)"
-              }
-            }
-          }
-
           Text {
             anchors.left: parent.left
-            anchors.right: helpButton.left
-            anchors.rightMargin: Style.space(8)
+            anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
             visible: root.errorText.length > 0
             text: root.errorText
@@ -1118,8 +1143,7 @@ Item {
 
           ActionHints {
             anchors.left: parent.left
-            anchors.right: helpButton.left
-            anchors.rightMargin: Style.space(8)
+            anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
             visible: root.errorText.length === 0
             foreground: root.foreground
@@ -1160,6 +1184,12 @@ Item {
         anchors.leftMargin: card.contentLeftInset
         z: 10
         opened: root.mode === "editor"
+        // Out of the way while the sheet is over it, exactly as the list is:
+        // the sheet is drawn above the editor, and the card's own footer —
+        // hints and the (?) — comes back underneath it. (#32)
+        opacity: root.helpVisible ? 0 : 1
+        enabled: !root.helpVisible
+        helpUp: root.helpVisible
         service: pass
         background: root.background
         foreground: root.foreground
@@ -1169,6 +1199,7 @@ Item {
         cornerRadius: root.cornerRadius
         onCancelled: root.closeEditor()
         onSaved: function (payload) { root.saveEntry(payload) }
+        onHelpRequested: root.helpOpen = true
       }
 
       ConfirmDialog {

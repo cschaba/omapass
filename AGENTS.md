@@ -66,6 +66,32 @@ land in its history.
 **Revert temporary overrides.** Forcing `fingerprint_available()` to return true
 is the usual one. `grep -rn TEMPORARY` before committing.
 
+## Keep the shortcut sheet true
+
+**Change a key, add a feature, and update `HelpSheet.qml` in the same commit.**
+The sheet is the only place a user finds out what the keys are, so a stale row
+is worse than a missing one: a key that does nothing sends someone hunting for
+a fault that is not there, and one that is documented on the wrong surface
+sends them to the wrong window.
+
+Three things go stale in different ways, so check all three:
+
+- **The keys themselves.** A binding that exists and is not on the sheet is
+  invisible; a row for a binding that no longer exists is a lie.
+- **Where each one works.** The manager and the bar pulldown do not bind the
+  same set. Anything the pulldown does not handle says **manager only** on its
+  row, and `Ctrl+Q` and `Ctrl+S` were both wrong about this for two releases.
+- **What the row claims it does.** `Ctrl+S` naming the git commands it runs is
+  worth more than "sync", and it stops being worth anything the moment the
+  commands change.
+
+`tests/smoke.sh` holds the sheet to the code — every bound key appears on it,
+and every key the pulldown does not bind is marked manager only. Both checks
+read the QML rather than a list someone has to remember to edit, so they fail
+on the commit that causes the drift rather than on the release that ships it.
+Neither can tell whether the wording is *right*, which is the part that still
+needs reading.
+
 ## Use the Omarchy API
 
 **Omarchy already does most of this. Look before building.**

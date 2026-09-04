@@ -19,7 +19,7 @@ Item {
   property bool hasOtpSupport: true
   property bool hasUrlSupport: true
   property bool hasGit: false
-  property string openKey: "Super + Shift + K"
+  property string openKey: "Super + Alt + P"
 
   signal dismissed()
   signal aboutRequested()
@@ -54,9 +54,9 @@ Item {
       { key: "Ctrl + N", text: "New entry" },
       { key: "Ctrl + E", text: "Edit the selected entry" },
       { key: "Ctrl + R", text: "Reveal the password — manager only" },
-      { key: "Ctrl + Q", text: "Scan a QR code into it", when: root.hasOtpSupport },
+      { key: "Ctrl + Q", text: "Scan a QR code into it — manager only", when: root.hasOtpSupport },
       { key: "Del  ·  Ctrl + D", text: "Delete it — manager only" },
-      { key: "Ctrl + S", text: "git pull --rebase && git push", when: root.hasGit },
+      { key: "Ctrl + S", text: "git pull --rebase && git push — manager only", when: root.hasGit },
       { key: "Tab", text: "Unlock, or load the details" }
     ] },
     { title: "In the editor", rows: [

@@ -28,16 +28,23 @@ the CLI surface, or the entry format bump the major.
 
 ### Fixed
 
-- The shortcut sheet is readable again. It has no background of its own, so the
-  search line and the entry list underneath showed straight through it and the
-  two sets of text sat on top of each other. The sheet covers the card corner
-  to corner now — it is a view on top of the others, not a panel floating in
-  one — and everything underneath goes dark while it is up. Those panes are
-  hidden in place rather than removed, because a `Column` lays out only its
-  visible children and dropping them would have pulled the footer to the top of
-  the card. The
-  sheet also paints its own background now: one that is readable only while
-  every sibling cooperates is one refactor from being unreadable again. ([#32])
+- Three rows on the shortcut sheet were not true. `Ctrl+Q` (scan a QR code) and
+  `Ctrl+S` (sync) are bound in the manager and not in the bar pulldown, but
+  neither said **manager only**, so the sheet sent you to the pulldown to press
+  a key that was never there. And the sheet's own fallback for the open hotkey
+  still read `Super + Shift + K`, the chord that changed in 0.1.45. Two tests
+  now hold the sheet to the code: every key the pulldown does not bind has to
+  be marked, and the fallback chord is derived from `lib/config.sh` rather than
+  typed. ([#32], [#41])
+
+- The shortcut sheet is readable again. It had no background of its own, over a
+  list that nothing had told to get out of the way, so the two sets of text sat
+  on top of each other. It paints its own background now and covers the card
+  corner to corner — a view on top of the others, not a panel floating in one —
+  and everything underneath goes dark while it is up. Those panes are hidden in
+  place rather than removed, because a `Column` lays out only its visible
+  children and dropping them would have pulled the footer to the top of the
+  card. ([#32])
 
 ## [0.1.45] — 2026-08-31
 

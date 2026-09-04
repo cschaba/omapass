@@ -79,10 +79,24 @@ main() {
   branch=$(git rev-parse --abbrev-ref HEAD)
   [[ $branch == "main" ]] || die "on '$branch' — releases are cut from main"
 
-  git fetch --quiet "$REMOTE" main 2>/dev/null || die "could not reach $REMOTE"
-  local behind
-  behind=$(git rev-list --count "HEAD..$REMOTE/main")
-  [[ $behind -eq 0 ]] || die "$behind commit(s) behind $REMOTE/main — pull first"
+  # Ask the remote where main points rather than fetching it. Same question —
+  # is this checkout behind? — with nothing pulled into the repository and
+  # nothing from the remote ever reachable by anything that runs. The old
+  # `git fetch "$REMOTE" main` was the marketplace scanner's one finding
+  # against omapass, and a finding is fail-closed there: no maintainer can
+  # accept it. See "Publishing" in AGENTS.md.
+  local remote_head
+  remote_head=$(git ls-remote --heads "$REMOTE" main 2>/dev/null | awk 'NR == 1 { print $1 }')
+  [[ -n $remote_head ]] || die "could not reach $REMOTE"
+
+  if git cat-file -e "${remote_head}^{commit}" 2>/dev/null; then
+    local behind
+    behind=$(git rev-list --count "HEAD..$remote_head")
+    [[ $behind -eq 0 ]] || die "$behind commit(s) behind $REMOTE/main — pull first"
+  else
+    # The remote tip is not in this checkout at all, so it is certainly ahead.
+    die "$REMOTE/main is at ${remote_head:0:12}, which this checkout has never seen — pull first"
+  fi
 
   local current next tag
   current=$(current_version)

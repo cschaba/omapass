@@ -347,6 +347,27 @@ import re
 src = open('$ROOT/Omapass.qml').read()
 block = re.search(r'if \(root.helpVisible\) \{.*?\n          \}', src, re.S).group(0)
 print('event.accepted = true' in block and 'return' in block)")" "True"
+# Swallowing the keys was only half of it. The sheet has no background of its
+# own, so the search line and the list showed straight through it and neither
+# was readable. They go dark while it is up — and stay in the layout, or the
+# footer would jump to the top of the card. (#32)
+check "the list does not show through the sheet" \
+  "$(grep -c 'opacity: root.helpVisible ? 0 : 1' "$ROOT/Omapass.qml")" "2"
+# It is a view on top, corner to corner, not a panel floating in the card.
+check "and it covers the card" \
+  "$(python3 -c "
+import re
+src = open('$ROOT/Omapass.qml').read()
+block = re.search(r'HelpSheet \{.*?\n      \}', src, re.S).group(0)
+print('bottomMargin: card.contentBottomInset' in block
+      and 'root.footerHeight' not in block)")" "True"
+# Belt as well as braces: the sheet carries its own background rather than
+# relying on every sibling to move out of the way. (#32)
+check "the sheet paints its own background" \
+  "$(python3 -c "
+import re
+src = open('$ROOT/HelpSheet.qml').read()
+print(bool(re.search(r'Rectangle \{\s*anchors\.fill: parent\s*color: root\.background', src)))")" "True"
 check "and F1 opens it rather than the about screen" \
   "$(grep -c 'root.helpOpen = !root.helpOpen; event.accepted = true' "$ROOT/Omapass.qml")" "1"
 check "closing the overlay puts the sheet away" \

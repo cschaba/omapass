@@ -802,6 +802,11 @@ Item {
         Item {
           width: parent.width
           height: root.headerHeight
+          // Hidden rather than removed while the shortcut sheet is over it.
+          // A Column lays out only its visible children, so dropping these two
+          // out would pull the footer up to the top of the card. (#32)
+          opacity: root.helpVisible ? 0 : 1
+          enabled: !root.helpVisible
 
           Text {
             id: searchText
@@ -836,6 +841,8 @@ Item {
         Item {
           width: parent.width
           height: parent.height - root.headerHeight - root.footerHeight - root.contentSpacing * 2
+          opacity: root.helpVisible ? 0 : 1
+          enabled: !root.helpVisible
 
           Row {
             anchors.fill: parent

@@ -12,6 +12,7 @@ import qs.Ui
 Item {
   id: root
 
+  property color background: Color.menu.background
   property color foreground: Color.foreground
   property color accent: Color.accent
   property string fontFamily: Style.font.menuFamily
@@ -149,6 +150,23 @@ Item {
         }
       }
     }
+  }
+
+  // Its own background, rather than trusting whatever is underneath to get out
+  // of the way. It was transparent once, over a list that stayed put, and the
+  // two sets of text sat on top of each other. A sheet that is only readable
+  // while every sibling cooperates is one refactor from being unreadable. (#32)
+  Rectangle {
+    anchors.fill: parent
+    color: root.background
+  }
+
+  // Nothing below is clickable through it either — hover included, or rows
+  // light up under a sheet that is covering them.
+  MouseArea {
+    anchors.fill: parent
+    hoverEnabled: true
+    onClicked: {}
   }
 
   Flickable {

@@ -6,6 +6,19 @@ the CLI surface, or the entry format bump the major.
 
 ## [Unreleased]
 
+### Fixed
+
+- The shortcut sheet is readable again. It has no background of its own, so the
+  search line and the entry list underneath showed straight through it and the
+  two sets of text sat on top of each other. Everything above the footer now
+  goes dark while the sheet is up, and the sheet covers the card corner to
+  corner — it is a view on top of the others, not a panel floating in one. The
+  panes are hidden in place rather than removed, because a `Column` lays out
+  only its visible children and dropping them would have pulled the footer to
+  the top of the card. The
+  sheet also paints its own background now: one that is readable only while
+  every sibling cooperates is one refactor from being unreadable again. ([#32])
+
 ## [0.1.45] — 2026-08-31
 
 ### Changed

@@ -6,16 +6,36 @@ the CLI surface, or the entry format bump the major.
 
 ## [Unreleased]
 
+### Added
+
+- The `?` that opens the shortcut sheet is on every surface now, not only the
+  manager's list. The two places you are most likely to be stuck — halfway
+  through a form, or in the pulldown — were the two with no way to the sheet
+  but a key you had to already know. `F1` works in the form as well. The
+  pulldown has no room for the sheet, so both the key and the button open the
+  manager with it already up. ([#32])
+
+- The `?` sits in the top-right corner in the manager and the editor, rather
+  than on the hint row at the bottom. That row is the busiest line in the app,
+  and in the editor a third thing to aim at beside Cancel and Save is one too
+  many. The entry count moves left to make room. The pulldown keeps its `?` at
+  the bottom, next to `Manage…`, because its top row is the search field and
+  its bottom row is short. ([#32])
+
+  `Esc` is the reflex that closes a help window, and in the editor it is also
+  the key that discards the draft. It only means the first of those while the
+  sheet is up. ([#32])
+
 ### Fixed
 
 - The shortcut sheet is readable again. It has no background of its own, so the
   search line and the entry list underneath showed straight through it and the
-  two sets of text sat on top of each other. Everything above the footer now
-  goes dark while the sheet is up, and the sheet covers the card corner to
-  corner — it is a view on top of the others, not a panel floating in one. The
-  panes are hidden in place rather than removed, because a `Column` lays out
-  only its visible children and dropping them would have pulled the footer to
-  the top of the card. The
+  two sets of text sat on top of each other. The sheet covers the card corner
+  to corner now — it is a view on top of the others, not a panel floating in
+  one — and everything underneath goes dark while it is up. Those panes are
+  hidden in place rather than removed, because a `Column` lays out only its
+  visible children and dropping them would have pulled the footer to the top of
+  the card. The
   sheet also paints its own background now: one that is readable only while
   every sibling cooperates is one refactor from being unreadable again. ([#32])
 

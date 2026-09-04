@@ -48,6 +48,12 @@ Item {
   signal cancelled()
   signal saved(var payload)
 
+  // The shortcut sheet can be opened from in here, and it is drawn by the
+  // overlay above this form rather than by the form itself. All this side
+  // needs to know is that it is up, so it stops acting on keys. (#32)
+  property bool helpUp: false
+  signal helpRequested()
+
   visible: opened
 
   // Shows "1234/4096" only as the limit comes into view: a counter on every
@@ -202,6 +208,15 @@ Item {
     root.loadError = ""
   }
 
+  // Disabling the form to put the sheet over it takes active focus off the
+  // field that had it, and re-enabling does not reliably hand it back. So the
+  // overlay says when to take it again. The name field rather than wherever
+  // the caret was: a form that ignores typing is the failure worth avoiding,
+  // and remembering the exact field is not worth the bookkeeping. (#32)
+  function refocus() {
+    if (root.opened) nameField.forceActiveFocus()
+  }
+
   function cancel() {
     root.clearForm()
     root.cancelled()
@@ -310,50 +325,109 @@ Item {
   // view's own bindings while the editor is closed.
   Shortcut {
     sequences: ["Ctrl+Return", "Ctrl+Enter"]
-    enabled: root.opened
+    enabled: root.opened && !root.helpUp
     context: Qt.WindowShortcut
     onActivated: root.submit()
   }
 
+  // Esc is the reflex that closes a help window, and in here it is also the
+  // key that throws the draft away. Both of these stand down while the sheet
+  // is up and the overlay's own pair takes over, so exactly one side of the
+  // pane owns Esc at any moment — a shortcut list is not worth losing work
+  // over, and two enabled Shortcuts on one sequence fire neither. (#32)
   Shortcut {
     sequence: "Esc"
-    enabled: root.opened
+    enabled: root.opened && !root.helpUp
     context: Qt.WindowShortcut
     onActivated: root.cancel()
+  }
+
+  Shortcut {
+    sequence: "F1"
+    enabled: root.opened && !root.helpUp
+    context: Qt.WindowShortcut
+    onActivated: root.helpRequested()
   }
 
   Column {
     anchors.fill: parent
     spacing: Style.space(10)
 
-    Row {
+    Item {
       width: parent.width
-      spacing: Style.space(10)
+      height: titleRow.implicitHeight
 
-      Text {
-        text: root.isNew ? "New password" : "Edit password"
-        color: root.foreground
-        font.family: root.fontFamily
-        font.pixelSize: Style.font.heading
+      Row {
+        id: titleRow
+        anchors.left: parent.left
+        anchors.right: editorHelpButton.left
+        anchors.rightMargin: Style.space(10)
+        anchors.verticalCenter: parent.verticalCenter
+        spacing: Style.space(10)
+
+        Text {
+          text: root.isNew ? "New password" : "Edit password"
+          color: root.foreground
+          font.family: root.fontFamily
+          font.pixelSize: Style.font.heading
+        }
+
+        Text {
+          anchors.verticalCenter: parent.verticalCenter
+          visible: root.resumed && !root.loadingEntry
+          text: "· picked up where you left off"
+          color: root.accent
+          font.family: root.fontFamily
+          font.pixelSize: Style.font.caption
+        }
+
+        Text {
+          anchors.verticalCenter: parent.verticalCenter
+          visible: root.loadingEntry
+          text: "decrypting…"
+          color: root.foreground
+          opacity: 0.5
+          font.family: root.fontFamily
+          font.pixelSize: Style.font.caption
+        }
       }
 
-      Text {
+      // The corner, not the button row. Down there it would have been a third
+      // thing to aim at beside Cancel and Save, on the one line of this form
+      // that already has something to do. (#32)
+      Rectangle {
+        id: editorHelpButton
+        anchors.right: parent.right
         anchors.verticalCenter: parent.verticalCenter
-        visible: root.resumed && !root.loadingEntry
-        text: "· picked up where you left off"
-        color: root.accent
-        font.family: root.fontFamily
-        font.pixelSize: Style.font.caption
-      }
+        width: Style.space(20)
+        height: width
+        radius: width / 2
+        color: editorHelpArea.containsMouse ? root.selectedBackground : "transparent"
+        border.width: 1
+        border.color: Util.alpha(root.foreground, editorHelpArea.containsMouse ? 0.45 : 0.22)
 
-      Text {
-        anchors.verticalCenter: parent.verticalCenter
-        visible: root.loadingEntry
-        text: "decrypting…"
-        color: root.foreground
-        opacity: 0.5
-        font.family: root.fontFamily
-        font.pixelSize: Style.font.caption
+        Text {
+          anchors.centerIn: parent
+          text: "?"
+          color: editorHelpArea.containsMouse ? root.accent : root.foreground
+          opacity: editorHelpArea.containsMouse ? 1 : 0.45
+          font.family: root.fontFamily
+          font.pixelSize: Style.font.caption
+        }
+
+        MouseArea {
+          id: editorHelpArea
+          anchors.fill: parent
+          anchors.margins: -Style.space(4)
+          hoverEnabled: true
+          cursorShape: Qt.PointingHandCursor
+          onClicked: root.helpRequested()
+
+          PanelToolTip {
+            visible: editorHelpArea.containsMouse
+            text: "Keyboard shortcuts (F1)"
+          }
+        }
       }
     }
 

@@ -350,9 +350,10 @@ print('event.accepted = true' in block and 'return' in block)")" "True"
 # Swallowing the keys was only half of it. The sheet has no background of its
 # own, so the search line and the list showed straight through it and neither
 # was readable. They go dark while it is up — and stay in the layout, or the
-# footer would jump to the top of the card. (#32)
+# footer would jump to the top of the card. Three of them: the search line, the
+# list, and the editor the sheet can also be opened from. (#32)
 check "the list does not show through the sheet" \
-  "$(grep -c 'opacity: root.helpVisible ? 0 : 1' "$ROOT/Omapass.qml")" "2"
+  "$(grep -c 'opacity: root.helpVisible ? 0 : 1' "$ROOT/Omapass.qml")" "3"
 # It is a view on top, corner to corner, not a panel floating in the card.
 check "and it covers the card" \
   "$(python3 -c "
@@ -368,6 +369,38 @@ check "the sheet paints its own background" \
 import re
 src = open('$ROOT/HelpSheet.qml').read()
 print(bool(re.search(r'Rectangle \{\s*anchors\.fill: parent\s*color: root\.background', src)))")" "True"
+# The (?) was only on the manager's list footer, so the two places you are
+# most likely to be stuck — a form you are halfway through, and the pulldown —
+# had no way to it but a key you had to already know. (#32)
+check "the editor offers the sheet" \
+  "$(grep -c 'onClicked: root.helpRequested()' "$ROOT/EntryEditor.qml")" "1"
+check "and the overlay answers it" \
+  "$(grep -c 'onHelpRequested: root.helpOpen = true' "$ROOT/Omapass.qml")" "1"
+# Top-right on the two big surfaces, so it never competes with the hint row or
+# with Cancel and Save. The count and the title give way to it. (#32)
+check "the (?) takes the manager's header corner" \
+  "$(grep -c 'anchors.right: helpButton.left' "$ROOT/Omapass.qml")" "1"
+check "and the editor's" \
+  "$(grep -c 'anchors.right: editorHelpButton.left' "$ROOT/EntryEditor.qml")" "1"
+check "the pulldown offers it" \
+  "$(grep -c 'onClicked: root.openManager("help")' "$ROOT/BarWidget.qml")" "1"
+# Esc closes a help window everywhere, and in the editor it also throws the
+# draft away. Losing work to the key that dismisses a shortcut list would be a
+# nasty way to learn that. (#32)
+check "the sheet does not let Esc reach the draft" \
+  "$(python3 -c "
+import re
+src = open('$ROOT/EntryEditor.qml').read()
+block = re.search(r'Shortcut \{\s*sequence: \"Esc\".*?\n  \}', src, re.S).group(0)
+print('enabled: root.opened && !root.helpUp' in block)")" "True"
+# Exactly one side owns Esc at a time: two enabled Shortcuts on one sequence
+# is an ambiguous activation, and Qt fires neither.
+check "and the overlay takes it over instead" \
+  "$(python3 -c "
+import re
+src = open('$ROOT/Omapass.qml').read()
+block = re.search(r'Shortcut \{\s*sequences: \[\"Esc\", \"F1\"\].*?\n      \}', src, re.S).group(0)
+print('enabled: root.helpVisible' in block and 'root.helpOpen = false' in block)")" "True"
 check "and F1 opens it rather than the about screen" \
   "$(grep -c 'root.helpOpen = !root.helpOpen; event.accepted = true' "$ROOT/Omapass.qml")" "1"
 check "closing the overlay puts the sheet away" \

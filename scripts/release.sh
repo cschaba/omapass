@@ -4,9 +4,10 @@
 #
 # A maintainer tool, run by hand from a local checkout. It is not part of
 # installing or running omapass and is not included in the release tarball, so
-# no user ever executes it. The `git fetch` below only counts how far behind
-# origin/main this checkout is — nothing fetched is ever checked out, merged or
-# run.
+# no user ever executes it. It reads the remote — `git ls-remote`, to find out
+# whether this checkout is behind — and writes to it only to push the release
+# it has just built. It never fetches remote code, and nothing from the remote
+# is ever checked out, merged or run.
 #
 # The tag is what triggers the packaging workflow, so everything that could fail
 # is checked here first — a tag you have to delete and re-push is worse than a

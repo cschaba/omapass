@@ -118,7 +118,8 @@ main() {
   say "  tests pass"
 
   local f
-  for f in bin/omapass bin/omapass-setup bin/omapass-reset lib/config.sh install.sh scripts/release.sh; do
+  for f in bin/omapass bin/omapass-setup bin/omapass-reset lib/config.sh \
+    lib/legacy.sh install.sh uninstall.sh scripts/release.sh; do
     bash -n "$f" || die "$f has a syntax error"
   done
   say "  shell scripts parse"

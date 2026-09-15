@@ -8,6 +8,7 @@
 
 set -euo pipefail
 
+SOURCE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PLUGIN_ID="cschaba.omapass"
 LEGACY_ID="omapass"
 PLUGINS_DIR="$HOME/.config/omarchy/plugins"
@@ -34,23 +35,42 @@ fi
 
 say() { echo "  $*"; }
 
+# shellcheck source=lib/legacy.sh
+source "$SOURCE_DIR/lib/legacy.sh"
+
+# The bare id was ours until 0.1.12 and is another plugin's now. Asked once,
+# because both the disable below and the removal after it depend on it. (#44)
+LEGACY_OWNER="$(legacy_dir_owner "$PLUGINS_DIR/$LEGACY_ID")"
+
 # 1. unregister, through omarchy's own command
 if command -v omarchy >/dev/null 2>&1; then
-  for id in "$PLUGIN_ID" "$LEGACY_ID"; do
-    omarchy plugin disable "$id" >/dev/null 2>&1 || true
-  done
+  omarchy plugin disable "$PLUGIN_ID" >/dev/null 2>&1 || true
+  # Only ours to disable. Under the bare id that is another plugin's widget,
+  # and taking it off somebody's bar is not what they asked us to remove.
+  if [[ $LEGACY_OWNER == ours ]]; then
+    omarchy plugin disable "$LEGACY_ID" >/dev/null 2>&1 || true
+  fi
   say "✓ disabled and taken off the bar"
 else
   say "! omarchy not found — run:  omarchy plugin disable $PLUGIN_ID"
 fi
 
-# 2. the plugin directory, under either id
-for dir in "$PLUGINS_DIR/$PLUGIN_ID" "$PLUGINS_DIR/$LEGACY_ID"; do
+# 2. the plugin directory, under either id — the bare one only when the
+# manifest there says it is ours
+DIRS=("$PLUGINS_DIR/$PLUGIN_ID")
+if [[ $LEGACY_OWNER == ours ]]; then
+  DIRS+=("$PLUGINS_DIR/$LEGACY_ID")
+fi
+for dir in "${DIRS[@]}"; do
   if [[ -e $dir || -L $dir ]]; then
     rm -rf "$dir"
     say "✓ removed $dir"
   fi
 done
+if [[ $LEGACY_OWNER != ours && $LEGACY_OWNER != absent ]]; then
+  say "! $PLUGINS_DIR/$LEGACY_ID is another plugin — its manifest declares"
+  say "! id \"$LEGACY_OWNER\". Left alone, and still enabled."
+fi
 
 # 3. omapass's own files, only when asked
 if (( PURGE )); then

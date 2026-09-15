@@ -17,6 +17,9 @@ LEGACY_DIR="$HOME/.config/omarchy/plugins/$LEGACY_ID"
 BINDINGS="$HOME/.config/hypr/bindings.lua"
 LEGACY_BINDINGS="$HOME/.config/hypr/bindings.conf"
 
+# shellcheck source=lib/legacy.sh
+source "$SOURCE_DIR/lib/legacy.sh"
+
 say() { echo "  $*"; }
 
 # The hotkey as the config file spells it ("SUPER ALT, P") becomes the form
@@ -87,7 +90,13 @@ CHORD="$(lua_chord "$KEYBIND")"
 
 # --- 1. the plugin itself ---------------------------------------------------
 
-if [[ -e $LEGACY_DIR || -L $LEGACY_DIR ]]; then
+# The bare id was ours until 0.1.12 and is another plugin's now, so the
+# directory has to say whose it is before anything happens to it. (#44)
+LEGACY_OWNER="$(legacy_dir_owner "$LEGACY_DIR")"
+
+case $LEGACY_OWNER in
+absent) ;;
+ours)
   if [[ "$(readlink -f "$LEGACY_DIR")" == "$SOURCE_DIR" && ! -L $LEGACY_DIR ]]; then
     say "! $LEGACY_DIR is this checkout; move it aside and re-run"
   else
@@ -95,7 +104,13 @@ if [[ -e $LEGACY_DIR || -L $LEGACY_DIR ]]; then
     rm -rf "$LEGACY_DIR"
     say "✓ removed the old $LEGACY_ID plugin directory"
   fi
-fi
+  ;;
+*)
+  say "! $LEGACY_DIR is another plugin — its manifest declares id"
+  say "! \"$LEGACY_OWNER\". Left alone; OmaPass installs as $PLUGIN_ID,"
+  say "! so the two can sit side by side."
+  ;;
+esac
 
 # Nothing of omapass was here before this run: a first install rather than a
 # re-run or an upgrade. It decides one thing only — whether to greet the user

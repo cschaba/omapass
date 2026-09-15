@@ -6,6 +6,29 @@ the CLI surface, or the entry format bump the major.
 
 ## [Unreleased]
 
+### Fixed
+
+- `install.sh` and `uninstall.sh` no longer delete another plugin that happens
+  to use the bare `omapass` id. That id was ours until 0.1.12 namespaced it to
+  `cschaba.omapass`, so `~/.config/omarchy/plugins/omapass` was treated as an
+  old install of ours and cleared away — and it is another plugin's address
+  now: [tonyrumans/omapass][tr] declares `omapass` as its plugin id and
+  installs exactly there. Anyone with both would have lost theirs, silently, to
+  a message claiming OmaPass had tidied up after itself.
+
+  Both scripts now read the manifest in that directory before touching it. Only
+  a manifest that is recognisably ours — the namespaced id, our homepage, or
+  `Omapass.qml` as the overlay entry point, which every version we have
+  shipped declares — is removed or disabled. Anything else is named and left
+  alone, and OmaPass installs alongside it under its own id. A directory with
+  no manifest at all is still ours: it predates the plugin contract.
+
+  The rule fails closed, because the costs are not symmetric. Leaving a stale
+  directory of ours behind is untidy; deleting a working install of somebody
+  else's is not something a password manager gets to do twice. ([#44])
+
+[tr]: https://github.com/tonyrumans/omapass
+
 ## [0.1.46] — 2026-09-04
 
 ### Added
@@ -691,6 +714,7 @@ top of the README.
 [#40]: https://github.com/cschaba/omapass/issues/40
 [#41]: https://github.com/cschaba/omapass/issues/41
 [#37]: https://github.com/cschaba/omapass/issues/37
+[#44]: https://github.com/cschaba/omapass/issues/44
 [0.1.29]: https://github.com/cschaba/omapass/releases/tag/v0.1.29
 [0.1.30]: https://github.com/cschaba/omapass/releases/tag/v0.1.30
 [0.1.31]: https://github.com/cschaba/omapass/releases/tag/v0.1.31

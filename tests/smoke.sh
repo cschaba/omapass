@@ -602,6 +602,139 @@ for script in install.sh uninstall.sh; do
   check "$script never edits shell.json itself" \
     "$(grep -cE 'json\.dump|shell\.json"?[[:space:]]*<<|>[[:space:]]*"?\$SHELL_JSON' "$ROOT/$script")" "0"
 done
+
+# #44: the bare `omapass` id was ours until 0.1.12 and another plugin claims it
+# now, so the directory under it is only ours to delete when its manifest says
+# so. These are the fixtures that decide whether something gets rm -rf'ed.
+source "$ROOT/lib/legacy.sh"
+LEG="$TMP/legacy"
+
+# every shape omapass has shipped under the bare id
+mkdir -p "$LEG/ours-first"
+cat >"$LEG/ours-first/manifest.json" <<'JSON'
+{ "id": "omapass", "kinds": ["overlay"],
+  "entryPoints": { "overlay": "Omapass.qml" } }
+JSON
+mkdir -p "$LEG/ours-0111"
+cat >"$LEG/ours-0111/manifest.json" <<'JSON'
+{ "id": "omapass", "kinds": ["overlay", "bar-widget"],
+  "entryPoints": { "overlay": "Omapass.qml", "barWidget": "BarWidget.qml" },
+  "homepage": "https://github.com/cschaba/omapass" }
+JSON
+mkdir -p "$LEG/ours-now"
+cp "$ROOT/manifest.json" "$LEG/ours-now/manifest.json"
+
+# and the one that is not ours: a bar widget with no overlay
+mkdir -p "$LEG/theirs"
+cat >"$LEG/theirs/manifest.json" <<'JSON'
+{ "id": "omapass", "name": "OmaPass", "author": "Tony Rumans",
+  "kinds": ["bar-widget"], "entryPoints": { "barWidget": "Panel.qml" } }
+JSON
+mkdir -p "$LEG/unreadable"
+printf 'not json at all\n' >"$LEG/unreadable/manifest.json"
+mkdir -p "$LEG/no-manifest"
+
+check "an empty path is absent" \
+  "$(legacy_dir_owner "$LEG/nothing-here")" "absent"
+check "a directory with no manifest is an old omapass" \
+  "$(legacy_dir_owner "$LEG/no-manifest")" "ours"
+check "the first manifest we shipped is recognised" \
+  "$(legacy_dir_owner "$LEG/ours-first")" "ours"
+check "so is the last one under the bare id" \
+  "$(legacy_dir_owner "$LEG/ours-0111")" "ours"
+check "so is the current namespaced one" \
+  "$(legacy_dir_owner "$LEG/ours-now")" "ours"
+check "another plugin under the bare id is named, not claimed" \
+  "$(legacy_dir_owner "$LEG/theirs")" "omapass"
+check "a manifest we cannot read is not ours either" \
+  "$(legacy_dir_owner "$LEG/unreadable")" "unknown"
+
+# Both scripts have to ask before they delete anything under the bare id.
+for script in install.sh uninstall.sh; do
+  check "$script asks who owns the legacy directory" \
+    "$([[ $(grep -c 'legacy_dir_owner' "$ROOT/$script") -ge 1 ]] && echo yes || echo no)" "yes"
+  check "$script guards the legacy id on the owner" \
+    "$([[ $(grep -c 'LEGACY_OWNER' "$ROOT/$script") -ge 2 ]] && echo yes || echo no)" "yes"
+done
+
+# The static checks above cannot tell whether the branches are wired up the
+# right way round, so run the real uninstaller against a HOME built for the
+# occasion. omarchy is stubbed rather than absent: what it is asked to disable
+# is half of what is being tested, and the real one would answer about this
+# machine.
+FAKE="$TMP/fakehome"
+mkdir -p "$FAKE/.config/omarchy/plugins/omapass" "$TMP/stub"
+cp "$LEG/theirs/manifest.json" "$FAKE/.config/omarchy/plugins/omapass/manifest.json"
+printf 'their code\n' >"$FAKE/.config/omarchy/plugins/omapass/Panel.qml"
+cat >"$TMP/stub/omarchy" <<'STUB'
+#!/bin/bash
+echo "$*" >>"$STUB_LOG"
+STUB
+chmod +x "$TMP/stub/omarchy"
+STUB_LOG="$TMP/stub.log" PATH="$TMP/stub:$PATH" HOME="$FAKE" \
+  XDG_STATE_HOME="$TMP/fakestate" OMAPASS_CONFIG="$TMP/fakeconfig" \
+  bash "$ROOT/uninstall.sh" >"$TMP/uninstall.out" 2>&1
+
+check "uninstall leaves another plugin's directory where it is" \
+  "$([[ -f $FAKE/.config/omarchy/plugins/omapass/Panel.qml ]] && echo kept || echo deleted)" "kept"
+check "and never asks omarchy to disable the bare id" \
+  "$(grep -c 'plugin disable omapass$' "$TMP/stub.log")" "0"
+check "but still disables our own" \
+  "$(grep -c 'plugin disable cschaba.omapass' "$TMP/stub.log")" "1"
+check "and says whose it was" \
+  "$(grep -c 'another plugin' "$TMP/uninstall.out")" "1"
+
+# The same run, with an old install of ours there instead: it still gets
+# cleaned up, which is the behaviour this must not cost us.
+rm -rf "$FAKE/.config/omarchy/plugins/omapass" "$TMP/stub.log"
+mkdir -p "$FAKE/.config/omarchy/plugins/omapass"
+cp "$LEG/ours-0111/manifest.json" "$FAKE/.config/omarchy/plugins/omapass/manifest.json"
+STUB_LOG="$TMP/stub.log" PATH="$TMP/stub:$PATH" HOME="$FAKE" \
+  XDG_STATE_HOME="$TMP/fakestate" OMAPASS_CONFIG="$TMP/fakeconfig" \
+  bash "$ROOT/uninstall.sh" >/dev/null 2>&1
+
+check "an old omapass under the bare id is still removed" \
+  "$([[ -e $FAKE/.config/omarchy/plugins/omapass ]] && echo kept || echo removed)" "removed"
+check "and is still disabled through omarchy" \
+  "$(grep -c 'plugin disable omapass$' "$TMP/stub.log")" "1"
+
+# And the installer, which is the script that actually reaches for rm -rf.
+# omarchy-shell and hyprctl are stubbed alongside omarchy: left real they would
+# answer about this machine's shell rather than the fixture.
+INST="$TMP/insthome"
+mkdir -p "$INST/.config/omarchy/plugins/omapass"
+cp "$LEG/theirs/manifest.json" "$INST/.config/omarchy/plugins/omapass/manifest.json"
+printf 'their code\n' >"$INST/.config/omarchy/plugins/omapass/Panel.qml"
+for stub in omarchy-shell hyprctl; do
+  printf '#!/bin/bash\necho "%s $*" >>"$STUB_LOG"\nexit 0\n' "$stub" >"$TMP/stub/$stub"
+  chmod +x "$TMP/stub/$stub"
+done
+rm -f "$TMP/stub.log"
+STUB_LOG="$TMP/stub.log" PATH="$TMP/stub:$PATH" HOME="$INST" \
+  XDG_STATE_HOME="$TMP/insthome/state" OMAPASS_CONFIG="$TMP/instconfig" \
+  bash "$ROOT/install.sh" >"$TMP/install.out" 2>&1
+
+check "install leaves another plugin's directory where it is" \
+  "$([[ -f $INST/.config/omarchy/plugins/omapass/Panel.qml ]] && echo kept || echo deleted)" "kept"
+check "and never asks omarchy to disable the bare id" \
+  "$(grep -c 'plugin disable omapass$' "$TMP/stub.log")" "0"
+check "and says whose it was" \
+  "$(grep -c 'another plugin' "$TMP/install.out")" "1"
+check "but still installs itself under the namespaced id" \
+  "$([[ -L $INST/.config/omarchy/plugins/cschaba.omapass ]] && echo linked || echo no)" "linked"
+
+# Same again with an old install of ours: still cleared away.
+rm -rf "$INST/.config/omarchy/plugins" "$TMP/stub.log"
+mkdir -p "$INST/.config/omarchy/plugins/omapass"
+cp "$LEG/ours-0111/manifest.json" "$INST/.config/omarchy/plugins/omapass/manifest.json"
+STUB_LOG="$TMP/stub.log" PATH="$TMP/stub:$PATH" HOME="$INST" \
+  XDG_STATE_HOME="$TMP/insthome/state" OMAPASS_CONFIG="$TMP/instconfig" \
+  bash "$ROOT/install.sh" >"$TMP/install.out" 2>&1
+
+check "install still clears away an old omapass" \
+  "$([[ -e $INST/.config/omarchy/plugins/omapass ]] && echo kept || echo removed)" "removed"
+check "and says it removed it" \
+  "$(grep -c 'removed the old omapass' "$TMP/install.out")" "1"
 check "bar-section defaults to right" \
   "$("$OMAPASS" config | python3 -c 'import sys,json;print(json.load(sys.stdin)["barSection"])')" "right"
 printf 'bar-section = left\n' >"$OMAPASS_CONFIG"

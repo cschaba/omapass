@@ -383,6 +383,7 @@ hyphens are interchangeable, so `clip_time` and `clip-time` both work.
 | `backup-dir` | `~/.local/state/omapass/backups` | Where `omapass-reset` writes its backups. |
 | `log` | `off` | `on` writes a debug log to `~/.local/state/omapass/omapass.log`. See below. |
 | `log-max-kb` | `256` | Size cap for that log. Past it the file rotates once and starts again. |
+| `auto-sync` | `off` | `on` runs a sync (`git pull --rebase`, then `push`) right after every insert, edit or delete, instead of only on `Ctrl+S`. Requires the store to be a git repository. |
 | `keybind` | `SUPER ALT, P` | The hotkey that opens OmaPass, in Hyprland's syntax. Run `./install.sh` again after changing it. |
 
 ### An example

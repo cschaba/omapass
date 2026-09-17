@@ -144,7 +144,24 @@ Item {
   // Hands off to slurp + grim + zbarimg. Detached, because the overlay has to
   // be out of the way before the user can drag a box over the QR code.
   function scanOtp(path)      { if (path && hasOtpSupport) { run(["otp-scan", path]); markUnlockedSoon() } }
-  function sync()             { if (hasGit) run(["sync"]) }
+
+  // Unlike the actions above, sync never touches a decrypted secret and its
+  // result matters to the UI — a pull can add or remove entries — so it is a
+  // tracked Process like the writes below, not the detached run(). syncing
+  // guards against piling up a second pull/push on top of one still running.
+  readonly property bool syncing: syncProc.running
+
+  function sync() {
+    if (!hasGit || root.syncing) return
+    syncProc.command = [root.bin, "sync"]
+    syncProc.running = true
+  }
+
+  // Opt-in (config: auto-sync, off by default) — called after a write that
+  // actually changed the store, never after one that failed.
+  function maybeAutoSync() {
+    if (hasGit && setting("autoSync", false)) sync()
+  }
 
   // Setup hints are public commands, so this is an ordinary copy — no
   // sensitive flag, no timeout, and it may land in clipboard history.
@@ -330,6 +347,7 @@ Item {
       if (insertProc.generated) root.markUnlockedSoon()
       root.writeFinished(exitCode === 0)
       root.reload()
+      if (exitCode === 0) root.maybeAutoSync()
     }
   }
 
@@ -363,6 +381,24 @@ Item {
     onExited: function (exitCode) {
       if (exitCode !== 0) root.errorText = "Could not delete that entry"
       root.writeFinished(exitCode === 0)
+      root.reload()
+      if (exitCode === 0) root.maybeAutoSync()
+    }
+  }
+
+  Process {
+    id: syncProc
+    stderr: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: syncProc.failure = String(text).replace(/^omapass:\s*/, "").trim()
+    }
+    property string failure: ""
+    onExited: function (exitCode) {
+      if (exitCode !== 0) root.errorText = syncProc.failure || "Sync failed"
+      else root.errorText = ""
+      syncProc.failure = ""
+      // A pull can add, remove or rewrite entries — the list needs to be
+      // current no matter which way the sync went.
       root.reload()
     }
   }

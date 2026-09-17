@@ -80,6 +80,7 @@ cmd_doctor() {
   echo "  config         $CONFIG_FILE$([[ -r $CONFIG_FILE ]] || echo '  (none — using defaults)')"
   echo "  store          $STORE"
   echo "  log            $($LOG_ENABLED && echo "on → $LOG_FILE" || echo 'off  (set log = on in the config)')"
+  echo "  auto-sync      $($AUTO_SYNC_ENABLED && echo "on" || echo 'off  (set auto-sync = on in the config)')"
   echo
 
   # Two directories declaring the same id is the trap: omarchy loads one of
@@ -296,11 +297,12 @@ config_json() {
     "$(config_number fingerprint-retries 1)" \
     "$(config_number pulldown-rows 7)"
   printf '"barSection":"%s",' "$(json_escape "$(config_bar_section)")"
-  printf '"backupDir":"%s","keybind":"%s","log":%s,"logPath":"%s"}' \
+  printf '"backupDir":"%s","keybind":"%s","log":%s,"logPath":"%s","autoSync":%s}' \
     "$(json_escape "$BACKUP_DIR")" \
     "$(json_escape "${OMAPASS_KEYBIND:-${CONFIG[keybind]}}")" \
     "$($LOG_ENABLED && echo true || echo false)" \
-    "$(json_escape "$LOG_FILE")"
+    "$(json_escape "$LOG_FILE")" \
+    "$($AUTO_SYNC_ENABLED && echo true || echo false)"
 }
 
 cmd_config() {
@@ -393,6 +395,13 @@ write_config_template() {
 
 # Size cap for that log. Past it the file is rotated once and started again.
 # log-max-kb = 256
+
+# Sync automatically (git pull --rebase, then push) right after an entry is
+# created, edited or deleted, instead of only on Ctrl+S. Off by default: this
+# adds a network round trip to every edit, and a failed pull/push becomes part
+# of that edit's result. Requires the store to already be a git repository —
+# see the sync command.
+# auto-sync = off
 
 # The hotkey for opening the overlay, in Hyprland's own syntax: modifiers, then
 # the key. OmaPass does not write this binding — it prints the line for you to

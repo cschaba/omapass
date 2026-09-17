@@ -6,6 +6,13 @@ the CLI surface, or the entry format bump the major.
 
 ## [Unreleased]
 
+### Added
+
+- New `auto-sync` setting (default `off`): when `on`, OmaPass runs a sync
+  right after every insert, edit or delete, instead of only on `Ctrl+S`. Off
+  by default because it adds a network round trip — and its possible failure
+  — to every single edit. (#46)
+
 ### Fixed
 
 - Ctrl+S (sync) no longer leaves the entry list stale once the pull/push

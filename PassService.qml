@@ -157,6 +157,12 @@ Item {
     syncProc.running = true
   }
 
+  // Opt-in (config: auto-sync, off by default) — called after a write that
+  // actually changed the store, never after one that failed.
+  function maybeAutoSync() {
+    if (hasGit && setting("autoSync", false)) sync()
+  }
+
   // Setup hints are public commands, so this is an ordinary copy — no
   // sensitive flag, no timeout, and it may land in clipboard history.
   function copyCommand(command) {
@@ -341,6 +347,7 @@ Item {
       if (insertProc.generated) root.markUnlockedSoon()
       root.writeFinished(exitCode === 0)
       root.reload()
+      if (exitCode === 0) root.maybeAutoSync()
     }
   }
 
@@ -375,6 +382,7 @@ Item {
       if (exitCode !== 0) root.errorText = "Could not delete that entry"
       root.writeFinished(exitCode === 0)
       root.reload()
+      if (exitCode === 0) root.maybeAutoSync()
     }
   }
 

@@ -306,6 +306,58 @@ check "a failing command still exits non-zero" \
 : >"$OMAPASS_CONFIG"
 echo
 
+# #49: `pass git` is the one pass subcommand whose failure is invisible —
+# pass(1) ends in `exit 0` and its cmd_git never checks the git it ran — so
+# `pass git push || die` never fired and every sync claimed to have worked.
+# These run against a git store built for the occasion, never the real one.
+echo "sync"
+
+GITSTORE="$TMP/gitstore"
+REMOTE="$TMP/remote.git"
+mkdir -p "$GITSTORE"
+PASSWORD_STORE_DIR="$GITSTORE" pass init "$FPR" >/dev/null 2>&1
+PASSWORD_STORE_DIR="$GITSTORE" pass git init >/dev/null 2>&1
+printf 'secret\n' | PASSWORD_STORE_DIR="$GITSTORE" "$OMAPASS" insert sync/one >/dev/null 2>&1
+
+sync_exit() { PASSWORD_STORE_DIR="$GITSTORE" "$OMAPASS" sync >/dev/null 2>&1; echo $?; }
+sync_says() { PASSWORD_STORE_DIR="$GITSTORE" "$OMAPASS" sync 2>&1 >/dev/null | head -1; }
+
+# A git store with no remote cannot sync, and saying so beats a bare failure.
+check "sync without a remote fails" "$(sync_exit)" "1"
+check "and names the missing remote" \
+  "$(sync_says | grep -c 'no git remote')" "1"
+
+git init --bare --quiet "$REMOTE"
+git -C "$GITSTORE" remote add origin "$REMOTE" >/dev/null 2>&1
+git -C "$GITSTORE" push --quiet --set-upstream origin HEAD >/dev/null 2>&1
+check "sync against a working remote succeeds" "$(sync_exit)" "0"
+
+# The regression itself: this exited 0 and notified "Store synced".
+git -C "$GITSTORE" remote set-url origin "$TMP/not-a-repo.git"
+check "sync against a broken remote fails" "$(sync_exit)" "1"
+check "and says which half failed" \
+  "$(sync_says | grep -c 'pull failed')" "1"
+
+# git's own stderr names the file it tripped over, and an entry name is
+# disclosure in its own right — the message has to stay ours.
+check "the failure never quotes the entry" \
+  "$(sync_says | grep -c 'sync/one')" "0"
+
+# Guard the cause, not just the symptom: `pass git` can never report a failure,
+# so cmd_sync must not go back to it.
+# Invocations only: the comment above cmd_sync explains `pass git`, and the
+# no-remote message tells the user to run `pass git remote add`. Neither is a
+# call, and a test that cannot tell prose from code fails on the explanation.
+check "cmd_sync talks to git directly" \
+  "$(sed -n '/^cmd_sync() {/,/^}/p' "$OMAPASS" | grep -vE '^\s*#' | grep -cE '^\s*pass git')" "0"
+check "and keeps each git call guarded" \
+  "$(sed -n '/^cmd_sync() {/,/^}/p' "$OMAPASS" | grep -cE 'git -C "\$STORE" (pull|push)')" "2"
+# pipefail + grep -q SIGPIPEs the producer and fails a check that passed.
+check "the remote check uses no grep pipe" \
+  "$(sed -n '/^cmd_sync() {/,/^}/p' "$OMAPASS" | grep -c 'remote.*|.*grep')" "0"
+
+echo
+
 echo "release plumbing"
 MANIFEST_VERSION=$(python3 -c "import json;print(json.load(open('$ROOT/manifest.json'))['version'])")
 check "welcomed reports json" \

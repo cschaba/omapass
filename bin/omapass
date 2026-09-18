@@ -1028,8 +1028,25 @@ cmd_remove() {
 cmd_sync() {
   require_pass
   [[ -d $STORE/.git ]] || die "password store is not a git repository"
-  pass git pull --rebase --quiet 2>/dev/null || die "pull failed"
-  pass git push --quiet 2>/dev/null || die "push failed"
+
+  # Deliberately git rather than `pass git`, which is the one pass subcommand
+  # whose failure cannot be seen: pass(1) ends in `exit 0`, and its git handler
+  # runs git as its last command without checking it, so `pass git push || die`
+  # never fires however badly the push went. Every sync reported success. This
+  # is the same invocation pass would make, minus the discarded status. (#49)
+  #
+  # No pipe into grep for the remote check: this script runs under pipefail,
+  # where grep -q can SIGPIPE the producer and fail a check that passed.
+  [[ -n $(git -C "$STORE" remote 2>/dev/null) ]] ||
+    die "no git remote is configured — add one with: pass git remote add origin <url>"
+
+  # The messages are ours, not git's. git names the file it tripped over, and
+  # an entry name is disclosure in its own right — it must not end up anywhere
+  # a message can be copied, quoted or logged.
+  git -C "$STORE" pull --rebase --quiet 2>/dev/null ||
+    die "pull failed — the remote is unreachable, or the store has changes that will not rebase"
+  git -C "$STORE" push --quiet 2>/dev/null ||
+    die "push failed — the remote is unreachable, or rejected the update"
   notify "Store synced" "" "󰊢"
 }
 

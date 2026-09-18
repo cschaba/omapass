@@ -6,6 +6,26 @@ the CLI surface, or the entry format bump the major.
 
 ## [Unreleased]
 
+### Fixed
+
+- `sync` no longer reports success when git failed. `pass(1)` ends in `exit 0`
+  and its git handler never checks the git it just ran, so `pass git push ||
+  die` could not fire however badly the push went — an unreachable remote, a
+  rejected update and a store with no remote at all all printed "Store synced"
+  and exited 0, with `2>/dev/null` discarding the only remaining evidence.
+
+  `sync` now runs git directly in the store, which is the same invocation
+  `pass git` makes minus the discarded status, and each call is guarded. A
+  store with no remote configured says so and names the command that adds one,
+  rather than failing as though the network were at fault. The wording of each
+  failure stays ours: git's own stderr names the file it tripped over, and an
+  entry name is disclosure in its own right. ([#49])
+
+  This is the only place it bit — `pass show`, `mv`, `rm` and `otp` all fail
+  through pass's own `die`, which exits 1 before that final `exit 0` is
+  reached, so their guards work. ([#49])
+
+
 ## [0.1.47] — 2026-09-15
 
 ### Fixed
@@ -717,6 +737,7 @@ top of the README.
 [#41]: https://github.com/cschaba/omapass/issues/41
 [#37]: https://github.com/cschaba/omapass/issues/37
 [#44]: https://github.com/cschaba/omapass/issues/44
+[#49]: https://github.com/cschaba/omapass/issues/49
 [0.1.29]: https://github.com/cschaba/omapass/releases/tag/v0.1.29
 [0.1.30]: https://github.com/cschaba/omapass/releases/tag/v0.1.30
 [0.1.31]: https://github.com/cschaba/omapass/releases/tag/v0.1.31

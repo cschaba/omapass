@@ -6,6 +6,25 @@ the CLI surface, or the entry format bump the major.
 
 ## [Unreleased]
 
+### Changed
+
+- Version 0.2.0. This is a marker rather than a feature release: nothing in the
+  code changed between 0.1.50 and here. ([#23])
+
+  0.1.0 was an overlay that could list a `pass` store and copy out of it. Fifty
+  patch releases later the shape has stopped moving. Two surfaces that stay in
+  step — a bar pulldown for finding a password, a full manager for changing one
+  — and entries created, edited, generated, renamed and deleted without leaving
+  the keyboard. One-time codes, an optional fingerprint gate in front of the
+  store, a git sync that now says so when it fails, and a debug log that records
+  what happened without recording what it happened to. Listed and verified on
+  the Omarchy plugin marketplace since 4 September.
+
+  What the number claims is narrow: the config file, the CLI surface and the
+  entry format have settled enough that breaking one of them would be worth a
+  major bump. It is not a claim that the work is finished. ([#23])
+
+
 ## [0.1.50] — 2026-09-29
 
 ### Removed
@@ -789,6 +808,7 @@ top of the README.
 [#40]: https://github.com/cschaba/omapass/issues/40
 [#41]: https://github.com/cschaba/omapass/issues/41
 [#37]: https://github.com/cschaba/omapass/issues/37
+[#23]: https://github.com/cschaba/omapass/issues/23
 [#44]: https://github.com/cschaba/omapass/issues/44
 [#49]: https://github.com/cschaba/omapass/issues/49
 [#50]: https://github.com/cschaba/omapass/issues/50

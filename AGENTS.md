@@ -256,6 +256,68 @@ fetch of a remote branch**, here or anywhere else that is scanned, and treat
 any new finding as blocking rather than as something to explain on the issue.
 The explanation is on #3086 and it changed nothing.
 
+That finding is gone. #3086 was approved on 4 September 2026 and omapass is
+listed and `approved-and-verified`, re-verified on 8 September against
+`7b29232`. The listing is live at
+<https://omarchyplugins.com/plugin.html?id=cschaba.omapass>.
+
+### Check the baseline yourself before submitting
+
+The gate is fail-closed and the feedback loop is a maintainer's attention, so
+finding out from the marketplace costs weeks. The scanner is a dependency-free
+Node script in the marketplace repository and runs against any public commit in
+about twenty seconds:
+
+```bash
+git clone --depth 1 https://github.com/omacom/omarchy-plugin-marketplace.git mp
+cat > scan.mjs <<'JS'
+import { runSecurityBaseline } from "./mp/scripts/security-baseline-scanner.mjs";
+const b = await runSecurityBaseline(process.argv[2], process.argv[3]);
+console.log(b.outcome, "| findings:", b.findings.map(f => f.ruleId));
+console.log("capabilities:", b.capabilities.map(c => c.id));
+JS
+GITHUB_TOKEN=$(gh auth token) node scan.mjs https://github.com/cschaba/omapass <full-sha>
+```
+
+`outcome: review-required` with an empty finding list is the expected, healthy
+result — that is what the current listing was approved under. What matters is
+`findings: []` and that `capabilities` has not grown. Run it before every
+verification request, and after any change that adds a `git`, `curl`, `sudo` or
+package-manager call to a scanned file.
+
+Worth knowing what does *not* trip it: `cmd_sync` runs `git -C "$STORE" pull`,
+and the analyser does read that as a git acquisition. The finding needs an
+*execution sink* after it in the same `&&` chain — an interpreter, a build tool
+or a `./script`. `die` and `notify` are shell functions and are neither, which
+is why sync is clean and `release.sh` was not.
+
+### Availability: listed is not the same as installable
+
+The listing shows **Availability: Manual Setup** rather than the one-line
+install command. That comes from `installation.mode: "manual"` in the registry,
+written at approval time from a single `manual-setup` label on the submission
+issue. The label means exactly what its description says — *"Standard install
+cannot produce a functioning plugin"* — and it is a maintainer's judgement, not
+a consequence of findings or capabilities. `omaipsum` carries a worse baseline
+and is marked Available.
+
+The judgement looks wrong for omapass: `omarchy plugin add … --enable` clones
+into the plugin directory, the QML resolves `bin/omapass` through
+`Qt.resolvedUrl(".")`, git records the executable bits, and the overlay is
+reachable by right-clicking the bar icon, so no keybinding is required.
+`install.sh` only *prints* that binding; it never writes it.
+
+Removing the override is gated in code, not by argument. The verification form's
+standard-installation action requires either a `passed` baseline or a maintainer
+review whose capability set is **exactly `["installer"]`**
+(`security-baseline-policy.mjs`). omapass declares four. `remote-build` is free
+to drop — it is only the `git clone` in the root README, and `DEVELOPMENT.md` is
+not scanned, so the clone instructions can live there. `privilege` can go by
+using `omarchy pkg add` instead of `sudo pacman`. But `package-manager` cannot:
+`omarchy pkg add` is the *first* pattern the analyser matches, deliberately, so
+the only way to shed it is to stop installing dependencies at all — which means
+deleting the guided first-run setup. Weigh that before chasing the label.
+
 ### Taking the screenshots
 
 **Never point a screenshot at the real store.** A password manager's window is a

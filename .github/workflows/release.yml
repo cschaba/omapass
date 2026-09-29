@@ -58,7 +58,7 @@ jobs:
           # repository. A plugin directory has to be droppable into
           # ~/.config/omarchy/plugins/omapass as-is.
           cp -a manifest.json ./*.qml ./*.js README.md CHANGELOG.md LICENSE \
-                install.sh uninstall.sh bin lib "dist/$name/"
+                install.sh uninstall.sh bin lib state "dist/$name/"
 
           tar -czf "dist/$name.tar.gz" -C dist "$name"
           (cd dist && sha256sum "$name.tar.gz" > "$name.tar.gz.sha256")
@@ -76,6 +76,9 @@ jobs:
           cd "$tmp/omapass-$version"
           test -x bin/omapass
           test -f manifest.json
+          # A QML module directory missing from the tarball loads fine from a
+          # git checkout and fails only for the people who install the release.
+          test -f state/qmldir
           [[ "$(bin/omapass version)" == "omapass $version" ]]
           bin/omapass config >/dev/null
           echo "package is self-contained"

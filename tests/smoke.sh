@@ -364,6 +364,45 @@ check "the remote check uses no grep pipe" \
 
 echo
 
+# #50: the singleton lives in its own QML module directory, and the release
+# tarball is assembled from an explicit list. A directory missing from that
+# list works perfectly from a git checkout and breaks only for whoever
+# installs the release — so hold the list to what the QML actually imports.
+while read -r dir; do
+  [[ -n $dir ]] || continue
+  # The cp is wrapped across lines, so read the whole command, not one line.
+  cp_block=$(sed -n '/cp -a manifest.json/,/dist\/\$name\//p' \
+    "$ROOT/.github/workflows/release.yml")
+  check "the release ships the $dir/ module the QML imports" \
+    "$(printf '%s' "$cp_block" | grep -cE "(^|[[:space:]])$dir([[:space:]]|\")")" "1"
+  check "and $dir/ declares its types" \
+    "$([[ -f $ROOT/$dir/qmldir ]] && echo yes || echo no)" "yes"
+done < <(grep -ohE '^import "[a-z][a-z0-9_]*"' "$ROOT"/*.qml | sed 's/^import "//; s/"$//' | sort -u)
+
+echo
+
+# #50: the gate protects the store, not a particular window. Both surfaces
+# used to keep their own `fingerprintPassed`, so a scan at the pulldown left
+# the manager locked — and Ctrl+E in the pulldown summons the manager, which
+# made the second prompt look like the first scan had failed.
+for surface in BarWidget.qml Omapass.qml; do
+  check "$surface keeps no unlock state of its own" \
+    "$(grep -c 'property bool fingerprintPassed' "$ROOT/$surface")" "0"
+  check "and reads the shared gate instead" \
+    "$([[ $(grep -c 'UnlockState.passed' "$ROOT/$surface") -ge 1 ]] && echo yes || echo no)" "yes"
+  check "and imports the module it comes from" \
+    "$(grep -c '^import "state"' "$ROOT/$surface")" "1"
+  check "and records a passed scan through it" \
+    "$(grep -c 'UnlockState.markPassed()' "$ROOT/$surface")" "1"
+done
+# fingerprint-grace = 0 has to keep meaning "scan every time".
+check "a zero grace is honoured rather than floored" \
+  "$(grep -c 'Math.max(0, ms)' "$ROOT/state/UnlockState.qml")" "1"
+check "the shared gate is never written to disk" \
+  "$(grep -cE 'FileView|writeFile|Process|\.write\(' "$ROOT/state/UnlockState.qml")" "0"
+
+echo
+
 echo "release plumbing"
 MANIFEST_VERSION=$(python3 -c "import json;print(json.load(open('$ROOT/manifest.json'))['version'])")
 check "welcomed reports json" \
@@ -531,11 +570,14 @@ body = re.search(r'function activate\(action\) \{.*?\n  \}', src, re.S).group(0)
 print('rememberSearch()' in body)")" "True"
 check "and dropped when the pulldown is closed without one" \
   "$(grep -c 'if (!root.actionTaken) root.forgetSearch()' "$ROOT/BarWidget.qml")" "1"
+# The grace timer moved into the shared UnlockState singleton (#50), so the
+# re-lock now arrives as a signal rather than a local timer. The guarantee is
+# unchanged: whatever drops the gate drops the remembered filter with it.
 check "a re-locked vault takes the search with it" \
   "$(python3 -c "
 import re
 src = open('$ROOT/BarWidget.qml').read()
-body = re.search(r'id: graceTimer.*?\n  \}', src, re.S).group(0)
+body = re.search(r'Connections \{\s*target: UnlockState.*?\n  \}', src, re.S).group(0)
 print('forgetSearch()' in body)")" "True"
 check "search-memory has a default and reaches the UI" \
   "$("$OMAPASS" config 2>/dev/null | python3 -c 'import sys,json;print(json.load(sys.stdin)["searchMemory"])')" "120"

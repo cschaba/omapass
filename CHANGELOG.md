@@ -6,6 +6,30 @@ the CLI surface, or the entry format bump the major.
 
 ## [Unreleased]
 
+### Fixed
+
+- Authenticating at the bar pulldown now counts at the manager too. The two
+  are separate surfaces and each kept its own record of the scan, so passing
+  the gate in the pulldown left the manager locked — and `Ctrl+E` there does
+  not open an editor in the pulldown, it summons the manager. Being asked a
+  second time, a second later, for the same store on the same desktop, reads
+  as the first scan having failed. ([#50])
+
+  The unlock now lives in one place for the whole plugin, and the grace window
+  runs from whenever the last surface closed rather than per window. Sharing it
+  is not a weakening: the grace already allowed a surface to be closed and
+  reopened without a second scan, so "recently authenticated counts" was
+  already the policy — it was only ever scoped to whichever window happened to
+  ask. `fingerprint-grace = 0` still means scan every time. The state is held
+  in memory in the shell process and is never written to disk. ([#50])
+
+- The release tarball now includes the QML module directory the plugin imports.
+  It is assembled from an explicit list, and a directory missing from that list
+  works perfectly from a git checkout while failing for everyone who installs
+  the release. A test now holds that list to what the QML actually imports.
+  ([#50])
+
+
 ## [0.1.48] — 2026-09-29
 
 ### Added
@@ -753,6 +777,7 @@ top of the README.
 [#37]: https://github.com/cschaba/omapass/issues/37
 [#44]: https://github.com/cschaba/omapass/issues/44
 [#49]: https://github.com/cschaba/omapass/issues/49
+[#50]: https://github.com/cschaba/omapass/issues/50
 [0.1.29]: https://github.com/cschaba/omapass/releases/tag/v0.1.29
 [0.1.30]: https://github.com/cschaba/omapass/releases/tag/v0.1.30
 [0.1.31]: https://github.com/cschaba/omapass/releases/tag/v0.1.31

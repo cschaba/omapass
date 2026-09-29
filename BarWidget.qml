@@ -2,6 +2,7 @@ import Quickshell
 import QtQuick
 import qs.Commons
 import qs.Ui
+import "state"
 import "PassStore.js" as PassStore
 
 // Bar icon with a search pulldown: a field on top, matching entries below.
@@ -31,8 +32,9 @@ Panel {
   implicitHeight: button.implicitHeight
 
   readonly property bool fingerprintRequired: pass.fingerprintRequired
-  property bool fingerprintPassed: false
-  readonly property bool vaultLocked: pass.ready && root.fingerprintRequired && !root.fingerprintPassed
+  // Shared with the manager through UnlockState, not kept here: Ctrl+E summons
+  // that surface, and a scan the user just passed has to still count. (#50)
+  readonly property bool vaultLocked: pass.ready && root.fingerprintRequired && !UnlockState.passed
 
   // A per-widget setting in shell.json wins; the config file supplies the
   // default so both surfaces can be tuned from one place.
@@ -85,6 +87,9 @@ Panel {
 
   onOpenedChanged: {
     if (opened) {
+      // Something is on screen again, so whatever countdown a previous close
+      // started no longer applies.
+      UnlockState.hold()
       // Selecting it means the next keystroke replaces the search rather than
       // extending it, so a remembered filter is never in the way of a new one.
       var resumed = root.rememberedFilter
@@ -101,23 +106,21 @@ Panel {
       // the app arguing with them.
       if (!root.actionTaken) root.forgetSearch()
       root.actionTaken = false
-      if (root.fingerprintPassed) {
-        // The pulldown is its own surface, so it keeps its own grace window.
-        graceTimer.restart()
-      }
+      // The countdown belongs to the plugin, not to this window — the manager
+      // may be opening as this closes.
+      UnlockState.startGrace(pass.setting("fingerprintGrace", 120) * 1000)
     }
   }
 
   property string pendingSelect: ""
 
-  Timer {
-    id: graceTimer
-    interval: pass.setting("fingerprintGrace", 120) * 1000
-    onTriggered: {
-      root.fingerprintPassed = false
-      // The filter is a fragment of an entry name. It should not outlive the
-      // gate that decides who gets to see entry names at all.
-      root.forgetSearch()
+  // The filter is a fragment of an entry name. It should not outlive the gate
+  // that decides who gets to see entry names at all — whichever surface's
+  // close started the countdown that ended it.
+  Connections {
+    target: UnlockState
+    function onPassedChanged() {
+      if (!UnlockState.passed) root.forgetSearch()
     }
   }
 
@@ -469,7 +472,7 @@ Panel {
           accent: Color.accent
           fontFamily: root.fontFamily
           onAuthenticated: {
-            root.fingerprintPassed = true
+            UnlockState.markPassed()
             root.rebuild()
             Qt.callLater(function () { searchField.forceActiveFocus() })
           }

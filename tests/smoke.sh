@@ -315,6 +315,12 @@ echo "sync"
 GITSTORE="$TMP/gitstore"
 REMOTE="$TMP/remote.git"
 mkdir -p "$GITSTORE"
+# `pass git init` commits, and git refuses to commit without an identity. A
+# developer machine has one globally and a CI runner does not, so without this
+# the fixture store ends up with no HEAD and every sync below fails for a
+# reason that has nothing to do with what is being tested.
+export GIT_AUTHOR_NAME="omapass smoke" GIT_AUTHOR_EMAIL="smoke@example.invalid"
+export GIT_COMMITTER_NAME="omapass smoke" GIT_COMMITTER_EMAIL="smoke@example.invalid"
 PASSWORD_STORE_DIR="$GITSTORE" pass init "$FPR" >/dev/null 2>&1
 PASSWORD_STORE_DIR="$GITSTORE" pass git init >/dev/null 2>&1
 printf 'secret\n' | PASSWORD_STORE_DIR="$GITSTORE" "$OMAPASS" insert sync/one >/dev/null 2>&1

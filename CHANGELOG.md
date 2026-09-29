@@ -6,6 +6,14 @@ the CLI surface, or the entry format bump the major.
 
 ## [Unreleased]
 
+### Fixed
+
+- Ctrl+S (sync) no longer leaves the entry list stale once the pull/push
+  finishes. `sync` was fired through the same detached helper used for
+  clipboard/type actions, so nothing ever reloaded the list or surfaced a
+  failure when it was done; it is now a tracked process like every other
+  write, and reloads the list (or reports the error) on exit. (#45)
+
 ## [0.1.47] — 2026-09-15
 
 ### Fixed

@@ -36,12 +36,6 @@ QtObject {
     root.passed = true
   }
 
-  // An explicit re-lock, rather than an expiry.
-  function lock() {
-    grace.stop()
-    root.passed = false
-  }
-
   // A surface opened, so a countdown started by some earlier close no longer
   // applies — something is on screen again.
   function hold() {

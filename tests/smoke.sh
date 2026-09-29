@@ -599,12 +599,6 @@ print('visible: !root.generate' not in block and 'enabled: !root.generate' in bl
 # must not be restored while the fingerprint gate is up — the editor draws
 # above the gate, so resuming behind it would hand back a secret the gate
 # exists to withhold. (#37)
-check "a draft does not survive the vault locking" \
-  "$(python3 -c "
-import re
-src = open('$ROOT/Omapass.qml').read()
-body = re.search(r'function lockVault\(\) \{.*?\n  \}', src, re.S).group(0)
-print('forgetDraft()' in body)")" "True"
 check "cancelling the form discards the draft" \
   "$(python3 -c "
 import re

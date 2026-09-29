@@ -285,11 +285,6 @@ Item {
     UnlockState.startGrace(root.fingerprintGraceMs)
   }
 
-  function lockVault() {
-    UnlockState.lock()
-    root.forgetDraft()
-  }
-
   function dismiss() {
     root.close()
     if (root.shell && typeof root.shell.hide === "function")

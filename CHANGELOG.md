@@ -6,6 +6,16 @@ the CLI surface, or the entry format bump the major.
 
 ## [Unreleased]
 
+### Removed
+
+- `lockVault()`, which nothing could reach. No key was bound to it and nothing
+  called it, so the grace window was already the only re-lock — it just did not
+  look that way, because a smoke test asserted on the function's body and made
+  it read as live code. `Ctrl+L` is *fill login*, in both the pulldown and the
+  manager, and always was. Binding it to a key was the alternative and was
+  decided against: the grace window is the re-lock. ([#51])
+
+
 ## [0.1.49] — 2026-09-29
 
 ### Fixed
@@ -780,6 +790,7 @@ top of the README.
 [#44]: https://github.com/cschaba/omapass/issues/44
 [#49]: https://github.com/cschaba/omapass/issues/49
 [#50]: https://github.com/cschaba/omapass/issues/50
+[#51]: https://github.com/cschaba/omapass/issues/51
 [0.1.29]: https://github.com/cschaba/omapass/releases/tag/v0.1.29
 [0.1.30]: https://github.com/cschaba/omapass/releases/tag/v0.1.30
 [0.1.31]: https://github.com/cschaba/omapass/releases/tag/v0.1.31

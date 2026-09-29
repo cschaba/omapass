@@ -4,6 +4,7 @@ import Quickshell.Wayland
 import QtQuick
 import qs.Commons
 import qs.Ui
+import "state"
 import "PassStore.js" as PassStore
 
 // omapass — a password manager overlay backed by pass(1).
@@ -41,9 +42,10 @@ Item {
   // behind a scan. The grace window keeps a quick reopen from demanding a
   // second touch; closing the surface does not by itself re-lock.
   readonly property bool fingerprintRequired: pass.fingerprintRequired
-  property bool fingerprintPassed: false
   readonly property int fingerprintGraceMs: pass.setting("fingerprintGrace", 120) * 1000
-  readonly property bool vaultLocked: root.ready && root.fingerprintRequired && !root.fingerprintPassed
+  // Shared with the bar pulldown through UnlockState rather than held here, so
+  // a scan passed at one surface still counts at the other. (#50)
+  readonly property bool vaultLocked: root.ready && root.fingerprintRequired && !UnlockState.passed
 
   // Shown once on first run, and on demand with F1 after that. Waits until the
   // vault is open, so it never sits between the user and an unlock prompt.
@@ -232,7 +234,7 @@ Item {
     root.filterText = ""
     root.selectedIndex = 0
     root.cursorActive = true
-    graceTimer.stop()
+    UnlockState.hold()
     pass.clearError()
 
     var payload = null
@@ -280,12 +282,11 @@ Item {
     root.forgetSecrets()
     // Re-lock after the grace window rather than immediately: opening the
     // picker twice in a row should not cost two scans.
-    if (root.fingerprintPassed) graceTimer.restart()
+    UnlockState.startGrace(root.fingerprintGraceMs)
   }
 
   function lockVault() {
-    root.fingerprintPassed = false
-    graceTimer.stop()
+    UnlockState.lock()
     root.forgetDraft()
   }
 
@@ -500,12 +501,6 @@ Item {
     id: fieldsDebounce
     interval: 180
     onTriggered: root.loadFields()
-  }
-
-  Timer {
-    id: graceTimer
-    interval: root.fingerprintGraceMs
-    onTriggered: root.fingerprintPassed = false
   }
 
   Timer {
@@ -735,7 +730,7 @@ Item {
         accent: root.selectedText
         fontFamily: root.fontFamily
         onAuthenticated: {
-          root.fingerprintPassed = true
+          UnlockState.markPassed()
           Qt.callLater(function () { keyCatcher.forceActiveFocus() })
           Qt.callLater(root.runPendingAction)
         }

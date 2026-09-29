@@ -1,0 +1,2 @@
+module omapass.state
+singleton UnlockState 1.0 UnlockState.qml

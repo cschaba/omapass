@@ -55,6 +55,7 @@ declare -A CONFIG=(
   [fingerprint-retries]="1"
   [log]="off"
   [log-max-kb]="256"
+  [auto-sync]="off"
   [pulldown-rows]="7"
   [bar-section]="right"
   [keybind]="SUPER ALT, P"
@@ -148,6 +149,13 @@ LOG_FILE="${OMAPASS_LOG_FILE:-$STATE_DIR/omapass.log}"
 LOG_ENABLED=false
 # shellcheck disable=SC2034
 [[ ${OMAPASS_LOG:-${CONFIG[log]}} == "on" ]] && LOG_ENABLED=true
+
+# Whether the UI should sync automatically after every insert/rename/remove,
+# instead of only on Ctrl+S. Off by default — see auto-sync in the config
+# template for why.
+AUTO_SYNC_ENABLED=false
+# shellcheck disable=SC2034
+[[ ${OMAPASS_AUTO_SYNC:-${CONFIG[auto-sync]}} == "on" ]] && AUTO_SYNC_ENABLED=true
 
 json_escape() {
   local s="$1"

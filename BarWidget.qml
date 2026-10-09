@@ -1,6 +1,7 @@
 import Quickshell
 import QtQuick
 import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
 import "state"
 import "PassStore.js" as PassStore
@@ -21,10 +22,10 @@ Panel {
   property string filterText: ""
   property int selectedIndex: 0
 
-  readonly property color foreground: bar ? bar.foreground : Color.foreground
+  readonly property color foreground: bar ? bar.foreground : Commons.Color.foreground
   readonly property color dim: Qt.darker(foreground, 1.55)
   readonly property string fontFamily: bar ? bar.fontFamily : Style.font.family
-  readonly property color selectedFill: bar ? Style.selectedFillFor(bar.foreground, Color.accent) : "transparent"
+  readonly property color selectedFill: bar ? Style.selectedFillFor(bar.foreground, Commons.Color.accent) : "transparent"
 
   // The bar sizes a slot from its widget's implicit size — a root that does
   // not publish one gets a 0x0 slot and renders nothing at all, silently.
@@ -296,7 +297,7 @@ Panel {
           visible: pass.ready && !root.vaultLocked
           placeholderText: "Search passwords…"
           foreground: root.foreground
-          accent: Color.accent
+          accent: Commons.Color.accent
           verticalPadding: Style.spacing.controlPaddingY
 
           onTextChanged: root.setFilter(text)
@@ -469,7 +470,7 @@ Panel {
           maxScanFailures: Math.max(1, pass.setting("fingerprintRetries", 1))
           compact: true
           foreground: root.foreground
-          accent: Color.accent
+          accent: Commons.Color.accent
           fontFamily: root.fontFamily
           onAuthenticated: {
             UnlockState.markPassed()
@@ -492,7 +493,7 @@ Panel {
             anchors.verticalCenter: parent.verticalCenter
             visible: pass.ready && !root.vaultLocked
             foreground: root.foreground
-            accent: Color.accent
+            accent: Commons.Color.accent
             fontFamily: root.fontFamily
             spacing: Style.space(10)
             actions: [
@@ -517,7 +518,7 @@ Panel {
             anchors.verticalCenter: parent.verticalCenter
             visible: !hintLabel.visible
             text: "Close"
-            color: closeArea.containsMouse ? Color.accent : root.dim
+            color: closeArea.containsMouse ? Commons.Color.accent : root.dim
             font.family: root.fontFamily
             font.pixelSize: Style.font.caption
 
@@ -543,14 +544,14 @@ Panel {
             height: width
             radius: width / 2
             visible: pass.ready && !root.vaultLocked
-            color: helpArea.containsMouse ? Color.menu.selectedBackground : "transparent"
+            color: helpArea.containsMouse ? Commons.Color.menu.selectedBackground : "transparent"
             border.width: 1
             border.color: Util.alpha(root.foreground, helpArea.containsMouse ? 0.45 : 0.22)
 
             Text {
               anchors.centerIn: parent
               text: "?"
-              color: helpArea.containsMouse ? Color.accent : root.foreground
+              color: helpArea.containsMouse ? Commons.Color.accent : root.foreground
               opacity: helpArea.containsMouse ? 1 : 0.45
               font.family: root.fontFamily
               font.pixelSize: Style.font.caption
@@ -577,7 +578,7 @@ Panel {
             anchors.rightMargin: helpButton.visible ? Style.space(10) : 0
             anchors.verticalCenter: parent.verticalCenter
             text: root.vaultLocked ? "" : (pass.ready ? "Manage…" : "Set up…")
-            color: manageArea.containsMouse ? Color.accent : root.dim
+            color: manageArea.containsMouse ? Commons.Color.accent : root.dim
             font.family: root.fontFamily
             font.pixelSize: Style.font.caption
 

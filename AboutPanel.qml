@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell
 import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
 
 // Shown once on first run, and on demand from the overlay afterwards. The same
@@ -11,9 +12,9 @@ Item {
   property var service: null
   property bool firstRun: false
 
-  property color foreground: Color.foreground
-  property color accent: Color.accent
-  property color selectedBackground: Color.menu.selectedBackground
+  property color foreground: Commons.Color.foreground
+  property color accent: Commons.Color.accent
+  property color selectedBackground: Commons.Color.menu.selectedBackground
   property string fontFamily: Style.font.menuFamily
 
   signal dismissed()
@@ -247,7 +248,7 @@ Item {
         width: parent.width
         visible: !root.confirmingQuit
         text: "󰗼  Quit OmaPass"
-        color: quitArea.containsMouse ? Color.urgent : root.foreground
+        color: quitArea.containsMouse ? Commons.Color.urgent : root.foreground
         opacity: quitArea.containsMouse ? 1 : 0.6
         font.family: root.fontFamily
         font.pixelSize: Style.font.caption
@@ -312,7 +313,7 @@ Item {
 
           Text {
             text: "Quit"
-            color: Color.urgent
+            color: Commons.Color.urgent
             opacity: confirmArea.containsMouse ? 1 : 0.85
             font.family: root.fontFamily
             font.pixelSize: Style.font.caption

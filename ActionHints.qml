@@ -1,5 +1,6 @@
 import QtQuick
 import qs.Commons
+import qs.Commons as Commons
 
 // The row of key hints along the bottom of a surface, with the keys actually
 // wired up — reading "^L fill login" and not being able to click it is a small
@@ -11,8 +12,8 @@ Item {
   id: root
 
   property var actions: []
-  property color foreground: Color.foreground
-  property color accent: Color.accent
+  property color foreground: Commons.Color.foreground
+  property color accent: Commons.Color.accent
   property string fontFamily: Style.font.menuFamily
   property real restingOpacity: 0.45
   property int spacing: Style.space(14)

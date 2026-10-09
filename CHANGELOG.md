@@ -6,6 +6,17 @@ the CLI surface, or the entry format bump the major.
 
 ## [Unreleased]
 
+### Fixed
+
+- Theming broke after updating to a Quickshell that ships its own built-in
+  `Color` object — its color-math helpers (`rgba`, `blend`, `tint`, ...) share
+  the name with the `qs.Commons.Color` theming singleton, and the Quickshell
+  one won. Every bare `Color.menu.background`, `Color.urgent`, etc. silently
+  resolved to `undefined`, dropping every theme color from the overlay and bar
+  widget. Imports `qs.Commons as Commons` alongside the existing unqualified
+  import and references the singleton as `Commons.Color.*`, the same pattern
+  Omarchy's own first-party plugins already use for this. ([#52])
+
 ## [0.2.0] — 2026-09-29
 
 ### Changed
@@ -815,6 +826,7 @@ top of the README.
 [#49]: https://github.com/cschaba/omapass/issues/49
 [#50]: https://github.com/cschaba/omapass/issues/50
 [#51]: https://github.com/cschaba/omapass/issues/51
+[#52]: https://github.com/cschaba/omapass/issues/52
 [0.1.29]: https://github.com/cschaba/omapass/releases/tag/v0.1.29
 [0.1.30]: https://github.com/cschaba/omapass/releases/tag/v0.1.30
 [0.1.31]: https://github.com/cschaba/omapass/releases/tag/v0.1.31

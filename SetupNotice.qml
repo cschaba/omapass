@@ -1,5 +1,6 @@
 import QtQuick
 import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
 
 // First-run gate. omapass checks its requirements every time it opens, and
@@ -12,8 +13,8 @@ Item {
   id: root
 
   property var steps: []
-  property color foreground: Color.foreground
-  property color accent: Color.accent
+  property color foreground: Commons.Color.foreground
+  property color accent: Commons.Color.accent
   property string fontFamily: Style.font.menuFamily
 
   signal startSetup()

@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls as QQC
 import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
 import "PassStore.js" as PassStore
 
@@ -16,10 +17,10 @@ Item {
   property bool opened: false
   property var service: null
 
-  property color background: Color.menu.background
-  property color foreground: Color.menu.text
-  property color accent: Color.accent
-  property color selectedBackground: Color.menu.selectedBackground
+  property color background: Commons.Color.menu.background
+  property color foreground: Commons.Color.menu.text
+  property color accent: Commons.Color.accent
+  property color selectedBackground: Commons.Color.menu.selectedBackground
   property string fontFamily: Style.font.menuFamily
   property int cornerRadius: Style.cornerRadius
 
@@ -81,7 +82,7 @@ Item {
       anchors.right: parent.right
       visible: fieldLabel.limit > 0 && fieldLabel.used > fieldLabel.limit * 0.8
       text: fieldLabel.used + "/" + fieldLabel.limit
-      color: fieldLabel.used >= fieldLabel.limit ? Color.urgent : root.foreground
+      color: fieldLabel.used >= fieldLabel.limit ? Commons.Color.urgent : root.foreground
       opacity: fieldLabel.used >= fieldLabel.limit ? 1 : 0.5
       font.family: root.fontFamily
       font.pixelSize: Style.font.caption
@@ -733,7 +734,7 @@ Item {
         Text {
           visible: root.loadError.length > 0
           text: "⚠"
-          color: Color.urgent
+          color: Commons.Color.urgent
           font.family: root.fontFamily
           font.pixelSize: Style.font.body
         }
@@ -741,7 +742,7 @@ Item {
         Text {
           width: parent.width - (root.loadError ? Style.space(20) : 0)
           text: root.loadError ? root.loadError : "Ctrl+⏎ save   Esc cancel"
-          color: root.loadError ? Color.urgent : root.foreground
+          color: root.loadError ? Commons.Color.urgent : root.foreground
           opacity: root.loadError ? 1 : 0.45
           font.family: root.fontFamily
           font.pixelSize: root.loadError ? Style.font.body : Style.font.caption

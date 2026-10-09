@@ -1,5 +1,6 @@
 import QtQuick
 import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
 
 // Every shortcut OmaPass has, on one page. The app is keyboard-first by design,
@@ -12,9 +13,9 @@ import qs.Ui
 Item {
   id: root
 
-  property color background: Color.menu.background
-  property color foreground: Color.foreground
-  property color accent: Color.accent
+  property color background: Commons.Color.menu.background
+  property color foreground: Commons.Color.foreground
+  property color accent: Commons.Color.accent
   property string fontFamily: Style.font.menuFamily
   property bool hasOtpSupport: true
   property bool hasUrlSupport: true

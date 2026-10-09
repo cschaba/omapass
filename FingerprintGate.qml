@@ -2,6 +2,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Services.Pam
 import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
 
 // Fingerprint unlock in front of the vault, using the same PAM service and the
@@ -17,8 +18,8 @@ Item {
 
   property bool armed: false
   property string userName: Quickshell.env("USER")
-  property color foreground: Color.foreground
-  property color accent: Color.accent
+  property color foreground: Commons.Color.foreground
+  property color accent: Commons.Color.accent
   property string fontFamily: Style.font.menuFamily
   property bool compact: false
 
@@ -284,7 +285,7 @@ Item {
       width: parent.width
       visible: root.statusText.length > 0
       text: root.statusText
-      color: Color.urgent
+      color: Commons.Color.urgent
       font.family: root.fontFamily
       font.pixelSize: Style.font.caption
       horizontalAlignment: Text.AlignHCenter
